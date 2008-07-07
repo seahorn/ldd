@@ -1,0 +1,273 @@
+Exists (DDD u, Var x)
+   ru = root (u)
+
+   if (x \not\in varsOf(ru))
+     h = Exists (cuddT (u), x)
+     l = Exists (cuddE (u), x)
+     return dddIte (ru, h, l)
+
+   // the output of the relax does not contain constraint ru, 
+   // but may contain other constraints with x
+   res1 = Exists (Relax (cuddT (u), x, pos(ru), neg(ru), bound(u)), x)
+   res2 = Exists (Relax (cuddE (u), x, neg(ru), pos(ru), -bound(u)), x)
+   res = dddOr (res1, res2);
+
+   return res;
+
+Observations:
+  Both Relax and Exists can use caches. 
+
+  Relax doesn't need to do anything if its argument is already relaxed
+
+Questions:
+  Should there be special handling of blocks of constraints on the low edge?
+
+  Can Exists and Relax be interleaved?
+
+  Can Exists be extended to take a set of variables as an argument
+
+----------------------------------------------------------------------
+
+// -- relaxes a DDD u with respect to  min < x - y <= max
+// -- both min can be a number or -inf, max is a number or +inf
+// -- q = x or q = y  
+Relax (DDD u, Var q, Var x, Var y, Num min, Num max)
+   // -- nothing to do with constants
+   if (isConst (u)) return u;
+
+   // -- decompose u into root and children
+   match (z - w <= c) with root(u)
+
+
+   // -- the root of u is also a constraint on x - y
+   // -- so update the bounds, relax children, 
+   // -- and remove root of u
+   if (z == x &&  w == y)
+     T = Relax (dddT (u), q, x, y, min, MIN(c,max))
+     E = Relax (dddT (u), q, x, y, c, +inf)
+     return ddOR (T, E);
+
+   
+   // -- the root(u) is a different constraint then x-y
+
+   // -- apply Relax to children. This may create new constraints   
+   T = Relax (dddT(u), q, x, y, min, max)
+   E = Relax (dddE(u), q, x, y, min, max)
+
+   // -- add new constraints based on the derivation with z-w<=c
+   // -- only applies if either z or w is being eliminated, i.e., 
+   // -- z==q or w==q. Works differently based on whether q==x or q==y
+
+   if (q == x && w == x)
+      if (!isInf (max))
+        T = dddAND (T, dddVar (z, y, c + max))
+      if (!isInf (min))
+        E = dddAND (E, dddVar (y, z, -c - min))
+
+   else if (q == x && z == x)
+      if (!isInf (min))
+        T = dddAND (T, dddVar (y, w, c - min))
+      if (!isInf (max))
+        E = dddAND (E, dddVar (w, y, -c + max))
+
+   else if (q == y && w == y)
+      if (!isInf (min))
+        T = dddAND (T, dddVar (z, x, c - min))
+      if (!isInf (max))
+        T = dddAND (E, dddVar (x, z, -c + max))
+   else if (q == y && z == y)
+      if (!isInf (max))
+        T = dddAND (T, dddVar (x, w, c + max))
+      if (!isInf (min))
+        E = dddAND (E, dddVar (z, x, -c - min))
+
+
+   return dddIte (dddVar (z, w, c), T, E)
+
+-------------------------------------------------------------------------
+----------------------------------------------------------------------
+// -- Extends the above by allowing for a set of variables to be 
+// -- eliminated together.
+// -- relaxes a DDD u with respect to  min < x - y <= max
+// -- both min can be a number or -inf, max is a number or +inf
+// -- Q a set satisfying (x \in Q or y \in Q)
+Relax (DDD u, Set<Var> Q, Var x, Var y, Num min, Num max)
+   // -- nothing to do with constants
+   if (isConst (u)) return u;
+
+   // -- decompose u into root and children
+   match (z - w <= c) with root(u)
+
+
+   // -- the root of u is also a constraint on x - y
+   // -- so update the bounds, relax children, 
+   // -- and remove root of u
+   if (z == x &&  w == y && (x \in Q || y \in Q))
+     T = Relax (dddT (u), Q, x, y, min, MIN(c,max))
+     E = Relax (dddT (u), Q, x, y, MAX(c,min), +inf)
+     return ddOR (T, E);
+
+   
+   // -- the root(u) is a different constraint than x-y
+
+   // -- apply Relax to children. This may create new constraints   
+   T = Relax (dddT(u), Q, x, y, min, max)
+   E = Relax (dddE(u), Q, x, y, min, max)
+
+   // -- add new constraints based on the derivation with z-w<=c
+   // -- only applies if either z or w is being eliminated, i.e., 
+   // -- z==q or w==q. Works differently based on whether q==x or q==y
+   if (x \in Q && w == x)
+      if (!isInf (max))
+        // (x-y <= max && (z-x<=c) |- (z-y <= c+max) 
+        T = dddAND (T, dddVar (z, y, c + max))
+      if (!isInf (min))
+        // (x-y > min) && (z-x > c)  |- (z-y > c+min) == !(z-y <= c+min)
+        E = dddAND (E, Not (dddVar (z, y, c+min)))
+
+   else if (x \in Q && z == x)
+      if (!isInf (min))
+        // ( x-y > min && x-w<=c) |- (y-w < c-min) =INT= (y-w <= c-min-1)
+        T = dddAND (T, dddVar (y, w, c - min - 1))
+      if (!isInf (max))
+        // (x-y<=max && w-x < -c) |- w-y < max -c =INT= w-y<= max-c-1
+        E = dddAND (E, dddVar (w, y, -c + max - 1))
+
+   else if (y \in Q && w == y)
+      if (!isInf (min))
+        // x-y > min && z-y<=c |- z-x < c-min =INT= z-x <= c-min-1
+        T = dddAND (T, dddVar (z, x, c - min-1))
+      if (!isInf (max))
+        // x-y <= max && (y-z<-c) |- x-z < -c + max =INT= x-z <= -c+max-1
+        T = dddAND (E, dddVar (x, z, -c + max -1))
+   else if (y \in Q && z == y)
+      if (!isInf (max))
+        // x-y<= max && y-w<=c |- x-w <= c+max
+        T = dddAND (T, dddVar (x, w, c + max))
+      if (!isInf (min))
+        // x-y>min && (y-w>c) |- x-w>min+c == !(x-w <= min+c)
+        E = dddAND (E, Not(dddVar (x,w,min+c)))
+
+   return dddIte (dddVar (z, w, c), T, E)
+
+------------------------------------------------------------------------
+
+// -- u is a DDD in which variables are being eliminated
+// -- Q is a set of DDD variables
+Exists (DDD u, Set<Var> Q)
+
+   match (x - y <= b) with root (u)
+
+   if (x \not\in Q && y \not\in Q)
+     T = Exists (dddT (u), Q);
+     E = Exists (dddE (u), Q);
+     return dddIte (dddVar (x, y, b), T, E);
+
+
+   T = Exists (Relax (cuddT (u), Q, x, y, -inf, b), Q);
+   E = Exists (Relax (cuddE (u), Q, x, y, b, +inf), Q);
+
+   return dddOR (T, E);
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+
+// -- propagates the constraint  min < x - y <= max through the DDD u
+// -- both min can be a number or -inf, max is a number or +inf
+Propagate (DDD u,  Var x, Var y, Num min, Num max)
+
+   // -- nothing to do with constants
+   if (isConst (u)) return u;
+
+   // -- propagation resulted in false
+   if (!(min < max)) return dddZero;
+
+   // -- decompose u into root and children
+   match (z - w <= c) with root(u)
+
+/* Examples:
+
+   propagating   0< x-y <= 10
+
+   hit           x-y <= 5
+
+   on THEN branch, continue with 0 < x-y <= 5
+
+   on ELSE branch, continue with 5 < x-y <= 10
+
+
+   prop (x-y \in (0,10],  x-y<=5 -> h, l)
+     ==
+   x-y<=5 -> prop (x-y\in (0,5], h), prop (x-y\in (5,10], l)
+
+
+   propagating   0 < x-y <= 3
+   hit               x-y <= 5
+
+   on THEN branch, continue with  0 < x-y <= 3
+   on ELSE branch, continue with  5 < x-y <= 3 
+   ELSE branch dies off
+
+
+   propagating 7 < x-y <= 10
+   hit             x-y <= 5
+
+   on THEN branch, continue with 7 < x-y <= 5 
+      THEN branch dies off
+   on ELSE brach, continue with   7 < x-y <= 10
+
+*/
+   
+
+
+   // -- the root of u is also a constraint on x - y
+   // -- so update the bounds, relax children, 
+   // -- and remove root of u
+   if (z == x &&  w == y)
+     T = Propagate (dddT (u), Q, x, y, min, MIN(c,max))
+     E = Propagate (dddE (u), Q, x, y, MAX(c,min), max)
+     return dddIte (dddVar (x, y, c), T, E)
+
+   
+   // -- the root(u) is a different constraint than x-y
+
+   // -- apply Relax to children. This may create new constraints   
+   T = Propagate (dddT(u), x, y, min, max)
+   E = Propagate (dddE(u), x, y, min, max)
+
+   // -- add new constraints based on the derivation with z-w<=c
+   // -- only applies if either z or w is being eliminated, i.e., 
+   // -- z==q or w==q. Works differently based on whether q==x or q==y
+
+   if (w == x)
+      if (!isInf (max))
+        // (x-y <= max && (z-x<=c) |- (z-y <= c+max) 
+        T = dddAND (T, dddVar (z, y, c + max))
+      if (!isInf (min))
+        // (x-y > min) && (z-x > c)  |- (z-y > c+min) == !(z-y <= c+min)
+        E = dddAND (E, Not (dddVar (z, y, c+min)))
+
+   else if (z == x)
+      if (!isInf (min))
+        // ( x-y > min && x-w<=c) |- (y-w < c-min) =INT= (y-w <= c-min-1)
+        T = dddAND (T, dddVar (y, w, c - min - 1))
+      if (!isInf (max))
+        // (x-y<=max && w-x < -c) |- w-y < max -c =INT= w-y<= max-c-1
+        E = dddAND (E, dddVar (w, y, -c + max - 1))
+
+   else if (w == y)
+      if (!isInf (min))
+        // x-y > min && z-y<=c |- z-x < c-min =INT= z-x <= c-min-1
+        T = dddAND (T, dddVar (z, x, c - min-1))
+      if (!isInf (max))
+        // x-y <= max && (y-z<-c) |- x-z < -c + max =INT= x-z <= -c+max-1
+        T = dddAND (E, dddVar (x, z, -c + max -1))
+   else if (z == y)
+      if (!isInf (max))
+        // x-y<= max && y-w<=c |- x-w <= c+max
+        T = dddAND (T, dddVar (x, w, c + max))
+      if (!isInf (min))
+        // x-y>min && (y-w>c) |- x-w>min+c == !(x-w <= min+c)
+        E = dddAND (E, Not(dddVar (x,w,min+c)))
+
+   return dddIte (dddVar (z, w, c), T, E)
