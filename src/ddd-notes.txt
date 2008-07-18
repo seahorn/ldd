@@ -179,6 +179,8 @@ Propagate (DDD u,  Var x, Var y, Num min, Num max)
    // -- nothing to do with constants
    if (isConst (u)) return u;
 
+   if (min == -Inf && max == Inf) return u;
+
    // -- propagation resulted in false
    if (!(min < max)) return dddZero;
 
@@ -224,14 +226,14 @@ Propagate (DDD u,  Var x, Var y, Num min, Num max)
    // -- so update the bounds, relax children, 
    // -- and remove root of u
    if (z == x &&  w == y)
-     T = Propagate (dddT (u), Q, x, y, min, MIN(c,max))
-     E = Propagate (dddE (u), Q, x, y, MAX(c,min), max)
-     return dddIte (dddVar (x, y, c), T, E)
+     T = Propagate (dddT (u), x, y, min, MIN(c,max))
+     E = Propagate (dddE (u), x, y, MAX(c,min), max)
+     return dddIte (dddVar (z, w, c), T, E)
 
    
    // -- the root(u) is a different constraint than x-y
 
-   // -- apply Relax to children. This may create new constraints   
+   // -- apply Propogate to children. This may create new constraints   
    T = Propagate (dddT(u), x, y, min, max)
    E = Propagate (dddE(u), x, y, min, max)
 
