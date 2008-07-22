@@ -2,9 +2,6 @@
 #include "dddCuddInt.h"
 
 
-DdNode * dddAndRecur (dddManager*, DdNode*, DdNode*);
-DdNode * dddXorRecur (dddManager*, DdNode*, DdNode*);
-DdNode * dddIteRecur (dddManager*, DdNode*, DdNode*, DdNode*);
 
 
 static int bddVarToCanonicalSimple (DdManager *dd, DdNode **fp, DdNode **gp, DdNode **hp, unsigned int *topfp, unsigned int *topgp, unsigned int *tophp);

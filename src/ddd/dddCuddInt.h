@@ -7,42 +7,15 @@
 
 #include "dddCudd.h"
 
-#define DD_DDD_ITE_TAG 0x8a
-
 /*--------------------------------------------------------------------------*/
 /* Macro declarations                                                       */
 /*--------------------------------------------------------------------------*/
 
-#define IS_PINF(X)  ((X) == INT_MAX)
-#define IS_NINF(X)  ((X) == INT_MIN)
-#define IS_LEQ(X,Y) ((X) <= (Y))
-#define NUM_MIN(X,Y)   ((X) <= (Y) ? (X) : (Y))
-#define NUM_MAX(X,Y)   ((X) <= (Y) ? (Y) : (X))
+#define DD_DDD_ITE_TAG 0x8a
+
 /*--------------------------------------------------------------------------*/
 /* Type declarations                                                        */
 /*--------------------------------------------------------------------------*/
-
-typedef struct vinfo 
-{
-  /* first dimension */
-  int fst; 
-  /* second dimension */
-  int snd;
-  /* constant */
-  int cst;
-  
-  /* pointer to DD node representing the constraint (fst-snd<=cst) */
-  DdNode * node;
-
-  /** pointers to next and prev. entries in a linked list */
-  struct vinfo * next;
-  struct vinfo * prev;
-  
-} vinfo;
-
-typedef vinfo * pvinfo;
-
-
 struct dddManager {
   DdManager *cudd; // a regular DdManager
   void *gen; // useful pointer for various things
@@ -78,10 +51,19 @@ struct dddManager {
 /* Function prototypes                                                      */
 /*--------------------------------------------------------------------------*/
 
-extern dddManager * dddCudd_Init (DdManager*, int);
-extern DdNode * dddCons(dddManager *, int, int, int);
 
-extern DdNode * dddUniqueInter(dddManager *,int,int,int,DdNode*,DdNode*);
+extern DdNode *dddUniqueInter(dddManager *,int,int,int, DdNode *, DdNode *);
+
+extern DdNode *dddAndRecur (dddManager*, DdNode*, DdNode*);
+extern DdNode *dddXorRecur (dddManager*, DdNode*, DdNode*);
+extern DdNode *dddIteRecur (dddManager*, DdNode*, DdNode*, DdNode*);
+
+extern DdNode * dddPropConsRecur (dddManager *, DdNode *, 
+				  int, int, int, int, DdHashTable*);
+extern DdNode *dddExistAbstractRecur (dddManager *, DdNode *, int*, 
+				      DdHashTable*);
+extern DdNode *dddRelaxRecur (dddManager *, DdNode *, 
+			      int, int, int, int, int*, DdHashTable*);
 
 
 /**AutomaticEnd**************************************************************/
