@@ -8,7 +8,7 @@ DdNode *dddRelax (dddManager * ddd,
 		  int snd, 
 		  int min, 
 		  int max, 
-		  int * vars)
+		  int  * vars)
 {
   DdNode *res;
   DdHashTable *table;

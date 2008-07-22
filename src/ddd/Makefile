@@ -41,7 +41,7 @@ LDFLAGS	=
 
 # files for the package
 P	= dddcudd
-PSRC	= dddAbs.c dddIte.c dddOps.c dddInit.c
+PSRC	= matrix.c dddAbs.c dddIte.c dddOps.c dddInit.c
 
 PHDR    = dddCudd.h dddCuddInt.h
 POBJ	= $(PSRC:.c=.o)

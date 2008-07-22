@@ -30,11 +30,24 @@ struct dddManager {
   pvinfo * dims;
   
   /** size of the dims array */
-  int dimSize;
-  
-  
-  
+  int dimSize;  
 };
+
+
+/* A matrix with m rows and n columns*/
+typedef struct matrix
+{
+  int m;
+  int n;
+  int * data;
+} matrix;
+
+typedef matrix * pmatrix;
+
+/* get M[I,J] */
+#define M_GET(M,I,J) ((M)->data[I*(M)->n+(J)])
+/* set M[I,J] to V */
+#define M_SET(M,I,J,V) ((M)->data[I*(M)->n+(J)] = V)
 
 
 /* 
@@ -64,6 +77,16 @@ extern DdNode *dddExistAbstractRecur (dddManager *, DdNode *, int*,
 				      DdHashTable*);
 extern DdNode *dddRelaxRecur (dddManager *, DdNode *, 
 			      int, int, int, int, int*, DdHashTable*);
+
+
+/* matrix functions */
+extern pmatrix matrix_create(int,int);
+extern pmatrix matrix_create_square(int);
+extern void matrix_destroy(pmatrix);
+extern void matrix_fill(pmatrix,int);
+extern pmatrix matrix_dup(pmatrix);
+extern void matrix_floyd_warshall(pmatrix);
+extern int ddd_is_sat(pmatrix);
 
 
 /**AutomaticEnd**************************************************************/
