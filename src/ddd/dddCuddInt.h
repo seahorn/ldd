@@ -26,7 +26,12 @@ struct dddManager {
   int varsSize;
   
   
-  /* a map from dimensions to var info */
+  /*
+   * A map from dimensions to var info. Each entry of the array is a
+   * linked list of var infos.  A constraint of the form (x - y <= c)
+   * is stored in a linked list at dims[x]. The linked list is ordered
+   * using the pair (y, c) as the key.
+   */
   pvinfo * dims;
   
   /** size of the dims array */

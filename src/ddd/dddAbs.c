@@ -193,6 +193,14 @@ dddRelaxRecur (dddManager * ddd,
     }
 
 
+  /* XXX Disclaimer: This comment may not be relevant 
+   *                 for difference constraints
+   * XXX This assumes that constraints that are added later in the code
+   * XXX will not include any variables in "vars". Otherwise, the 
+   * XXX new constraints must be combined with appropriate branches BEFORE
+   * XXX the recursive call is made
+   */
+
   /** recursive call */
   T = dddRelaxRecur (ddd, fv, fst, snd, min, newMax, vars, table);
   if (T == NULL) return NULL;

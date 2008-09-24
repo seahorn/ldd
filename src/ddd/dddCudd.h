@@ -21,6 +21,11 @@
 /* Type declarations                                                        */
 /*--------------------------------------------------------------------------*/
 
+/**
+ * "variable" is always used to refer to BDD variables.  
+ * "dimension" is used to refer to variables appearing in the constarint.
+ */
+
 typedef struct vinfo 
 {
   /* first dimension */

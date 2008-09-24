@@ -104,7 +104,7 @@ Relax (DDD u, Set<Var> Q, Var x, Var y, Num min, Num max)
    // -- and remove root of u
    if (z == x &&  w == y && (x \in Q || y \in Q))
      T = Relax (dddT (u), Q, x, y, min, MIN(c,max))
-     E = Relax (dddT (u), Q, x, y, MAX(c,min), +inf)
+     E = Relax (dddE (u), Q, x, y, MAX(c,min), +inf)
      return ddOR (T, E);
 
    

@@ -1,0 +1,448 @@
+Assumption: 
+
+  -- support various fragments of linear arithmetic, based on the
+     structure of terms.
+  -- theory has control over term representation.
+
+
+TERM:   c1*x1 + ... + c_n*x_n
+CONSTANT: 10, 20.3, 1/3, etc.
+CONSTRAINT:   t <= k (non-strict), t < k (strict)
+              where t is a term, and k is a constant.
+
+CONSTANT FUNCTIONS
+ int compare (cst1, cst2)
+ boolean isPInf(c)
+ boolean isNInf(c)
+  
+ // -- returns -1*cst
+ constant negateCst (cst)
+
+
+TERM FUNCTIONS
+ // returns true if term1 and term2 are the same terms
+ boolean isEqual (term1, term2)
+
+ // a hash code
+ long hashCode (term)
+
+ // true if term1 contains a variable in vars, false otherwise
+ boolean hasVar (term1, vars[])
+
+ // 1 if term1 and term2 can be resolved on some variable in V,
+ // -1 if term1 and -1*(term2) can be resolved on some variable in V,
+ // 0 if term1 and term2 cannot be resolved
+ int canResolve (term1, term2, V)
+
+ // returns -1 * term
+ term negateTerm (term)
+
+CONSTRAINT FUNCTIONS
+ // returns an inequality representing "! ineq"
+ Constraint negate (Constraint)
+ // extracts a term of a constraint
+ Term getTerm (c)
+ Constant getConstant (c)
+ boolean isStrict (c)
+ Constraint toggleStrict (c)
+ boolean implies (c1, c2)
+ // -- return >0 if c is valid, <0 if c is unsat, 0 otherwise
+ int isValid (c)
+
+ Constraint thResolve (c1, c2, V);
+ 
+
+----------------------------------------------------------------------
+REQUIRED FUNCTIONALITY
+
+Given a constraint, find (or create) a decision diagram node. Creation
+of new diagram nodes must satisfy:
+   A implies B then level(toDD(A)) <= level(toDD(B))
+   A = B       then toDD(A) = toDD(B)
+   A = !B      then toDD(A) = DD_NOT (toDD(B))
+
+Given a diagram node, find the constraint corresponding to it.
+
+
+
+ // converts an inequality to a decision diagram.
+ // ensures: canonicity of the result
+ // uses: encodeIneq(term, comparisson, constant) that encodes an inequality
+ // into a decision diagram
+ DD toDD (c)
+
+
+
+ QELIM_CONTEXT thQElim_init(vars)
+ void thQElim_push(QELIM_CONTEXT, ineq)
+ void thQElim_pop(QELIM_CONTEXT)
+ bool thQElim_isUNSAT(QELIM_CONTEXT)
+ DD thQElim_solve(QELIM_CONTEXT)
+
+----------------------------------------------------------------------
+Requreid assumption: 
+
+  let A and B be two inequalities with the same term. Let idx(A) and
+  idx(B) be the DD indexes of the variables corresponding to A and
+  B. Then, A => B iff idx(A) <= idx(B). That is, inequalities that
+  appears higher up in the diagram, imply inequalities that appear
+  below.
+
+----------------------------------------------------------------------
+
+Expr -- linear inequalities of the form  c1x1 + ... + cnxn <= k
+
+// -- DD negation
+DD DD_NOT (DD d);
+
+// returns a (sorted/canonical) represenation of !e
+Expr negate (Expr e);
+
+
+// returns a diagram representing the root node of d
+DD rootOf (DD d) 
+{ 
+   return ithDDVar (indexOf (d));
+}
+
+
+// returns a DD corresponding to a expression e
+// Must satisfy the following two conditions:
+//   a <=>  b  IMPLIES      toDD(a) = toDD(b)                (canonicity)
+//   a <=> !b  IMPLIES      toDD(a) = DD_NOT (toDD(b))       (negation)
+DD toDD (Expr e)
+{
+   r = sort the variables in the expression e
+   if (sign_of_first_non_zero_coeff (r) == positive) 
+    return  r 
+   else
+    return DD_NOT (negate(r))
+}
+
+// returns a linear expression corresponding to DD d.
+// requires: dagSize (d) <= 2    (d is either a constant or one node diagram)
+Expr toExpr (DD d);
+
+
+// Resolves e1 with e2 on x.
+// Returns the resolvent or TRUE if no resolvent exists
+// Requires: e1 and e2 are linear inequalities
+// Requires: x is a variable appearing with a non-zero coefficient in e2
+Expr thResolve (Expr e1, Expr e2, Expr x);
+
+
+// Resolves a boolean combination of linear constraints represented by
+// d with  linear inequality e on x
+// Returns the conjunction of all of the resolutions and d
+Expr ddAndResolve (DD d, Expr e, Expr x)
+{
+  if (d == ONE || d == ZERO) return d;
+
+  v = rootOf (d);
+  T = ddT (d);
+  E = ddE (d);
+
+  // -- We assume that this is a per-function cache
+  res = cacheLookup (d);
+  if (res != NULL) return res;
+
+  ve = toExpr (v);
+
+  // -- recursive step
+  resT = ddAndResolve (T, e, x);
+  resE = ddAndResolve (E, e, x);
+
+  // -- check if we have to do resolution
+  if (contains (vars (ve), x))
+   {
+     nve = toExpr (NOT_DD (v));
+
+     // XXX I think only one of the two resolutions is possible since in 
+     // XXX the variable x must have opposite sings in e and one of ve or nve
+     resT = DD_AND (toDD (thResolve (ve, e, x)), resT);
+     resE = DD_AND (toDD (thResolve (nve, e, x)), resE);
+   }
+
+  res = DD_ITE (v, resT, resE);
+  addToCache (d, res);
+  return res;
+}
+
+
+// Existentially quantifies a numeric varialbe x from DD d. This is
+// version 1 of the procedure.
+Expr ddExists1 (DD d, Expr x)
+{
+  if (dd == ONE || dd == ZERO) return dd;
+
+  res = cacheLookup (d);
+  if (res != NULL) return d;
+
+  // XXX Can we somehow quickly check that x does not appear in d?
+  v = rootOf (d);
+  T = ddT (d);
+  E = ddE (d)
+
+  ve = toExpr (v);
+  nve = toExpr (DD_NOT (v));
+
+  if (contains (vars (ve), x))
+    {
+      resT = ddAndResolve (T, ve, x);
+      resE = ddAndResolve (E, nve, x);
+      // XXX alternativelly, can apply ddExists1 to resT and resE and OR the 
+      // XXX result afterwards
+      res = ddExists1 (DD_OR (resT, resE), x);
+    }
+  else
+    { 
+      resT = ddExists1 (T, x);
+      resE = ddExists1 (E, x);
+      res = DD_ITE (v, resT, resE);
+    }
+
+  addToCache (d, res);
+  return res;
+}
+
+
+// Existentially quantifies x in a conjunction represented by d. This
+// is a theory-based operation. The result is a conjunction of
+// constraints represented by a DD
+// Requires: d is a cube, i.e., it has a unique one-path.
+DD ThQElim (DD d, Expr x);
+
+
+// Existentially quantifies a numeric varialbe x from DD d. This is 
+// version 2 of the procedure. This is similar to the procedure used in
+// the FMCAD paper.
+
+Expr ddExists2 (DD d, Expr x, DD ctx)
+{
+  // -- the base case
+  if (d == ONE)
+    return ThQElim (ctx, x);
+  
+  // XXX Need a way to eliminate unsatisfiable zero-paths
+
+  // XXX May want to cache calls to ThQElim as well
+  res = cacheLookup (d, ctx);
+  if (res != NULL) return res;
+
+  v = rootOf (d);
+  T = ddT (d);
+  E = ddE (d);
+
+  ve = toExpr (d);
+  nve = toExpr (DD_NOT (d));
+
+
+  if (contains (vars (ve), x))
+    {
+      ctxT = DD_AND (ctx, v);
+      resT = ddExists2 (T, x, ctxT);
+
+      ctxE = DD_AND (ctx, DD_NOT (v));
+      resE = ddExists2 (E, x, ctxE);
+
+      res = DD_OR (resT, resE);
+    }
+  else
+    {
+      resT = ddExists2 (T, x, ctx);
+      resE = ddExists2 (E, x, ctx);
+      res = DD_ITE (v, resT, resE);
+    }
+
+  addToCache (d, ctx, res);
+  return res;
+}
+
+
+// Existentially quantifies a numeric varialbe x from DD d. This is 
+// version 3 of the procedure.
+Expr ddExists3 (DD d, Expr x, DD ctx)
+{
+  if (d == ONE || d == ZERO)
+    return d;
+
+  res = cacheLookup (d, ctx);
+  if (res != NULL) return res;
+
+  v = rootOf (d);
+  T = ddT (d);
+  E = ddE (d);
+  
+  ve = toExpr (d);
+  nve = toExpr (DD_NOT (d));
+  
+  if (contains (vars (ve), x))
+    {
+      // do the THEN part
+
+      // -- compute all resolutions between ve and ctx
+      newT = ONE;
+      foreach (e : ctx)
+        newT = DD_AND (newT, thResolve (ve, e, x));
+      ctxT = DD_AND (v, ctx);
+
+      resT = ddExists3 (T, x, ctxT);
+      // -- constraints in newT do not have x in them. 
+      // -- thus, they can be added before or after quantification
+      resT = DD_AND (newT, resT);
+
+      // -- do the ELSE part
+
+      // -- compute all resolutions between DD_NOT (v) and ctx
+      newE = ONE;
+      foreach (e : ctx)
+        newE = DD_AND (newE, thResolve (nve, e, x));
+      ctxE = DD_AND (DD_NOT (v), ctx);
+
+      resE = ddExists3 (E, x, ctxE);
+      resE = DD_AND (newE, resE);
+
+      // -- combine THEN and ELSE while dropping the root constraint
+      res = DD_OR (resT, resE);
+    }
+  else
+    {
+      resT = ddExists3 (T, x, ctx);
+      resE = ddExists3 (E, x, ctx);
+      res = DD_ITE (v, resT, resE);
+    }
+
+  addToCache (d, ctx, res);
+  return res;
+    
+}
+
+
+
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+
+// -- a version of ddExists2 that quantifies out several variables at ones
+Expr ddExists2-Many (DD d, Set<Expr> V, DD ctx)
+{
+  // -- the base case
+  if (d == ONE)
+    return ThQElim (ctx, V);
+  
+  // XXX Need a way to eliminate unsatisfiable zero-paths
+
+  // XXX May want to cache calls to ThQElim as well
+  res = cacheLookup (d, ctx);
+  if (res != NULL) return res;
+
+  v = rootOf (d);
+  T = ddT (d);
+  E = ddE (d);
+
+  ve = toExpr (d);
+  nve = toExpr (DD_NOT (d));
+
+
+  if (intersectionNonEmpty (vars (ve), V))
+    {
+      ctxT = DD_AND (ctx, v);
+      resT = ddExists2 (T, V, ctxT);
+
+      ctxE = DD_AND (ctx, DD_NOT (v));
+      resE = ddExists2 (E, V, ctxE);
+
+      res = DD_OR (resT, resE);
+    }
+  else
+    {
+      resT = ddExists2 (T, V, ctx);
+      resE = ddExists2 (E, V, ctx);
+      res = DD_ITE (v, resT, resE);
+    }
+
+  addToCache (d, ctx, res);
+  return res;
+}
+
+
+// Resolves e1 with e2 on variables in V
+// Returns the resolvent or TRUE if no resolvent exists
+// Requires: e1 and e2 are linear inequalities
+// Requires: some variables in V appear with a non-zero coefficient in e2
+// XXX: I assume if there are several variables that occur with
+// XXX: opposite polarities in e1 and e2 and are in V, then they are resolved
+// XXX: together to produce a single resolvent.
+
+Expr thResolve (Expr e1, Expr e2, Set<Expr> V);
+
+
+// -- a version of ddExists3 that quantifies many variables at ones
+Expr ddExists3-Many (DD d, Set<Expr> V, DD ctx)
+{
+  if (d == ONE || d == ZERO)
+    return d;
+
+  res = cacheLookup (d, ctx);
+  if (res != NULL) return res;
+
+  v = rootOf (d);
+  T = ddT (d);
+  E = ddE (d);
+  
+  ve = toExpr (d);
+  nve = toExpr (DD_NOT (d));
+  
+  if (intersectionNonEmpty (vars (ve), V))
+    {
+      // do the THEN part
+
+      // -- compute all resolutions between ve and ctx
+      newT = ONE;
+      foreach (e : ctx)
+        newT = DD_AND (newT, thResolve (ve, e, V));
+      ctxT = DD_AND (v, ctx);
+
+      resT = ddExists3 (T, V, ctxT);
+      // -- constraints in newT do not have x in them. 
+      // -- thus, they can be added before or after quantification
+      resT = DD_AND (newT, resT);
+
+      // -- do the ELSE part
+
+      // -- compute all resolutions between DD_NOT (v) and ctx
+      newE = ONE;
+      foreach (e : ctx)
+        newE = DD_AND (newE, thResolve (nve, e, V));
+      ctxE = DD_AND (DD_NOT (v), ctx);
+
+      resE = ddExists3 (E, V, ctxE);
+      resE = DD_AND (newE, resE);
+
+      // -- combine THEN and ELSE while dropping the root constraint
+      res = DD_OR (resT, resE);
+    }
+  else
+    {
+      resT = ddExists3 (T, V, ctx);
+      resE = ddExists3 (E, V, ctx);
+      res = DD_ITE (v, resT, resE);
+    }
+
+  addToCache (d, ctx, res);
+  return res;
+    
+}
+
+
+
+TODO: 
+
+Add explicit boolean variables
+
+Deal with integer versus reals case in some nice uniform manner.
+
+Extend to quantification of multiple numeric varialbes
+
+Extend to quantification of ALL numeric variables. In this case, QElim
+becomes satisfiability check

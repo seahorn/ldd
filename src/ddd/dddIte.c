@@ -164,8 +164,10 @@ dddAndRecur (dddManager * ddd,
   vInfo = DDD_VAR_INFO (ddd, index);
 
   /** 
-   * If f and g have the same constraint, simplify the THEN part
-   * of the non-root diagram.
+   * If f and g have the same term, simplify the THEN part of the
+   * non-root diagram. This eliminates a redundant test. This assumes
+   * that if a constraint A is less than in diagram ordering than B
+   * then A implies B.
    * 
    * We check whether f and g have the same constraint using the
    * following facts: 
@@ -625,6 +627,7 @@ dddUniqueInter (dddManager *ddd,
   /*** 
    *** DDD Simplification
    ***  (v -> t, (e->x, y)) == e      if vars(v) == vars(e) && t == x
+   ***                          ALT: v implies e and t == x
    ***/
   if (!Cudd_IsConstant (e))
     {
