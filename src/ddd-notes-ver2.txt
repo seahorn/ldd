@@ -5,10 +5,10 @@ Assumption:
   -- theory has control over term representation.
 
 
-TERM:   c1*x1 + ... + c_n*x_n
+LINEAR TERM:   c1*x1 + ... + c_n*x_n
 CONSTANT: 10, 20.3, 1/3, etc.
-CONSTRAINT:   t <= k (non-strict), t < k (strict)
-              where t is a term, and k is a constant.
+LINEAR CONSTRAINT:   t <= k (non-strict), t < k (strict)
+                         where t is a term, and k is a constant.
 
 CONSTANT FUNCTIONS
  int compare (cst1, cst2)
@@ -19,37 +19,108 @@ CONSTANT FUNCTIONS
  constant negateCst (cst)
 
 
-TERM FUNCTIONS
+LINEAR TERM FUNCTIONS
  // returns true if term1 and term2 are the same terms
- boolean isEqual (term1, term2)
+ boolean termIsEqual (term1, term2)
 
  // a hash code
- long hashCode (term)
+ long termHashCode (term)
 
  // true if term1 contains a variable in vars, false otherwise
- boolean hasVar (term1, vars[])
+ boolean termHasVar (term1, vars[])
 
- // 1 if term1 and term2 can be resolved on some variable in V,
- // -1 if term1 and -1*(term2) can be resolved on some variable in V,
+ // 1 if term1 and term2 can be resolved on x,
+ // -1 if term1 and -1*(term2) can be resolved on x,
  // 0 if term1 and term2 cannot be resolved
- int canResolve (term1, term2, V)
+ int termCanResolve (term1, term2, x) 
+ {
+   if (x does not appear in both term1 and term2) return 0;
+
+   if (x appears with different polarity in term1 and term2) return 1;
+ 
+   return -1;
+ }
 
  // returns -1 * term
  term negateTerm (term)
 
-CONSTRAINT FUNCTIONS
+LINEAR CONSTRAINT FUNCTIONS
+ 
+ Constraint linCons (term, strict, cst);
+
  // returns an inequality representing "! ineq"
- Constraint negate (Constraint)
- // extracts a term of a constraint
+ Constraint negateLinCons (c)
+ {
+   return linCons (negateTerm (term (c)), 
+                   !isStrict (c), 
+                   negateCst (getConstant (c))
+ }
+
+
+ 
+// extracts a term of a constraint
  Term getTerm (c)
+
  Constant getConstant (c)
+
  boolean isStrict (c)
+
  Constraint toggleStrict (c)
- boolean implies (c1, c2)
+
+ // -- If implies(c1, c2) returns true, then c1 does
+ // -- logically imply c2. That is the only requirement.
+ bool implies (c1, c2)
+ {
+   // a rough implementation
+   if (! isEqual (getTerm (c1), getTerm (c2))) return false;
+   
+   return compare (getConstant (c1), getConstant(c2)) <= 0 ||
+          compare (getConstant (c1), getConstant(c2)) == 0 && 
+          isStrict (c1) >= isStrict (c2);
+ }
+
  // -- return >0 if c is valid, <0 if c is unsat, 0 otherwise
  int isValid (c)
 
- Constraint thResolve (c1, c2, V);
+ // -- computes the resolvent of c1 and c2 on x. 
+ Constraint thResolve (c1, c2, x);
+
+
+ // converts an inequality to a decision diagram.
+ // ensures: canonicity of the result
+ // uses: encodeIneq(term, comparisson, constant) that encodes an inequality
+ // into a decision diagram
+ DD toDD (c)
+ {
+   // -- normalize c. 
+
+   DD k = find(c);
+   if (k != NULL) return k
+
+   DD n = the weakest constraint t such that implies (t, c), or NULL
+  
+   if (n == NULL) 
+     k = allocate new DD node for c
+     associate k with c locally
+     return k
+
+   k = allocate new DD node right after n for c
+   associate k with c locally
+   return k;
+ }
+
+QUANTIFIER ELIMINATION
+
+ // creates an incremental quantifier eliminator
+ QELIM_CONTEXT thQElim_init(vars)
+ // adds a constraint
+ void thQElim_push(QELIM_CONTEXT, ineq)
+ // removes a constraint
+ void thQElim_pop(QELIM_CONTEXT)
+ // checks if the current context is unsatisfiable
+ bool thQElim_isUNSAT(QELIM_CONTEXT) *OPTIONAL*
+ // solves quantifier elimination and returns the solution as a DD
+ DD thQElim_solve(QELIM_CONTEXT)
  
 
 ----------------------------------------------------------------------
@@ -65,30 +136,33 @@ Given a diagram node, find the constraint corresponding to it.
 
 
 
- // converts an inequality to a decision diagram.
- // ensures: canonicity of the result
- // uses: encodeIneq(term, comparisson, constant) that encodes an inequality
- // into a decision diagram
- DD toDD (c)
-
-
-
- QELIM_CONTEXT thQElim_init(vars)
- void thQElim_push(QELIM_CONTEXT, ineq)
- void thQElim_pop(QELIM_CONTEXT)
- bool thQElim_isUNSAT(QELIM_CONTEXT)
- DD thQElim_solve(QELIM_CONTEXT)
 
 ----------------------------------------------------------------------
-Requreid assumption: 
+Required assumption: 
 
-  let A and B be two inequalities with the same term. Let idx(A) and
-  idx(B) be the DD indexes of the variables corresponding to A and
-  B. Then, A => B iff idx(A) <= idx(B). That is, inequalities that
-  appears higher up in the diagram, imply inequalities that appear
-  below.
+  Let A and B be two linear constraints. Let level(A) and level(B) be
+  the levels of the DD nodes representing A and B, respectively.
+  Then, 
+      implies (A, B) IMPLIES level(A) <= level(B),
+  where 'implies' is the function implemented by the theory, as
+  described above. 
+  
+  That is, a constraint lower in the diagram, does not "imply" a
+  constraint higher up in the diagram.
 
 ----------------------------------------------------------------------
+
+
+DD Functions:
+
+// -- create new DD variable for a linear constraint
+DD  dddNewVar (LinCons c);
+// -- create a new DD variable for c, with level right after v
+DD  ddNewVarAfter (DD v, LinCons c);
+
+
+
+
 
 Expr -- linear inequalities of the form  c1x1 + ... + cnxn <= k
 
@@ -185,7 +259,10 @@ Expr ddExists1 (DD d, Expr x)
 
   ve = toExpr (v);
   nve = toExpr (DD_NOT (v));
-
+  
+  // XXX To quantify out multiple variables at once: 
+  // XXX if ve contains one or more variables to be quantified, 
+  // XXX pick a particular one, and proceed with the resolution as is.
   if (contains (vars (ve), x))
     {
       resT = ddAndResolve (T, ve, x);
@@ -365,74 +442,6 @@ Expr ddExists2-Many (DD d, Set<Expr> V, DD ctx)
   return res;
 }
 
-
-// Resolves e1 with e2 on variables in V
-// Returns the resolvent or TRUE if no resolvent exists
-// Requires: e1 and e2 are linear inequalities
-// Requires: some variables in V appear with a non-zero coefficient in e2
-// XXX: I assume if there are several variables that occur with
-// XXX: opposite polarities in e1 and e2 and are in V, then they are resolved
-// XXX: together to produce a single resolvent.
-
-Expr thResolve (Expr e1, Expr e2, Set<Expr> V);
-
-
-// -- a version of ddExists3 that quantifies many variables at ones
-Expr ddExists3-Many (DD d, Set<Expr> V, DD ctx)
-{
-  if (d == ONE || d == ZERO)
-    return d;
-
-  res = cacheLookup (d, ctx);
-  if (res != NULL) return res;
-
-  v = rootOf (d);
-  T = ddT (d);
-  E = ddE (d);
-  
-  ve = toExpr (d);
-  nve = toExpr (DD_NOT (d));
-  
-  if (intersectionNonEmpty (vars (ve), V))
-    {
-      // do the THEN part
-
-      // -- compute all resolutions between ve and ctx
-      newT = ONE;
-      foreach (e : ctx)
-        newT = DD_AND (newT, thResolve (ve, e, V));
-      ctxT = DD_AND (v, ctx);
-
-      resT = ddExists3 (T, V, ctxT);
-      // -- constraints in newT do not have x in them. 
-      // -- thus, they can be added before or after quantification
-      resT = DD_AND (newT, resT);
-
-      // -- do the ELSE part
-
-      // -- compute all resolutions between DD_NOT (v) and ctx
-      newE = ONE;
-      foreach (e : ctx)
-        newE = DD_AND (newE, thResolve (nve, e, V));
-      ctxE = DD_AND (DD_NOT (v), ctx);
-
-      resE = ddExists3 (E, V, ctxE);
-      resE = DD_AND (newE, resE);
-
-      // -- combine THEN and ELSE while dropping the root constraint
-      res = DD_OR (resT, resE);
-    }
-  else
-    {
-      resT = ddExists3 (T, V, ctx);
-      resE = ddExists3 (E, V, ctx);
-      res = DD_ITE (v, resT, resE);
-    }
-
-  addToCache (d, ctx, res);
-  return res;
-    
-}
 
 
 
