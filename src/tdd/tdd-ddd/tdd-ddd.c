@@ -9,17 +9,10 @@
  *********************************************************************/
 constant_t ddd_create_int_cst(int v)
 {
-  int *res = (int*)malloc(sizeof(int));
-  *res = v;
+  ddd_const_t *res = (ddd_const_t*)malloc(sizeof(ddd_const_t));
+  res->type = DDD_INT;
+  res->int_val = v;
   return (constant_t)res;
-}
-
-/**********************************************************************
- * destroy an integer constant
- *********************************************************************/
-void ddd_destroy_int_cst(constant_t c)
-{
-  free((int*)c);
 }
 
 /**********************************************************************
@@ -28,18 +21,11 @@ void ddd_destroy_int_cst(constant_t c)
  *********************************************************************/
 constant_t ddd_create_rat_cst(int n,int d)
 {
-  div_t *res = (div_t*)malloc(sizeof(div_t));
-  res->quot = n;
-  res->rem = d;
+  ddd_const_t *res = (ddd_const_t*)malloc(sizeof(ddd_const_t));
+  res->type = DDD_RAT;
+  res->rat_val.quot = n;
+  res->rat_val.rem = d;
   return (constant_t)res;
-}
-
-/**********************************************************************
- * destroy a rational constant
- *********************************************************************/
-void ddd_destroy_rat_cst(constant_t c)
-{
-  free((div_t*)c);
 }
 
 /**********************************************************************
@@ -47,17 +33,18 @@ void ddd_destroy_rat_cst(constant_t c)
  *********************************************************************/
 constant_t ddd_create_double_cst(double v)
 {
-  double *res = (double*)malloc(sizeof(double));
-  *res = v;
+  ddd_const_t *res = (ddd_const_t*)malloc(sizeof(ddd_const_t));
+  res->type = DDD_DBL;
+  res->dbl_val = v;
   return (constant_t)res;
 }
 
 /**********************************************************************
- * destroy a double constant
+ * destroy a constant
  *********************************************************************/
-void ddd_destroy_double_cst(constant_t c)
+void ddd_destroy_cst(constant_t c)
 {
-  free((double*)c);
+  free((ddd_const_t*)c);
 }
 
 /**********************************************************************
@@ -67,11 +54,9 @@ theory_t ddd_create_theory()
 {
   theory_t res;
   res.create_int_cst = ddd_create_int_cst;
-  res.destroy_int_cst = ddd_destroy_int_cst;
   res.create_rat_cst = ddd_create_rat_cst;
-  res.destroy_rat_cst = ddd_destroy_rat_cst;
   res.create_double_cst = ddd_create_double_cst;
-  res.destroy_double_cst = ddd_destroy_double_cst;
+  res.destroy_cst = ddd_destroy_cst;
   return res;
 }
 
