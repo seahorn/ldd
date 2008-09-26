@@ -16,7 +16,8 @@ typedef void* qelim_context_t;
 
 typedef DdNode tdd_node;
 
-/* forward declaration to define the manager */
+/* forward declaration so that we can define tdd_manager without
+   defining theory */
 typedef struct theory theory_t;
 
 /**
@@ -39,23 +40,25 @@ struct tdd_manager
 typedef struct tdd_manager tdd_manager;
 
 /**
- * Theory inerface
+ * Theory inerface. Variables are represented by integers. Unless
+ * otherwise mentioned, it is the user's responsibility to destroy
+ * objects created by her.
  */
-
-/**
- * Variables are represented by integers. 
- */
-
 struct theory
 {
-  /** Create a constant from integer */
+  /* Create an integer constant. */
   constant_t (*create_int_cst) (int v);
+  /** Destroy an integer constant */
+  void (*destroy_int_cst)(constant_t c);
   /** Create a rational constant */
   constant_t (*create_rat_cst) (int n, int d);
-  /** Create a constant from double */
+  /** Destroy a rational constant */
+  void (*destroy_rat_cst) (constant_t c);
+  /** Create a double constant */
   constant_t (*create_double_cst) (double v);
-
-
+  /** Destroy a double constant */
+  void (*destroy_double_cst) (constant_t c);
+  
   /** Returns true if c is positive infinity */
   bool (*is_pinf_cst)(constant_t c);
   /** Returns true if c is negative infinity */
