@@ -14,9 +14,29 @@ typedef int bool;
 
 typedef void* qelim_context_t;
 
-
 typedef DdNode tdd_node;
 
+/* forward declaration to define the manager */
+typedef struct theory theory_t;
+
+/**
+ * tdd manager 
+ */
+struct tdd_manager
+{
+  /** underlying cudd manager */
+  DdManager * cudd;
+
+  /** a map from DD variables to corresponding linear constraints */
+  lincons_t* ddVars;
+
+  /** size of ddVars array */
+  size_t varsSize;
+
+  theory_t* theory;
+};
+
+typedef struct tdd_manager tdd_manager;
 
 /**
  * Theory inerface
@@ -26,14 +46,14 @@ typedef DdNode tdd_node;
  * Variables are represented by integers. 
  */
 
-typedef struct theory
+struct theory
 {
   /** Create a constant from integer */
-  contant_t (*create_int_cst) (int v);
+  constant_t (*create_int_cst) (int v);
   /** Create a rational constant */
-  contant_t (*create_rat_cst) (int n, int d);
+  constant_t (*create_rat_cst) (int n, int d);
   /** Create a constant from double */
-  contant_t (*create_double_cst) (double v);
+  constant_t (*create_double_cst) (double v);
 
 
   /** Returns true if c is positive infinity */
@@ -104,10 +124,10 @@ typedef struct theory
    */
   void (*destroy_lincons)(lincons_t l);
   
-  /***
- DD toDD (c)
- {
-   // -- normalize c. 
+  /**
+   DD toDD (c)
+   {
+     // -- normalize c. 
 
    DD k = find(c);
    if (k != NULL) return k
@@ -122,45 +142,20 @@ typedef struct theory
    k = allocate new DD node right after n for c
    associate k with c locally
    return k;
- }
+   }
 
- also, see ddd-notes-ver2.txt somewhere in the same repository
-
+   also, see ddd-notes-ver2.txt somewhere in the same repository
   */
   tdd_node* (*to_tdd)(tdd_manager* m, lincons_t l);
 
-
   /** Incremental Quantifier elimination */
-  qelim_context_t* (*qelim_init)(int[] vars, size_t n);
+  qelim_context_t* (*qelim_init)(int *vars, size_t n);
   void (*qelim_push)(qelim_context_t* ctx, lincons_t l);
   void (*qelim_pop)(qelim_context_t* ctx);
   tdd_node* (*qelim_solve)(qelim_context_t* ctx);
   void (*qelim_destroy_context)(qelim_context_t* ctx);
   
-} theory_t;
-
-
-/**
- * tdd manager 
- */
-struct tdd_manager
-{
-  /** underlying cudd manager */
-  DdManager * cudd;
-
-  
-  /** a map from DD variables to corresponding linear constraints */
-  lincons_t* ddVars;
-  /** size of ddVars array */
-  size_t varsSize;
-
-  theory_t* theory;
-  
-
 };
-
-typedef struct tdd_manager tdd_manager;
-
 
 void tdd_set_theory (tdd_manager *m, theory_t* t);
 tdd_node* tdd_new_var(tdd_manager* m, lincons_t l);
@@ -181,9 +176,6 @@ tdd_node* to_tdd(tdd_manager* m, lincons_t *l);
 /* } tdd_manager; */
 
 
-
 /** Functions to manipulate constants */
-
-
 
 #endif
