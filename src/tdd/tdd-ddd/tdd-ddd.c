@@ -93,6 +93,7 @@ bool ddd_is_ninf_cst(constant_t c)
 theory_t ddd_create_theory()
 {
   theory_t res;
+  memset((void*)(&res),sizeof(theory_t),0);
   res.create_int_cst = ddd_create_int_cst;
   res.create_rat_cst = ddd_create_rat_cst;
   res.create_double_cst = ddd_create_double_cst;
