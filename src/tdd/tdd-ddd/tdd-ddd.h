@@ -1,6 +1,5 @@
 /**********************************************************************
- * This is a private header file to be included from tdd-ddd.c. It is
- * not meant to be visible externally.
+ * This is a header file to be included from tdd-ddd.c.
  *********************************************************************/
 
 #ifndef __TDD_DDD_H__
@@ -8,6 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
+#include <math.h>
 #include "../theory.h"
 
 /**********************************************************************
