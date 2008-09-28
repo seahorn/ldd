@@ -48,16 +48,13 @@ struct theory
 {
   /* Create an integer constant. */
   constant_t (*create_int_cst) (int v);
-  /** Destroy an integer constant */
-  void (*destroy_int_cst)(constant_t c);
   /** Create a rational constant */
   constant_t (*create_rat_cst) (int n, int d);
-  /** Destroy a rational constant */
-  void (*destroy_rat_cst) (constant_t c);
   /** Create a double constant */
   constant_t (*create_double_cst) (double v);
-  /** Destroy a double constant */
-  void (*destroy_double_cst) (constant_t c);
+
+  /** Destroy a constant */
+  void (*destroy_cst) (constant_t c);
   
   /** Returns true if c is positive infinity */
   bool (*is_pinf_cst)(constant_t c);
@@ -67,7 +64,7 @@ struct theory
   /** DISCUSS **/
   /** Create a linear term: This requires a discussion and depends
    ** on each individual theory. This may not needed by the DD!*/
-  /* linterm_t (*create_linterm)(constant_t*, size_t n);*/
+  linterm_t (*create_linterm)(int* coeff_var, size_t n);
 
   /** Returns true if there exists a variable v in the array var whose
    ** coefficient in t is non-zero.
