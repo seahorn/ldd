@@ -1,5 +1,5 @@
 #include "util.h"
-#include "theory.h"
+#include "tddInt.h"
 
 
 tdd_manager * tdd_init (DdManager *cudd, theory_t * t)
@@ -40,4 +40,9 @@ void tdd_quit (tdd_manager * tdd)
   FREE (tdd);
 }
 
+
+tdd_node* to_tdd (tdd_manager *tdd, lincons_t l)
+{
+  return THEORY->to_tdd(tdd, l);
+}
 

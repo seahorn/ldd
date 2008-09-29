@@ -1,5 +1,5 @@
 #include "util.h"
-#include "theory.h"
+#include "tddInt.h"
 
 static tdd_node * tdd_assoc_node (tdd_manager *, tdd_node *, lincons_t);
 
