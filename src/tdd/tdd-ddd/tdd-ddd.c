@@ -165,6 +165,53 @@ lincons_t ddd_create_cons(linterm_t t, bool s, constant_t k)
 }
 
 /**********************************************************************
+ * Returns true if l is a strict constraint
+ *********************************************************************/
+bool ddd_is_strict(lincons_t l)
+{
+  ddd_cons_t *x = (ddd_cons_t*)l;
+  return x->strict;
+}
+
+/**********************************************************************
+ * copy a term. this is a private function.
+ *********************************************************************/
+ddd_term_t *copy_term(ddd_term_t *arg)
+{
+  ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
+  *res = *arg;
+  return res;
+}
+
+/**********************************************************************
+ * get the term corresponding to the argument constraint
+ *********************************************************************/
+linterm_t ddd_get_term(lincons_t l)
+{
+  ddd_cons_t *x = (ddd_cons_t*)l;  
+  return (linterm_t)copy_term(&(x->term));
+}
+
+/**********************************************************************
+ * copy a constant. this is a private function.
+ *********************************************************************/
+ddd_cst_t *copy_cst(ddd_cst_t *arg)
+{
+  ddd_cst_t *res = (ddd_cst_t*)malloc(sizeof(ddd_cst_t));
+  *res = *arg;
+  return res;
+}
+
+/**********************************************************************
+ * get the constant corresponding to the argument constraint
+ *********************************************************************/
+constant_t ddd_get_constant(lincons_t l)
+{
+  ddd_cons_t *x = (ddd_cons_t*)l;  
+  return (constant_t)copy_cst(&(x->cst));
+}
+
+/**********************************************************************
  * create a DDD theory
  *********************************************************************/
 theory_t ddd_create_theory()
@@ -183,6 +230,9 @@ theory_t ddd_create_theory()
   res.negate_term = ddd_negate_term;
   res.destroy_term = ddd_destroy_term;
   res.create_cons = ddd_create_cons;
+  res.is_strict = ddd_is_strict;
+  res.get_term = ddd_get_term;
+  res.get_constant = ddd_get_constant;
   return res;
 }
 
