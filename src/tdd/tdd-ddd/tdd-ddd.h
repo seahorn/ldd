@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 #include "../theory.h"
 
 /**********************************************************************

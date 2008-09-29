@@ -98,9 +98,71 @@ linterm_t ddd_create_linterm(int* coeff_var, size_t n)
   ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
   res->var1 = coeff_var[1];
   res->var2 = coeff_var[3];
-  return res;
+  return (linterm_t)res;
 }
 
+/**********************************************************************
+ * Returns true if there exists a variable v in the array var whose
+ * coefficient in t is non-zero.
+ 
+ *  t is a term, var is an array of integers, and n is the size of
+ *  var.
+ *********************************************************************/
+bool ddd_term_has_var (linterm_t t, int* var, size_t n)
+{
+  ddd_term_t *x = (ddd_term_t*)t;
+  size_t i = 0;
+  for(;i < n;++i) {
+    if(x->var1 == var[i] || x->var2 == var[i]) return 1;
+  }
+  return 0;
+}
+
+/**********************************************************************
+ * Returns >0 if t1 and t2 have a resolvent on variable x, 
+ * Returns <0 if t1 and -t2 have a resolvent on variable x
+ * Return 0 if t1 and t2 do not resolve.
+ *********************************************************************/
+int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
+{
+  ddd_term_t *x1 = (ddd_term_t*)t1;
+  ddd_term_t *x2 = (ddd_term_t*)t2;
+  if(x1->var2 == x2->var1 || x1->var1 == x2->var2) return 1;
+  if(x1->var1 == x2->var1 || x1->var2 == x2->var2) return -1;
+  return 0;
+}
+
+/**********************************************************************
+ * return -1*t
+ *********************************************************************/
+linterm_t ddd_negate_term(linterm_t t)
+{
+  ddd_term_t *x = (ddd_term_t*)t;
+  ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
+  res->var1 = x->var2;
+  res->var2 = x->var1;
+  return (linterm_t)res;
+}
+
+/**********************************************************************
+ * reclaim resources allocated by t
+ *********************************************************************/
+void ddd_destroy_term(linterm_t t)
+{
+  free((ddd_term_t*)t);
+}
+
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ *********************************************************************/
+lincons_t ddd_create_cons(linterm_t t, bool s, constant_t k)
+{
+  ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
+  res->term = *((ddd_term_t*)t);
+  res->cst = *((ddd_cst_t*)k);
+  res->strict = s;
+  return (lincons_t)res;
+}
 
 /**********************************************************************
  * create a DDD theory
@@ -116,6 +178,11 @@ theory_t ddd_create_theory()
   res.is_pinf_cst = ddd_is_pinf_cst;
   res.is_ninf_cst = ddd_is_ninf_cst;
   res.create_linterm = ddd_create_linterm;
+  res.term_has_var = ddd_term_has_var;
+  res.terms_have_resolvent = ddd_terms_have_resolvent;
+  res.negate_term = ddd_negate_term;
+  res.destroy_term = ddd_destroy_term;
+  res.create_cons = ddd_create_cons;
   return res;
 }
 
