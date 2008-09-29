@@ -2,7 +2,13 @@
 #define _THEORY_H_
 
 
+#define CUDD_MAN
+#include "cuddInt.h"
+#undef CUDD_MAN
+
 #include "cudd.h"
+
+#define DD_TDD_ITE_TAG 0x8a
 
 /***********************************************************************
  * SIMPLE TYPES
@@ -166,25 +172,35 @@ struct theory
   
 };
 
-void tdd_set_theory (tdd_manager *m, theory_t* t);
+
+tdd_node* to_tdd(tdd_manager* m, lincons_t *l);
+
+tdd_manager* tdd_init (DdManager *cudd, theory_t * t);
+void tdd_quit (tdd_manager* tdd);
+/* void tdd_set_theory (tdd_manager *m, theory_t* t);*/
+
 tdd_node* tdd_new_var(tdd_manager* m, lincons_t l);
 tdd_node* tdd_new_var_before (tdd_manager* m, tdd_node* v, lincons_t l);
 
 tdd_node* tdd_and (tdd_manager* m, tdd_node* n1, tdd_node* n2);
+tdd_node* tdd_or (tdd_manager* m, tdd_node* n1, tdd_node* n2);
+tdd_node* tdd_xor (tdd_manager* m, tdd_node* n1, tdd_node* n2);
+tdd_node* tdd_ite (tdd_manager* m, tdd_node* n1, tdd_node* n2, tdd_node* n3);
 
-tdd_node* to_tdd(tdd_manager* m, lincons_t *l);
-
-/**
- * tdd_manager functions
- */
-
-/* typedef struct tdd_manager */
-/* { */
-/*   DdNode* (*tdd_new_var)(lincons_t l); */
-/*   DdNode* (*tdd_new_var_before)(DdNode* v, lincons_t l); */
-/* } tdd_manager; */
+/* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
 
-/** Functions to manipulate constants */
+/** internal prototypes */
+
+tdd_node* tdd_unique_inter (tdd_manager *m, unsigned int idx, 
+			    tdd_node *n1, tdd_node* n2);
+
+tdd_node* tdd_and_recur (tdd_manager*, tdd_node*, tdd_node*);
+tdd_node* tdd_xor_recur (tdd_manager*, tdd_node*, tdd_node*);
+tdd_node* tdd_ite_recur (tdd_manager*, tdd_node*, tdd_node*, tdd_node*);
+
+
+#define CUDD tdd->cudd
+#define THEORY tdd->theory
 
 #endif

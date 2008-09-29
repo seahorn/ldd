@@ -1,5 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -I../../../cudd-2.4.1/cudd \
+CFLAGS = -Wall -I../../../cudd-2.4.1/include \
+	-I../../../cudd-2.4.1/cudd \
 	 -I../../../cudd-2.4.1/mtr \
 	 -I../../../cudd-2.4.1/epd
 
