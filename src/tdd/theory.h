@@ -53,13 +53,16 @@ struct theory
   /** Create a double constant */
   constant_t (*create_double_cst) (double v);
 
-  /** Destroy a constant */
-  void (*destroy_cst) (constant_t c);
+  /** Return -1*c */
+  constant_t (*negate_cst) (constant_t c);
   
   /** Returns true if c is positive infinity */
   bool (*is_pinf_cst)(constant_t c);
   /** Returns true if c is negative infinity */
   bool (*is_ninf_cst)(constant_t c);
+
+  /** Destroy a constant */
+  void (*destroy_cst) (constant_t c);
 
   /** DISCUSS **/
   /** Create a linear term: This requires a discussion and depends

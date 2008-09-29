@@ -40,11 +40,28 @@ constant_t ddd_create_double_cst(double v)
 }
 
 /**********************************************************************
- * destroy a constant
+ * Return -1*c
  *********************************************************************/
-void ddd_destroy_cst(constant_t c)
+constant_t ddd_negate_cst (constant_t c)
 {
-  free((ddd_cst_t*)c);
+  ddd_cst_t *x = (ddd_cst_t*)c;
+  switch(x->type)
+    {
+    case DDD_INT:
+      if(x->int_val == INT_MAX) return ddd_create_int_cst(INT_MIN);
+      if(x->int_val == INT_MIN) return ddd_create_int_cst(INT_MAX);
+      return ddd_create_int_cst(-(x->int_val));
+    case DDD_RAT:
+      if(x->rat_val.quot == INT_MAX) return ddd_create_rat_cst(INT_MIN,1);
+      if(x->rat_val.quot == INT_MIN) return ddd_create_rat_cst(INT_MAX,1);
+      return ddd_create_rat_cst(-(x->rat_val.quot),x->rat_val.rem); 
+    case DDD_DBL:
+      if(x->dbl_val == DBL_MAX) return ddd_create_double_cst(DBL_MIN);
+      if(x->dbl_val == DBL_MIN) return ddd_create_double_cst(DBL_MAX);
+      return ddd_create_double_cst(-(x->dbl_val));
+    default:
+      return 0;
+    }
 }
 
 /**********************************************************************
@@ -60,7 +77,7 @@ bool ddd_is_pinf_cst(constant_t c)
     case DDD_RAT:
       return (x->rat_val.quot == INT_MAX); 
     case DDD_DBL:
-      return isinf(x->dbl_val) == 1;
+      return (x->dbl_val == DBL_MAX);
     default:
       return 0;
     }
@@ -79,10 +96,18 @@ bool ddd_is_ninf_cst(constant_t c)
     case DDD_RAT:
       return (x->rat_val.quot == INT_MIN); 
     case DDD_DBL:
-      return isinf(x->dbl_val) == -1;
+      return (x->dbl_val == DBL_MIN);
     default:
       return 0;
     }
+}
+
+/**********************************************************************
+ * destroy a constant
+ *********************************************************************/
+void ddd_destroy_cst(constant_t c)
+{
+  free((ddd_cst_t*)c);
 }
 
 /**********************************************************************
@@ -212,6 +237,23 @@ constant_t ddd_get_constant(lincons_t l)
 }
 
 /**********************************************************************
+ * Complements a linear constraint
+ *********************************************************************/
+lincons_t ddd_negate_cons(lincons_t l)
+{
+  linterm_t x = ddd_get_term(l);
+  linterm_t y = ddd_negate_term(x);
+  ddd_destroy_term(x);
+  constant_t a = ddd_get_constant(l);
+  constant_t b = ddd_negate_cst(a);
+  ddd_destroy_cst(a);
+  lincons_t res = ddd_create_cons(y,!ddd_is_strict(l),b);
+  ddd_destroy_term(y);
+  ddd_destroy_cst(b);
+  return res;
+}
+
+/**********************************************************************
  * create a DDD theory
  *********************************************************************/
 theory_t ddd_create_theory()
@@ -221,9 +263,10 @@ theory_t ddd_create_theory()
   res.create_int_cst = ddd_create_int_cst;
   res.create_rat_cst = ddd_create_rat_cst;
   res.create_double_cst = ddd_create_double_cst;
-  res.destroy_cst = ddd_destroy_cst;
+  res.negate_cst = ddd_negate_cst;
   res.is_pinf_cst = ddd_is_pinf_cst;
   res.is_ninf_cst = ddd_is_ninf_cst;
+  res.destroy_cst = ddd_destroy_cst;
   res.create_linterm = ddd_create_linterm;
   res.term_has_var = ddd_term_has_var;
   res.terms_have_resolvent = ddd_terms_have_resolvent;
@@ -233,6 +276,7 @@ theory_t ddd_create_theory()
   res.is_strict = ddd_is_strict;
   res.get_term = ddd_get_term;
   res.get_constant = ddd_get_constant;
+  res.negate_cons = ddd_negate_cons;
   return res;
 }
 
