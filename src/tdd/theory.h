@@ -98,8 +98,14 @@ struct theory
    */
   bool (*is_strict)(lincons_t l);
 
+  /**
+   * get the term corresponding to the argument constraint
+   */
   linterm_t (*get_term)(lincons_t l);
   
+  /**
+   * get the constant corresponding to the argument constraint
+   */
   constant_t (*get_constant)(lincons_t l);
 
 
