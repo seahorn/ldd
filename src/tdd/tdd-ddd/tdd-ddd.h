@@ -11,8 +11,8 @@
  * public functions -- for creating and destroying a DDD theory
  *********************************************************************/
 
-theory_t ddd_create_theory();
-void ddd_destroy_theory(theory_t t);
+theory_t *ddd_create_theory(size_t vn);
+void ddd_destroy_theory(theory_t *t);
 
 #endif //__TDD_DDD_H__
 

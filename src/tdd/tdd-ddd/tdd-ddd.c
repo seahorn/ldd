@@ -123,7 +123,7 @@ bool ddd_cst_le (constant_t c1,constant_t c2)
 }
 
 /**********************************************************************
- * if c is an integer, return c - 1, else return a copy of c
+ * if c is an integer, return c - 1, else return c
  *********************************************************************/
 constant_t ddd_decr_cst(constant_t c)
 {
@@ -368,38 +368,39 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
 }
 
 /**********************************************************************
- * create a DDD theory
+ * create a DDD theory - the argument is the number of variables
  *********************************************************************/
-theory_t ddd_create_theory()
+theory_t *ddd_create_theory(size_t vn)
 {
-  theory_t res;
-  memset((void*)(&res),sizeof(theory_t),0);
-  res.create_int_cst = ddd_create_int_cst;
-  res.create_rat_cst = ddd_create_rat_cst;
-  res.create_double_cst = ddd_create_double_cst;
-  res.negate_cst = ddd_negate_cst;
-  res.is_pinf_cst = ddd_is_pinf_cst;
-  res.is_ninf_cst = ddd_is_ninf_cst;
-  res.destroy_cst = ddd_destroy_cst;
-  res.create_linterm = ddd_create_linterm;
-  res.term_has_var = ddd_term_has_var;
-  res.terms_have_resolvent = ddd_terms_have_resolvent;
-  res.negate_term = ddd_negate_term;
-  res.destroy_term = ddd_destroy_term;
-  res.create_cons = ddd_create_cons;
-  res.is_strict = ddd_is_strict;
-  res.get_term = ddd_get_term;
-  res.get_constant = ddd_get_constant;
-  res.negate_cons = ddd_negate_cons;
-  res.is_stronger_cons = ddd_is_stronger_cons;
-  return res;
+  ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
+  memset((void*)(res),sizeof(ddd_theory_t),0);
+  res->base.create_int_cst = ddd_create_int_cst;
+  res->base.create_rat_cst = ddd_create_rat_cst;
+  res->base.create_double_cst = ddd_create_double_cst;
+  res->base.negate_cst = ddd_negate_cst;
+  res->base.is_pinf_cst = ddd_is_pinf_cst;
+  res->base.is_ninf_cst = ddd_is_ninf_cst;
+  res->base.destroy_cst = ddd_destroy_cst;
+  res->base.create_linterm = ddd_create_linterm;
+  res->base.term_has_var = ddd_term_has_var;
+  res->base.terms_have_resolvent = ddd_terms_have_resolvent;
+  res->base.negate_term = ddd_negate_term;
+  res->base.destroy_term = ddd_destroy_term;
+  res->base.create_cons = ddd_create_cons;
+  res->base.is_strict = ddd_is_strict;
+  res->base.get_term = ddd_get_term;
+  res->base.get_constant = ddd_get_constant;
+  res->base.negate_cons = ddd_negate_cons;
+  res->base.is_stronger_cons = ddd_is_stronger_cons;
+  return (theory_t*)res;
 }
 
 /**********************************************************************
  * destroy a DDD theory
  *********************************************************************/
-void ddd_destroy_theory(theory_t t)
+void ddd_destroy_theory(theory_t *t)
 {
+  free((ddd_theory_t*)t);
 }
 
 /**********************************************************************
