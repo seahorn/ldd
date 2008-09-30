@@ -48,7 +48,7 @@ tdd_node * tdd_assoc_node (tdd_manager * tdd, tdd_node *n, lincons_t l)
       tdd->ddVars = newDdVars;
     }
   
-  tdd->ddVars [idx] = l;
+  tdd->ddVars [idx] = THEORY->dup_lincons (l);
 
   return n;
 }

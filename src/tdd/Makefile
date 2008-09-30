@@ -2,7 +2,7 @@ CUDD=../../cudd-2.4.1
 CC = gcc
 CFLAGS = -Wall -I$(CUDD)/include
 
-all : tdd_init.o tdd_ite.o tdd_vars.o
+all : tdd_init.o tdd_ite.o tdd_vars.o tdd_abs.o
 
 %.d : %.c
 	$(CC) -MM $(CFLAGS) -c -o $@ $<

@@ -32,9 +32,9 @@ tdd_node * tdd_and (tdd_manager *tdd, tdd_node * f, tdd_node *g)
 
 
 
-tdd_node * dddOr (tdd_manager* tdd,
-		  tdd_node * f,
-		  tdd_node * g)
+tdd_node * tdd_or (tdd_manager* tdd,
+		   tdd_node * f,
+		   tdd_node * g)
 {
   tdd_node * res;
   

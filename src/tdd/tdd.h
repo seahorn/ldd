@@ -54,12 +54,34 @@ struct theory
    ** on each individual theory. This may not needed by the DD!*/
   linterm_t (*create_linterm)(int* coeff_var, size_t n);
 
+  /** Returns true if t1 is the same term as t2 */
+  bool (*term_equals)(linterm_t t1, linterm_t t2);
   /** Returns true if there exists a variable v in the array var whose
    ** coefficient in t is non-zero.
    **
    *  t is a term, var is an array of integers, and n is the size of
    *  var.
    **/
+  /*
+    XXX I would like to change this interface to 
+    
+    bool (*term_has_var) (linterm_t t, bool* vars)
+    
+    where vars is a boolean representation of a set such that 
+       vars[i] = true iff i is in the set.
+
+    I want to assume that there are fixed number of dimensions (varialbes) 
+    known to the theory, and the vars arrays is at least as big as that 
+    number.
+
+    Ideally, I would want vars to be a bit-vector, but an array of
+    bool is sufficient for now.
+
+    This would require other extensions to the theory interface:
+       when a theory is created, it needs to know the number of dimensions
+
+       new API call is needed to provide the maximum number of dimensions 
+   */
   bool (*term_has_var) (linterm_t t, int* var, size_t n);
 
   /**
@@ -71,6 +93,9 @@ struct theory
 
   /** Returns -1*t */
   linterm_t (*negate_term) (linterm_t t);
+
+  /** Returns a variable in vars that has a non-zero coefficient in t */
+  int (*pick_var) (linterm_t t, int* vars);
   
   /** Reclaims resources allocated by t*/
   void (*destroy_term) (linterm_t t);
@@ -102,6 +127,12 @@ struct theory
    */
   lincons_t (*negate_cons)(lincons_t l);  
 
+  /**
+   * Returns true if l is a negative constraint (i.e., the largest
+   * non-zero dimension has a negative coefficient.)
+   */
+  bool (*is_negative_cons)(lincons_t l);
+
   /** used to be implies. If is_stronger_cons(l1, l2) then l1 implies l2 */
   bool (*is_stronger_cons)(lincons_t l1, lincons_t l2);
 
@@ -117,6 +148,11 @@ struct theory
    * Reclaims resources allocated by l
    */
   void (*destroy_lincons)(lincons_t l);
+
+  /**
+   * Returns a copy of l
+   */
+  lincons_t (*dup_lincons)(lincons_t l);
   
   /**
    DD toDD (c)
@@ -143,6 +179,9 @@ struct theory
   tdd_node* (*to_tdd)(tdd_manager* m, lincons_t l);
 
   /** Incremental Quantifier elimination */
+  /* XXX want to change the interface to be as in the comment of 
+     XXX term_has_var
+  */
   qelim_context_t* (*qelim_init)(int *vars, size_t n);
   void (*qelim_push)(qelim_context_t* ctx, lincons_t l);
   void (*qelim_pop)(qelim_context_t* ctx);
@@ -171,7 +210,12 @@ tdd_node* tdd_or (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_xor (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_ite (tdd_manager* m, tdd_node* n1, tdd_node* n2, tdd_node* n3);
 
-
+tdd_node* tdd_exist_abstract (tdd_manager*, tdd_node*, int*);
+tdd_node* tdd_univ_abstract (tdd_manager*, tdd_node*, int*);
+tdd_node* tdd_resolve_elim (tdd_manager*, tdd_node*, linterm_t, 
+			    lincons_t, int);
+tdd_node* tdd_resolve (tdd_manager*, tdd_node*, 
+		       linterm_t, lincons_t, lincons_t, int);
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 

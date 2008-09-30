@@ -33,10 +33,17 @@ void tdd_quit (tdd_manager * tdd)
 {
   if (tdd->ddVars != NULL)
     {
+      int i;
+      for (i = 0; i < tdd->varsSize; i++)
+	if (tdd->ddVars [i] != NULL)
+	  {
+	    THEORY->destroy_lincons (tdd->ddVars [i]);
+	    tdd->ddVars [i] = NULL;
+	  }
+     
       FREE (tdd->ddVars);
       tdd->ddVars = NULL;
     }
-
   FREE (tdd);
 }
 
