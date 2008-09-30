@@ -215,20 +215,16 @@ bool ddd_term_equals(linterm_t t1, linterm_t t2)
 }
 
 /**********************************************************************
- * Returns true if there exists a variable v in the array var whose
+ * Returns true if there exists a variable v in the set var whose
  * coefficient in t is non-zero.
- 
- *  t is a term, var is an array of integers, and n is the size of
- *  var.
+
+ * t is a term, var is represented as an array of booleans, and n is
+ * the size of var.
  *********************************************************************/
-bool ddd_term_has_var (linterm_t t, int* var, size_t n)
+bool ddd_term_has_var (linterm_t t,bool *vars)
 {
   ddd_term_t *x = (ddd_term_t*)t;
-  size_t i = 0;
-  for(;i < n;++i) {
-    if(x->var1 == var[i] || x->var2 == var[i]) return 1;
-  }
-  return 0;
+  return vars[x->var1] || vars[x->var2];
 }
 
 /**********************************************************************
@@ -392,6 +388,7 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.is_ninf_cst = ddd_is_ninf_cst;
   res->base.destroy_cst = ddd_destroy_cst;
   res->base.create_linterm = ddd_create_linterm;
+  res->base.term_equals = ddd_term_equals;
   res->base.term_has_var = ddd_term_has_var;
   res->base.terms_have_resolvent = ddd_terms_have_resolvent;
   res->base.negate_term = ddd_negate_term;

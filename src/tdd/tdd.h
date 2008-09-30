@@ -60,34 +60,14 @@ struct theory
   /** Returns true if t1 is the same term as t2 */
   bool (*term_equals)(linterm_t t1, linterm_t t2);
 
-  /** Returns true if there exists a variable v in the array var whose
-   ** coefficient in t is non-zero.
-   **
-   *  t is a term, var is an array of integers, and n is the size of
-   *  var.
-   **/
-  /*
-    XXX I would like to change this interface to 
-    
-    bool (*term_has_var) (linterm_t t, bool* vars)
-    
-    where vars is a boolean representation of a set such that 
-       vars[i] = true iff i is in the set.
+  /**
+   * Returns true if there exists a variable v in the set var whose
+   * coefficient in t is non-zero.
 
-    I want to assume that there are fixed number of dimensions (variables) 
-    known to the theory, and the vars arrays is at least as big as that 
-    number.
-
-    Ideally, I would want vars to be a bit-vector, but an array of
-    bool is sufficient for now.
-
-    This would require other extensions to the theory interface:
-       when a theory is created, it needs to know the number of dimensions
-
-       new API call is needed to provide the maximum number of dimensions 
+   * t is a term, var is represented as an array of booleans, and n is
+   * the size of var.
    */
-  bool (*term_has_var) (linterm_t t, int* var, size_t n);
-
+  bool (*term_has_var) (linterm_t t, bool* vars);
 
   size_t (*num_of_vars)(theory_t* self);
 
