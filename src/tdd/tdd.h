@@ -69,6 +69,7 @@ struct theory
    */
   bool (*term_has_var) (linterm_t t, bool* vars);
 
+  /* Returns the number of variables of the theory */
   size_t (*num_of_vars)(theory_t* self);
 
   /**

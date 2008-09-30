@@ -228,6 +228,14 @@ bool ddd_term_has_var (linterm_t t,bool *vars)
 }
 
 /**********************************************************************
+ * Returns the number of variables of the theory
+ *********************************************************************/
+size_t ddd_num_of_vars(theory_t* self)
+{
+  return ((ddd_theory_t*)self)->var_num;
+}
+
+/**********************************************************************
  * Returns >0 if t1 and t2 have a resolvent on variable x, 
  * Returns <0 if t1 and -t2 have a resolvent on variable x
  * Return 0 if t1 and t2 do not resolve.
@@ -390,6 +398,7 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.create_linterm = ddd_create_linterm;
   res->base.term_equals = ddd_term_equals;
   res->base.term_has_var = ddd_term_has_var;
+  res->base.num_of_vars = ddd_num_of_vars;
   res->base.terms_have_resolvent = ddd_terms_have_resolvent;
   res->base.negate_term = ddd_negate_term;
   res->base.destroy_term = ddd_destroy_term;
