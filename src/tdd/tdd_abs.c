@@ -5,7 +5,7 @@
 
 tdd_node *tdd_exist_abstract (tdd_manager * tdd,
 			      tdd_node * f,
-			      int * vars)
+			      bool * vars)
 {
   tdd_node *res;
   DdHashTable *table;
@@ -29,7 +29,7 @@ tdd_node *tdd_exist_abstract (tdd_manager * tdd,
 
 tdd_node * tdd_univ_abstract (tdd_manager * tdd,
 			      tdd_node * f,
-			      int * vars)
+			      bool * vars)
 {
   tdd_node *res;
   DdHashTable *table;
@@ -93,42 +93,42 @@ tdd_node * tdd_resolve (tdd_manager * tdd, tdd_node * f,
 
 }
 
-/* tdd_node *tdd_exist_abstract_v2 (tdd_manager * tdd, */
-/* 				 tdd_node * f, */
-/* 				 int * vars) */
-/* { */
-/*   tdd_node *res; */
-/*   DdHashTable *table; */
-/*   qelim_context_t * qelimCtx; */
+tdd_node *tdd_exist_abstract_v2 (tdd_manager * tdd,
+				 tdd_node * f,
+				 bool * vars)
+{
+  tdd_node *res;
+  DdHashTable *table;
+  qelim_context_t * qelimCtx;
   
   
-/*   do  */
-/*     { */
-/*       CUDD->reordered = 0; */
+  do
+    {
+      CUDD->reordered = 0;
 
-/*       qelimCtx = THEORY->qelim_init (vars, FIXME); */
-/*       if (qelimCtx == NULL)  */
-/* 	return NULL; */
+      qelimCtx = THEORY->qelim_init (vars, FIXME);
+      if (qelimCtx == NULL)
+	return NULL;
       
-/*       table = cuddHashTableInit (CUDD, 1, 2); */
-/*       if (table == NULL)  */
-/* 	{ */
-/* 	  THEORY->qelim_destroy_context (qelimCtx); */
-/* 	  return NULL;       */
-/* 	} */
+      table = cuddHashTableInit (CUDD, 1, 2);
+      if (table == NULL)
+	{
+	  THEORY->qelim_destroy_context (qelimCtx);
+	  return NULL;
+	}
 
-/*       res = tdd_exist_abstract_v2_recur (tdd, f, vars, qelimCtx, table); */
-/*       if (res != NULL) */
-/* 	cuddRef (res); */
+      res = tdd_exist_abstract_v2_recur (tdd, f, vars, qelimCtx, table);
+      if (res != NULL)
+	cuddRef (res);
 
-/*       THEORY->qelim_destroy_context (qelimCtx); */
-/*       cuddHashTableQuit (table); */
+      THEORY->qelim_destroy_context (qelimCtx);
+      cuddHashTableQuit (table);
       
-/*     } while (CUDD->reordered == 1); */
+    } while (CUDD->reordered == 1);
   
-/*   if (res != NULL) cuddDeref (res); */
-/*   return res; */
-/* } */
+  if (res != NULL) cuddDeref (res);
+  return res;
+}
 
 
 
@@ -156,7 +156,7 @@ tdd_node * tdd_resolve_elim_inter (tdd_manager * tdd, tdd_node * f,
 
 tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd, 
 				     tdd_node * f, 
-				     int * vars, 
+				     bool * vars, 
 				     DdHashTable * table)
 {
   DdNode *F, *T, *E;
@@ -707,3 +707,166 @@ tdd_node *tdd_resolve_recur (tdd_manager * tdd,
 }
 
 
+tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd, 
+					tdd_node * f, 
+					bool * vars, 
+					qelim_context_t * qelimCtx,
+					/* table is unused for now */
+					DdHashTable * table)
+{
+  DdNode *one, *zero;
+  DdNode *F, *T, *E;
+  
+  DdManager * manager;
+  
+  lincons_t vCons;
+  linterm_t vTerm;
+  
+  DdNode *fv, *fnv;
+  unsigned int v;
+
+  DdNode *root;
+  DdNode *res;
+
+  /* true if root constraint has to be eliminated, false otherwise */
+  int fElimRoot;
+
+  
+  manager = CUDD;
+  one = DD_ONE (manager);
+  zero = Cudd_Not (one);
+  
+  
+  /* base case */
+  if (f == one)
+    return THEORY->qelim_solve (qelimCtx);
+
+  if (f == zero) return zero;
+
+  /* deconstruct f into the root constraint and cofactors */
+  F = Cudd_Regular (f);
+  v = F->index;
+  vCons = tdd->ddVars [v];
+  vTerm = THEORY->get_term (vCons);
+  
+  fv = cuddT (F);
+  fnv = cuddE (F);
+  
+  fv = Cudd_NotCond (fv, f != F);
+  fnv = Cudd_NotCond (fnv, f != F);
+
+
+
+  /* XXX MISSING OPTIMIZATION:
+   *
+   * if qelimCtx && vCons is UNSAT, only need to proceed with qelimCtx
+   * on the ELSE branch of the diagram. The THEN part and vCons can be
+   * dropped.
+   *
+   * if qelimCtx && !vCons is UNSAT, only need to proceed with
+   * qelimCtx on the THEN branch of the diagram. The ELSE part and
+   * vCons can be dropped
+   */
+
+
+  fElimRoot = THEORY->term_has_var (vTerm, vars);
+
+
+  /* recurse on the THEN branch*/
+  if (fElimRoot)
+      THEORY->qelim_push (qelimCtx, vCons);
+
+  T = tdd_exist_abstract_v2_recur (tdd, fv, vars, qelimCtx, table);
+
+  if (fElimRoot) 
+    THEORY->qelim_pop (qelimCtx);
+  
+  if (T == NULL)
+    {
+      Cudd_IterDerefBdd (manager, fv);
+      Cudd_IterDerefBdd (manager, fnv);
+      return NULL;
+    }
+  cuddRef (T);
+  Cudd_IterDerefBdd (manager, fv);
+  fv = NULL;
+
+
+  /* recurs on the ELSE branch */
+  if (fElimRoot)
+    {
+      lincons_t nvCons;
+      nvCons = THEORY->negate_cons (vCons);
+      THEORY->qelim_push (qelimCtx, nvCons);
+    }    
+
+  E = tdd_exist_abstract_v2_recur (tdd, fnv, vars, qelimCtx, table);
+
+  if (fElimRoot)
+    THEORY->destroy_lincons (THEORY->qelim_pop (qelimCtx));
+
+  if (E == NULL)
+    {
+      Cudd_IterDerefBdd (manager, T);
+      Cudd_IterDerefBdd (manager, fnv);
+      return NULL;
+    }
+  cuddRef (E);
+  Cudd_IterDerefBdd (manager, fnv);
+  fnv = NULL;
+
+  if (!fElimRoot)
+    {
+      root = Cudd_bddIthVar (manager, v);
+      if (root == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, T);
+	  Cudd_IterDerefBdd (manager, E);
+	  return NULL;
+	}
+      cuddRef (root);
+
+      res = tdd_ite_recur (tdd, root, T, E);
+      if (res == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, T);
+	  Cudd_IterDerefBdd (manager, E);
+	  Cudd_IterDerefBdd (manager, root);
+	  return NULL;
+	}
+      cuddRef (res);
+      Cudd_IterDerefBdd (manager, root);
+      root = NULL;
+    }
+  else
+    {
+      res = tdd_and_recur (tdd, Cudd_Not (T), Cudd_Not (E));
+      if (res == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, T);
+	  Cudd_IterDerefBdd (manager, E);
+	  return NULL;
+	}
+      res = Cudd_Not (res);
+      cuddRef (res);
+    }
+  Cudd_IterDerefBdd (manager, T);
+  T = NULL;
+  Cudd_IterDerefBdd (manager, E);
+  E = NULL;
+
+  if (F->ref != 1)
+    {
+      ptrint fanout = (ptrint) F->ref;
+      cuddSatDec (fanout);
+      if (!cuddHashTableInsert1 (table, f, res, fanout))
+	{
+	  Cudd_IterDerefBdd (CUDD, res);
+	  return NULL;
+	}
+    }
+  
+  cuddDeref (res);
+  return res;
+  
+}

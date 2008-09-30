@@ -83,7 +83,7 @@ struct theory
   linterm_t (*negate_term) (linterm_t t);
 
   /** Returns a variable in vars that has a non-zero coefficient in t */
-  int (*pick_var) (linterm_t t, int* vars);
+  int (*pick_var) (linterm_t t, bool* vars);
   
   /** Reclaims resources allocated by t*/
   void (*destroy_term) (linterm_t t);
@@ -198,13 +198,13 @@ tdd_node* tdd_or (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_xor (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_ite (tdd_manager* m, tdd_node* n1, tdd_node* n2, tdd_node* n3);
 
-tdd_node* tdd_exist_abstract (tdd_manager*, tdd_node*, int*);
-tdd_node* tdd_univ_abstract (tdd_manager*, tdd_node*, int*);
+tdd_node* tdd_exist_abstract (tdd_manager*, tdd_node*, bool*);
+tdd_node* tdd_univ_abstract (tdd_manager*, tdd_node*, bool*);
 tdd_node* tdd_resolve_elim (tdd_manager*, tdd_node*, linterm_t, 
 			    lincons_t, int);
 tdd_node* tdd_resolve (tdd_manager*, tdd_node*, 
 		       linterm_t, lincons_t, lincons_t, int);
-tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, int*);
+tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, bool*);
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
