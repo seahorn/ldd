@@ -65,6 +65,84 @@ constant_t ddd_negate_cst (constant_t c)
 }
 
 /**********************************************************************
+ * Compares c1 and c2 for <
+ * Returns true if c1 and c2 are of same type and c1 < c2
+ * Returns false otherwise
+ *********************************************************************/
+bool ddd_cst_lt (constant_t c1,constant_t c2)
+{
+  ddd_cst_t *x1 = (ddd_cst_t*)c1;
+  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+
+  if(x1->type != x2->type) return 0;
+
+  switch(x1->type)
+    {
+    case DDD_INT:
+      return (x1->int_val < x2->int_val);
+    case DDD_RAT:
+      if(ddd_is_pinf_cst(c1)) return 0;
+      if(ddd_is_pinf_cst(c2)) return !ddd_is_pinf_cst(c1);
+      if(ddd_is_ninf_cst(c1)) return !ddd_is_ninf_cst(c2);
+      if(ddd_is_ninf_cst(c2)) return 0;
+      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem < x2->rat_val.quot * 1.0 / x2->rat_val.rem);
+    case DDD_DBL:
+      return (x1->dbl_val < x2->dbl_val);
+    default:
+      return 0;
+    }
+}
+
+/**********************************************************************
+ * Compares c1 and c2 for <=
+ * Returns true if c1 and c2 are of same type and c1 <= c2
+ * Returns false otherwise
+ *********************************************************************/
+bool ddd_cst_le (constant_t c1,constant_t c2)
+{
+  ddd_cst_t *x1 = (ddd_cst_t*)c1;
+  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+
+  if(x1->type != x2->type) return 0;
+
+  switch(x1->type)
+    {
+    case DDD_INT:
+      return (x1->int_val <= x2->int_val);
+    case DDD_RAT:
+      if(ddd_is_pinf_cst(c1)) return ddd_is_pinf_cst(c2);
+      if(ddd_is_pinf_cst(c2)) return 1;
+      if(ddd_is_ninf_cst(c1)) return 1;
+      if(ddd_is_ninf_cst(c2)) return ddd_is_ninf_cst(c1);
+      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem <= x2->rat_val.quot * 1.0 / x2->rat_val.rem);
+    case DDD_DBL:
+      return (x1->dbl_val <= x2->dbl_val);
+    default:
+      return 0;
+    }
+}
+
+/**********************************************************************
+ * if c is an integer, return c - 1, else return a copy of c
+ *********************************************************************/
+constant_t ddd_decr_cst(constant_t c)
+{
+  ddd_cst_t *x = (ddd_cst_t*)c;
+  switch(x->type)
+    {
+    case DDD_INT:
+      return ddd_is_pinf_cst(c) || ddd_is_ninf_cst(c) ? 
+        (constant_t)copy_cst(x) : ddd_create_int_cst(x->int_val - 1);
+    case DDD_RAT:
+      return (constant_t)copy_cst(x);
+    case DDD_DBL:
+      return (constant_t)copy_cst(x);
+    default:
+      return 0;
+    }
+}
+
+/**********************************************************************
  * return true if the argument is positive infinity
  *********************************************************************/
 bool ddd_is_pinf_cst(constant_t c)
@@ -258,22 +336,33 @@ lincons_t ddd_negate_cons(lincons_t l)
  *********************************************************************/
 bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
 {
-  //must have the same variables
+  //get the terms and constants
   linterm_t x1 = ddd_get_term(l1);
   linterm_t x2 = ddd_get_term(l2);
   ddd_term_t *y1 = (ddd_term_t*)x1;
   ddd_term_t *y2 = (ddd_term_t*)x2;
+  constant_t a1 = ddd_get_constant(l1);
+  constant_t a2 = ddd_get_constant(l2);
   bool res = 0;
+
   //if the two terms are both of the form X-Y
   if(y1->var1 == y2->var1 && y1->var2 == y2->var2) {
+    //if the terms are X-Y < C1 and X-Y <= C2 then C1 must be <= C2-1
+    if(ddd_is_strict(l1) && !ddd_is_strict(l2)) {
+      constant_t a3 = ddd_decr_cst(a2);
+      res = ddd_cst_le(a1,a3);
+      ddd_destroy_cst(a3);
+    }
+    //otherwise C1 must be <= C2
+    else res = ddd_cst_le(a1,a2);
   }
-  //if the first term is of the form X-Y and the second term is of the
-  //form Y-X
-  else if(y1->var1 == y2->var2 && y1->var2 == y2->var1) {
-  }
+
   //deallocate
   ddd_destroy_term(x1);
   ddd_destroy_term(x2);
+  ddd_destroy_cst(a1);
+  ddd_destroy_cst(a2);
+
   //all done
   return res;
 }
