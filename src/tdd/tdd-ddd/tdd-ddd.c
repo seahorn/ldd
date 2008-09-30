@@ -205,6 +205,16 @@ linterm_t ddd_create_linterm(int* coeffs, size_t n)
 }
 
 /**********************************************************************
+ * Returns true if t1 is the same term as t2
+ *********************************************************************/
+bool ddd_term_equals(linterm_t t1, linterm_t t2)
+{
+  ddd_term_t *x1 = (ddd_term_t*)t1;
+  ddd_term_t *x2 = (ddd_term_t*)t2;
+  return (x1->var1 == x2->var1 && x1->var2 == x2->var2);
+}
+
+/**********************************************************************
  * Returns true if there exists a variable v in the array var whose
  * coefficient in t is non-zero.
  

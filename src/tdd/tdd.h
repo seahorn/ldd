@@ -59,6 +59,7 @@ struct theory
 
   /** Returns true if t1 is the same term as t2 */
   bool (*term_equals)(linterm_t t1, linterm_t t2);
+
   /** Returns true if there exists a variable v in the array var whose
    ** coefficient in t is non-zero.
    **

@@ -79,6 +79,7 @@ bool ddd_is_pinf_cst(constant_t c);
 bool ddd_is_ninf_cst(constant_t c);
 void ddd_destroy_cst(constant_t c);
 linterm_t ddd_create_linterm(int* coeffs, size_t n);
+bool ddd_term_equals(linterm_t t1, linterm_t t2);
 bool ddd_term_has_var (linterm_t t, int* var, size_t n);
 int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 linterm_t ddd_negate_term(linterm_t t);
