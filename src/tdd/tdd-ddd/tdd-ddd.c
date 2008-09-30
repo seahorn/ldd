@@ -262,6 +262,18 @@ linterm_t ddd_negate_term(linterm_t t)
 }
 
 /**********************************************************************
+ * Returns a variable in vars that has a non-zero coefficient in
+ * t. Returns <0 if no such variable exists.
+ *********************************************************************/
+int ddd_pick_var (linterm_t t, bool* vars)
+{
+  ddd_term_t *x = (ddd_term_t*)t;
+  if(vars[x->var1]) return x->var1;
+  if(vars[x->var2]) return x->var2;
+  return -1;
+}
+
+/**********************************************************************
  * reclaim resources allocated by t
  *********************************************************************/
 void ddd_destroy_term(linterm_t t)
@@ -401,6 +413,7 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.num_of_vars = ddd_num_of_vars;
   res->base.terms_have_resolvent = ddd_terms_have_resolvent;
   res->base.negate_term = ddd_negate_term;
+  res->base.pick_var = ddd_pick_var;
   res->base.destroy_term = ddd_destroy_term;
   res->base.create_cons = ddd_create_cons;
   res->base.is_strict = ddd_is_strict;

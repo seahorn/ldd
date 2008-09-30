@@ -84,6 +84,7 @@ bool ddd_term_has_var (linterm_t t,bool *vars);
 size_t ddd_num_of_vars(theory_t* self);
 int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 linterm_t ddd_negate_term(linterm_t t);
+int ddd_pick_var (linterm_t t, int* vars);
 void ddd_destroy_term(linterm_t t);
 lincons_t ddd_create_cons(linterm_t t, bool s, constant_t k);
 bool ddd_is_strict(lincons_t l);
