@@ -82,7 +82,8 @@ struct theory
   /** Returns -1*t */
   linterm_t (*negate_term) (linterm_t t);
 
-  /** Returns a variable in vars that has a non-zero coefficient in t */
+  /** Returns a variable in vars that has a non-zero coefficient in t.
+   *  Returns <0 if no such variable exists */
   int (*pick_var) (linterm_t t, bool* vars);
   
   /** Reclaims resources allocated by t*/
