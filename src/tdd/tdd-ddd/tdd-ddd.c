@@ -132,11 +132,11 @@ constant_t ddd_decr_cst(constant_t c)
     {
     case DDD_INT:
       return ddd_is_pinf_cst(c) || ddd_is_ninf_cst(c) ? 
-        (constant_t)copy_cst(x) : ddd_create_int_cst(x->int_val - 1);
+        (constant_t)dup_cst(x) : ddd_create_int_cst(x->int_val - 1);
     case DDD_RAT:
-      return (constant_t)copy_cst(x);
+      return (constant_t)dup_cst(x);
     case DDD_DBL:
-      return (constant_t)copy_cst(x);
+      return (constant_t)dup_cst(x);
     default:
       return 0;
     }
@@ -303,9 +303,9 @@ bool ddd_is_strict(lincons_t l)
 }
 
 /**********************************************************************
- * copy a term. this is a private function.
+ * duplicate a term. this is a private function.
  *********************************************************************/
-ddd_term_t *copy_term(ddd_term_t *arg)
+ddd_term_t *dup_term(ddd_term_t *arg)
 {
   ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
   *res = *arg;
@@ -318,13 +318,13 @@ ddd_term_t *copy_term(ddd_term_t *arg)
 linterm_t ddd_get_term(lincons_t l)
 {
   ddd_cons_t *x = (ddd_cons_t*)l;  
-  return (linterm_t)copy_term(&(x->term));
+  return (linterm_t)dup_term(&(x->term));
 }
 
 /**********************************************************************
- * copy a constant. this is a private function.
+ * duplicate a constant. this is a private function.
  *********************************************************************/
-ddd_cst_t *copy_cst(ddd_cst_t *arg)
+ddd_cst_t *dup_cst(ddd_cst_t *arg)
 {
   ddd_cst_t *res = (ddd_cst_t*)malloc(sizeof(ddd_cst_t));
   *res = *arg;
@@ -337,7 +337,7 @@ ddd_cst_t *copy_cst(ddd_cst_t *arg)
 constant_t ddd_get_constant(lincons_t l)
 {
   ddd_cons_t *x = (ddd_cons_t*)l;  
-  return (constant_t)copy_cst(&(x->cst));
+  return (constant_t)dup_cst(&(x->cst));
 }
 
 /**********************************************************************
