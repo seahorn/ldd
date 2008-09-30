@@ -2,7 +2,7 @@
  * The main file that provides the DDD theory.
  *********************************************************************/
 
-#include "tdd-ddd.h"
+#include "tdd-dddInt.h"
 
 /**********************************************************************
  * create an integer constant
@@ -254,6 +254,31 @@ lincons_t ddd_negate_cons(lincons_t l)
 }
 
 /**********************************************************************
+ * If is_stronger_cons(l1, l2) then l1 implies l2
+ *********************************************************************/
+bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
+{
+  //must have the same variables
+  linterm_t x1 = ddd_get_term(l1);
+  linterm_t x2 = ddd_get_term(l2);
+  ddd_term_t *y1 = (ddd_term_t*)x1;
+  ddd_term_t *y2 = (ddd_term_t*)x2;
+  bool res = 0;
+  //if the two terms are both of the form X-Y
+  if(y1->var1 == y2->var1 && y1->var2 == y2->var2) {
+  }
+  //if the first term is of the form X-Y and the second term is of the
+  //form Y-X
+  else if(y1->var1 == y2->var2 && y1->var2 == y2->var1) {
+  }
+  //deallocate
+  ddd_destroy_term(x1);
+  ddd_destroy_term(x2);
+  //all done
+  return res;
+}
+
+/**********************************************************************
  * create a DDD theory
  *********************************************************************/
 theory_t ddd_create_theory()
@@ -277,6 +302,7 @@ theory_t ddd_create_theory()
   res.get_term = ddd_get_term;
   res.get_constant = ddd_get_constant;
   res.negate_cons = ddd_negate_cons;
+  res.is_stronger_cons = ddd_is_stronger_cons;
   return res;
 }
 
