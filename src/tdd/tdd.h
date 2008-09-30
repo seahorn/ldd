@@ -41,15 +41,6 @@ struct theory
   /** Return -1*c */
   constant_t (*negate_cst) (constant_t c);
 
-  /** 
-   * Compares c1 and c2
-   * Returns -1 if c1 and c2 are of different type
-   * Returns 0 if c1 and c2 are equal
-   * Returns 1 if c1 is less than c2
-   * Returns 2 if c2 is less than c1
-   */
-  int (*compare_cst) (constant_t c1,constant_t c2);
-  
   /** Returns true if c is positive infinity */
   bool (*is_pinf_cst)(constant_t c);
   /** Returns true if c is negative infinity */
@@ -79,7 +70,7 @@ struct theory
     where vars is a boolean representation of a set such that 
        vars[i] = true iff i is in the set.
 
-    I want to assume that there are fixed number of dimensions (varialbes) 
+    I want to assume that there are fixed number of dimensions (variables) 
     known to the theory, and the vars arrays is at least as big as that 
     number.
 
@@ -137,7 +128,7 @@ struct theory
   lincons_t (*negate_cons)(lincons_t l);  
 
   /**
-   * Returns true if l is a negative constraint (i.e., the largest
+   * Returns true if l is a negative constraint (i.e., the smallest
    * non-zero dimension has a negative coefficient.)
    */
   bool (*is_negative_cons)(lincons_t l);
