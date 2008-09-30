@@ -40,6 +40,15 @@ struct theory
 
   /** Return -1*c */
   constant_t (*negate_cst) (constant_t c);
+
+  /** 
+   * Compares c1 and c2
+   * Returns -1 if c1 and c2 are of different type
+   * Returns 0 if c1 and c2 are equal
+   * Returns 1 if c1 is less than c2
+   * Returns 2 if c2 is less than c1
+   */
+  int (*compare_cst) (constant_t c1,constant_t c2);
   
   /** Returns true if c is positive infinity */
   bool (*is_pinf_cst)(constant_t c);
