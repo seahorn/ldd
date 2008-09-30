@@ -11,7 +11,7 @@
 #include <float.h>
 #include <string.h>
 #include <assert.h>
-#include "../theory.h"
+#include "../tdd.h"
 
 /**********************************************************************
  * a generic structure used to represent integer, rational, and double
