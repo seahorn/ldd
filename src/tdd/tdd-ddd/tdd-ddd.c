@@ -189,18 +189,18 @@ void ddd_destroy_cst(constant_t c)
 }
 
 /**********************************************************************
- * create a linear term. the first argument is an array of alternating
- * variables and coefficients. the second argument is the size of the
- * first argument.
+ * Create a linear term: the first argument is an array of variable
+ * coefficients. the second argument is the size of the array of
+ * coefficients.
  *********************************************************************/
-linterm_t ddd_create_linterm(int* coeff_var, size_t n)
+linterm_t ddd_create_linterm(int* coeffs, size_t n)
 {
-  /* for DDDs, the terms are of the form X-Y. hence n = 4, the first
-     coefficient is +1 and the second coefficient is -1. */
-  assert(n == 4 && coeff_var[0] == 1 && coeff_var[3] == -1);
   ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
-  res->var1 = coeff_var[1];
-  res->var2 = coeff_var[3];
+  size_t i = 0;
+  for(;i < n;++i) {
+    if(coeffs[i] == 1) res->var1 = i;
+    if(coeffs[i] == -1) res->var2 = i;
+  }
   return (linterm_t)res;
 }
 
@@ -392,6 +392,7 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.get_constant = ddd_get_constant;
   res->base.negate_cons = ddd_negate_cons;
   res->base.is_stronger_cons = ddd_is_stronger_cons;
+  res->var_num = vn;
   return (theory_t*)res;
 }
 

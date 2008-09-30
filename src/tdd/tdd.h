@@ -50,10 +50,12 @@ struct theory
   /** Destroy a constant */
   void (*destroy_cst) (constant_t c);
 
-  /** DISCUSS **/
-  /** Create a linear term: This requires a discussion and depends
-   ** on each individual theory. This may not needed by the DD!*/
-  linterm_t (*create_linterm)(int* coeff_var, size_t n);
+  /** 
+   * Create a linear term: the first argument is an array of variable
+   * coefficients. the second argument is the size of the array of
+   * coefficients.
+   */
+  linterm_t (*create_linterm)(int* coeffs, size_t n);
 
   /** Returns true if t1 is the same term as t2 */
   bool (*term_equals)(linterm_t t1, linterm_t t2);
