@@ -31,6 +31,7 @@ typedef struct tdd_manager tdd_manager;
  */
 struct theory
 {
+
   /* Create an integer constant. */
   constant_t (*create_int_cst) (int v);
   /** Create a rational constant */
@@ -83,6 +84,9 @@ struct theory
        new API call is needed to provide the maximum number of dimensions 
    */
   bool (*term_has_var) (linterm_t t, int* var, size_t n);
+
+
+  size_t (*num_of_vars)(theory_t* self);
 
   /**
    * Returns >0 if t1 and t2 have a resolvent on variable x, 
@@ -184,7 +188,7 @@ struct theory
   */
   qelim_context_t* (*qelim_init)(int *vars, size_t n);
   void (*qelim_push)(qelim_context_t* ctx, lincons_t l);
-  void (*qelim_pop)(qelim_context_t* ctx);
+  lincons_t (*qelim_pop)(qelim_context_t* ctx);
   tdd_node* (*qelim_solve)(qelim_context_t* ctx);
   void (*qelim_destroy_context)(qelim_context_t* ctx);
   
@@ -216,6 +220,7 @@ tdd_node* tdd_resolve_elim (tdd_manager*, tdd_node*, linterm_t,
 			    lincons_t, int);
 tdd_node* tdd_resolve (tdd_manager*, tdd_node*, 
 		       linterm_t, lincons_t, lincons_t, int);
+tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, int*);
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
