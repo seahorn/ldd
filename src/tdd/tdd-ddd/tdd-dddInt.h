@@ -93,6 +93,7 @@ linterm_t ddd_get_term(lincons_t l);
 ddd_cst_t *copy_cst(ddd_cst_t *arg);
 constant_t ddd_get_constant(lincons_t l);
 lincons_t ddd_negate_cons(lincons_t l);
+bool ddd_is_negative_cons(lincons_t l);
 bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2);
 
 #endif //__TDD_DDD_INT_H__

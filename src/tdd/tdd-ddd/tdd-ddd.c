@@ -358,6 +358,19 @@ lincons_t ddd_negate_cons(lincons_t l)
 }
 
 /**********************************************************************
+ * Returns true if l is a negative constraint (i.e., the smallest
+ * non-zero dimension has a negative coefficient.)
+ *********************************************************************/
+bool ddd_is_negative_cons(lincons_t l)
+{
+  linterm_t x = ddd_get_term(l);
+  ddd_term_t *y = (ddd_term_t*)x;
+  bool res = (y->var2 < y->var1);
+  ddd_destroy_term(x);
+  return res;
+}
+
+/**********************************************************************
  * If is_stronger_cons(l1, l2) then l1 implies l2
  *********************************************************************/
 bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
@@ -420,6 +433,7 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.get_term = ddd_get_term;
   res->base.get_constant = ddd_get_constant;
   res->base.negate_cons = ddd_negate_cons;
+  res->base.is_negative_cons = ddd_is_negative_cons;
   res->base.is_stronger_cons = ddd_is_stronger_cons;
   res->var_num = vn;
   return (theory_t*)res;
