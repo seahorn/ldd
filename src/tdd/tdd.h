@@ -189,6 +189,8 @@ struct theory
 tdd_manager* tdd_init (DdManager *cudd, theory_t * t);
 void tdd_quit (tdd_manager* tdd);
 
+theory_t* get_theory(tdd_manager *m);
+
 tdd_node* to_tdd(tdd_manager* m, lincons_t l);
 
 tdd_node* tdd_new_var(tdd_manager* m, lincons_t l);
