@@ -551,6 +551,24 @@ lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
 }
   
 /**********************************************************************
+ * destroy a linear constraint
+ *********************************************************************/
+void ddd_destroy_lincons(lincons_t l)
+{
+  free((ddd_cons_t*)l);
+}
+  
+/**********************************************************************
+ * copy a linear constraint
+ *********************************************************************/
+lincons_t ddd_dup_lincons(lincons_t l)
+{
+  ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
+  *res = *((ddd_cons_t*)l);
+  return (lincons_t)res;
+}
+
+/**********************************************************************
  * create a DDD theory - the argument is the number of variables
  *********************************************************************/
 theory_t *ddd_create_theory(size_t vn)
@@ -580,6 +598,8 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.is_negative_cons = ddd_is_negative_cons;
   res->base.is_stronger_cons = ddd_is_stronger_cons;
   res->base.resolve_cons = ddd_resolve_cons;
+  res->base.destroy_lincons = ddd_destroy_lincons;
+  res->base.dup_lincons = ddd_dup_lincons;
   res->var_num = vn;
   return (theory_t*)res;
 }

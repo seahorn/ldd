@@ -99,6 +99,8 @@ lincons_t ddd_negate_cons(lincons_t l);
 bool ddd_is_negative_cons(lincons_t l);
 bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2);
 lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x);
+void ddd_destroy_lincons(lincons_t l);
+lincons_t ddd_dup_lincons(lincons_t l);
 
 #endif //__TDD_DDD_INT_H__
 
