@@ -76,8 +76,11 @@ struct theory
    * Returns >0 if t1 and t2 have a resolvent on variable x, 
    * Returns <0 if t1 and -t2 have a resolvent on variable x
    * Return 0 if t1 and t2 do not resolve.
+
+   * If res is not NULL, return the result of resolving t1 and t2 in
+   * res.
    */
-  int (*terms_have_resolvent) (linterm_t t1, linterm_t t2, int x);
+  int (*terms_have_resolvent) (linterm_t t1, linterm_t t2, int x,linterm_t *res);
 
   /** Returns -1*t */
   linterm_t (*negate_term) (linterm_t t);
