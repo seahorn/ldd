@@ -74,7 +74,8 @@ constant_t ddd_create_double_cst(double v);
 constant_t ddd_negate_cst (constant_t c);
 bool ddd_cst_lt(constant_t c1,constant_t c2);
 bool ddd_cst_le(constant_t c1,constant_t c2);
-constant_t ddd_decr_cst(constant_t c);
+constant_t ddd_cst_add(constant_t c1,constant_t c2);
+constant_t ddd_cst_decr(constant_t c);
 bool ddd_is_pinf_cst(constant_t c);
 bool ddd_is_ninf_cst(constant_t c);
 void ddd_destroy_cst(constant_t c);
@@ -82,6 +83,8 @@ linterm_t ddd_create_linterm(int* coeffs, size_t n);
 bool ddd_term_equals(linterm_t t1, linterm_t t2);
 bool ddd_term_has_var (linterm_t t,bool *vars);
 size_t ddd_num_of_vars(theory_t* self);
+linterm_t _ddd_create_linterm(int v1,int v2);
+int _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x,linterm_t *res);
 int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 linterm_t ddd_negate_term(linterm_t t);
 int ddd_pick_var (linterm_t t, int* vars);
@@ -95,6 +98,7 @@ constant_t ddd_get_constant(lincons_t l);
 lincons_t ddd_negate_cons(lincons_t l);
 bool ddd_is_negative_cons(lincons_t l);
 bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2);
+lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x);
 
 #endif //__TDD_DDD_INT_H__
 

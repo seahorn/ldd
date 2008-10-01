@@ -123,9 +123,34 @@ bool ddd_cst_le (constant_t c1,constant_t c2)
 }
 
 /**********************************************************************
+ * Return c1 + c2. If c1 and c2 are not of same type, return NULL.
+ *********************************************************************/
+constant_t ddd_cst_add(constant_t c1,constant_t c2)
+{
+  ddd_cst_t *x1 = (ddd_cst_t*)c1;
+  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+
+  if(x1->type != x2->type) return NULL;
+
+  switch(x1->type)
+    {
+    case DDD_INT:
+      return ddd_create_int_cst(x1->int_val + x2->int_val);
+    case DDD_RAT:
+      return ddd_create_rat_cst(x1->rat_val.quot * x2->rat_val.rem + 
+                                x2->rat_val.quot * x1->rat_val.rem,
+                                x1->rat_val.rem * x2->rat_val.rem);
+    case DDD_DBL:
+      return ddd_create_double_cst(x1->dbl_val + x2->dbl_val);
+    default:
+      return 0;
+    }
+}
+
+/**********************************************************************
  * if c is an integer, return c - 1, else return c
  *********************************************************************/
-constant_t ddd_decr_cst(constant_t c)
+constant_t ddd_cst_decr(constant_t c)
 {
   ddd_cst_t *x = (ddd_cst_t*)c;
   switch(x->type)
@@ -236,6 +261,54 @@ size_t ddd_num_of_vars(theory_t* self)
 }
 
 /**********************************************************************
+ * Create a term given its two variables. This is a private function.
+ *********************************************************************/
+linterm_t _ddd_create_linterm(int v1,int v2)
+{
+  ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
+  res->var1 = v1;
+  res->var2 = v2;
+  return (linterm_t)res;
+}
+
+/**********************************************************************
+ * Returns >0 if t1 and t2 have a resolvent on variable x, 
+ * Returns <0 if t1 and -t2 have a resolvent on variable x
+ * Return 0 if t1 and t2 do not resolve.
+
+ * Return the result of resolving t1 and t2 in res.
+ *********************************************************************/
+int _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x,linterm_t *res)
+{
+  ddd_term_t *x1 = (ddd_term_t*)t1;
+  ddd_term_t *x2 = (ddd_term_t*)t2;
+  //X-Y and Y-Z
+  if(x1->var2 == x2->var1 && x1->var2 == x) {
+    *res = _ddd_create_linterm(x1->var1,x2->var2);
+    return 1;
+  }
+  //Y-Z and X-Y
+  if(x1->var1 == x2->var2 && x1->var1 == x) {
+    *res = _ddd_create_linterm(x2->var1,x1->var2);
+    return 1;
+  }
+  //Y-Z and Y-X
+  if(x1->var1 == x2->var1 && x1->var1 == x) {
+    *res = _ddd_create_linterm(x2->var2,x1->var2);
+    return -1;
+  }
+  //X-Y and Z-Y
+  if(x1->var2 == x2->var2 && x1->var2 == x) {
+    *res = _ddd_create_linterm(x1->var1,x2->var1);
+    return -1;
+  }
+  //no resolvant
+  return 0;
+}
+
+
+
+/**********************************************************************
  * Returns >0 if t1 and t2 have a resolvent on variable x, 
  * Returns <0 if t1 and -t2 have a resolvent on variable x
  * Return 0 if t1 and t2 do not resolve.
@@ -244,8 +317,13 @@ int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 {
   ddd_term_t *x1 = (ddd_term_t*)t1;
   ddd_term_t *x2 = (ddd_term_t*)t2;
-  if(x1->var2 == x2->var1 || x1->var1 == x2->var2) return 1;
-  if(x1->var1 == x2->var1 || x1->var2 == x2->var2) return -1;
+  //X-Y and Y-Z OR Y-Z and X-Y
+  if((x1->var2 == x2->var1 && x1->var2 == x) || 
+     (x1->var1 == x2->var2 && x1->var1 == x)) return 1;
+  //Y-Z and Y-X OR X-Y and Z-Y
+  if((x1->var1 == x2->var1 && x1->var1 == x) ||
+     (x1->var2 == x2->var2 && x1->var2 == x)) return -1;
+  //no resolvant
   return 0;
 }
 
@@ -388,7 +466,7 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
   if(y1->var1 == y2->var1 && y1->var2 == y2->var2) {
     //if the terms are X-Y < C1 and X-Y <= C2 then C1 must be <= C2-1
     if(ddd_is_strict(l1) && !ddd_is_strict(l2)) {
-      constant_t a3 = ddd_decr_cst(a2);
+      constant_t a3 = ddd_cst_decr(a2);
       res = ddd_cst_le(a1,a3);
       ddd_destroy_cst(a3);
     }
@@ -406,6 +484,72 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
   return res;
 }
 
+/**********************************************************************
+ * Computes the resolvent of l1 and l2 on x. Returns NULL if there is
+ * no resolvent.
+ *********************************************************************/
+lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
+{
+  //get the constants
+  constant_t c1 = ddd_get_constant(l1);
+  constant_t c2 = ddd_get_constant(l2);
+
+  //if any of the constants is infinity, there is no resolvant
+  if(ddd_is_pinf_cst(c1) || ddd_is_ninf_cst(c1) ||
+     ddd_is_pinf_cst(c2) || ddd_is_ninf_cst(c2)) {
+    ddd_destroy_cst(c1);
+    ddd_destroy_cst(c2);
+    return NULL;
+  }
+
+  //get the terms
+  linterm_t t1 = ddd_get_term(l1);
+  linterm_t t2 = ddd_get_term(l2);
+
+  lincons_t res = NULL;
+  linterm_t t3;
+
+  //if there is no resolvant between t1 and t2
+  if(_ddd_terms_have_resolvent(t1,t2,x,&t3) <= 0) goto DONE;
+
+  //X-Y < C1 and Y-Z < C2 ===> X-Z < C1+(--C2). note that for
+  //non-integers, -- leaves the constant unchanged. so the result is
+  //X-Z < C1+C2. but for integers, the result is X-X < C1+C2-1, which
+  //is what we want
+  if(ddd_is_strict(l1) && ddd_is_strict(l2)) {
+    constant_t c3 = ddd_cst_decr(c2);
+    constant_t c4 = ddd_cst_add(c1,c3);
+    ddd_destroy_cst(c3);
+    res = ddd_create_cons(t3,1,c4);
+    ddd_destroy_cst(c4);
+  }
+
+  //X-Y < C1 and Y-Z <= C2 ===> X-Z < C1+C2
+  if((ddd_is_strict(l1) && !ddd_is_strict(l2)) ||
+     (!ddd_is_strict(l1) && ddd_is_strict(l2))) {
+    constant_t c3 = ddd_cst_add(c1,c2);
+    res = ddd_create_cons(t3,1,c3);
+    ddd_destroy_cst(c3);
+  }
+  //X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2
+  if(!ddd_is_strict(l1) && !ddd_is_strict(l2)) {
+    constant_t c3 = ddd_cst_add(c1,c2);
+    res = ddd_create_cons(t3,0,c3);
+    ddd_destroy_cst(c3);
+  }
+
+ DONE:
+  //cleanup
+  ddd_destroy_cst(c1);
+  ddd_destroy_cst(c2);
+  ddd_destroy_term(t1);
+  ddd_destroy_term(t2);
+  ddd_destroy_term(t3);
+
+  //all done
+  return res;
+}
+  
 /**********************************************************************
  * create a DDD theory - the argument is the number of variables
  *********************************************************************/
@@ -435,6 +579,7 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.negate_cons = ddd_negate_cons;
   res->base.is_negative_cons = ddd_is_negative_cons;
   res->base.is_stronger_cons = ddd_is_stronger_cons;
+  res->base.resolve_cons = ddd_resolve_cons;
   res->var_num = vn;
   return (theory_t*)res;
 }
