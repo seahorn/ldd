@@ -496,30 +496,27 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
   ddd_term_t *y2 = (ddd_term_t*)x2;
   constant_t a1 = ddd_get_constant(l1);
   constant_t a2 = ddd_get_constant(l2);
-  bool res = 0;
 
-  //if the two terms are both of the form X-Y
-  if(y1->var1 == y2->var1 && y1->var2 == y2->var2) {
-    /* XXX Shouldn't this be:
-             t < c1 implies t <= c2  IFF c1 <= c2 ?
-           For the corner case, say c1 == c2, then this becomes
-             t < c1 implies t <= c1   which is correct
+  //if the two terms are not both of the form X-Y return false
+  if(y1->var1 != y2->var1 || y1->var2 == y2->var2) return 0;
 
-       On the other hand, 
-            t <= c1 implies t < c2 IFF  c1 < c2
-     */
-    //if the terms are X-Y < C1 and X-Y <= C2 then C1 must be <= C2-1
-    if(ddd_is_strict(l1) && !ddd_is_strict(l2)) {
-      constant_t a3 = ddd_cst_decr(a2);
-      res = ddd_cst_le(a1,a3);
-      ddd_destroy_cst(a3);
-    }
-    //otherwise C1 must be <= C2
-    else res = ddd_cst_le(a1,a2);
+  /* XXX Shouldn't this be:
+     t < c1 implies t <= c2  IFF c1 <= c2 ?
+     For the corner case, say c1 == c2, then this becomes
+     t < c1 implies t <= c1   which is correct
+
+     On the other hand, 
+     t <= c1 implies t < c2 IFF  c1 < c2
+  */
+  //if the terms are X-Y < C1 and X-Y <= C2 then C1 must be <= C2-1
+  if(ddd_is_strict(l1) && !ddd_is_strict(l2)) {
+    constant_t a3 = ddd_cst_decr(a2);
+    bool res = ddd_cst_le(a1,a3);
+    ddd_destroy_cst(a3);
+    return res;
   }
-
-  //all done
-  return res;
+  //otherwise C1 must be <= C2
+  else return ddd_cst_le(a1,a2);
 }
 
 /**********************************************************************
