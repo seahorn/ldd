@@ -685,10 +685,7 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
   //cleanup
   if(neg) 
     {
-      /* XXX need to negate the result if the constraint was negated.
-	 XXX The following should work:
-	 res = Cudd_Not (res);
-      */
+      res = tdd_not(m,res);
       ddd_destroy_lincons(l);
     }
   
