@@ -427,6 +427,17 @@ ddd_term_t *dup_term(ddd_term_t *arg)
  *********************************************************************/
 linterm_t ddd_get_term(lincons_t l)
 {
+  /* XXX Please return x->term instead. 
+     XXX This could be performance critical method and I want to 
+     XXX avoid additional memory allocations.
+     XXX
+     XXX This will also influence performance of other functions that use
+     XXX  ddd_get_term internally.
+     XXX
+     XXX This also requires checking that the result of ddd_get_term is not
+     XXX a NULL pointer since malloc inside dup_term may fail. 
+     XXX
+  */
   ddd_cons_t *x = (ddd_cons_t*)l;  
   return (linterm_t)dup_term(&(x->term));
 }
@@ -446,6 +457,7 @@ ddd_cst_t *dup_cst(ddd_cst_t *arg)
  *********************************************************************/
 constant_t ddd_get_constant(lincons_t l)
 {
+  /* XXX Please return x->cst. See comment for ddd_get_term. */
   ddd_cons_t *x = (ddd_cons_t*)l;  
   return (constant_t)dup_cst(&(x->cst));
 }
@@ -455,6 +467,11 @@ constant_t ddd_get_constant(lincons_t l)
  *********************************************************************/
 lincons_t ddd_negate_cons(lincons_t l)
 {
+  /**
+     XXX Internally, is it possible to create the negated constraint 
+     XXX directly without creating intermediate terms and constraints?
+     XXX This is likelly to be a performance critical method.
+   */
   linterm_t x = ddd_get_term(l);
   linterm_t y = ddd_negate_term(x);
   ddd_destroy_term(x);
@@ -496,6 +513,14 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
 
   //if the two terms are both of the form X-Y
   if(y1->var1 == y2->var1 && y1->var2 == y2->var2) {
+    /* XXX Shouldn't this be:
+             t < c1 implies t <= c2  IFF c1 <= c2 ?
+           For the corner case, say c1 == c2, then this becomes
+             t < c1 implies t <= c1   which is correct
+
+       On the other hand, 
+            t <= c1 implies t < c2 IFF  c1 < c2
+     */
     //if the terms are X-Y < C1 and X-Y <= C2 then C1 must be <= C2-1
     if(ddd_is_strict(l1) && !ddd_is_strict(l2)) {
       constant_t a3 = ddd_cst_decr(a2);
@@ -541,13 +566,14 @@ lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
   lincons_t res = NULL;
   linterm_t t3;
 
-  //if there is no resolvant between t1 and t2
+  //if there is no resolvent between t1 and t2
   if(_ddd_terms_have_resolvent(t1,t2,x,&t3) <= 0) goto DONE;
+
 
   //X-Y < C1 and Y-Z < C2 ===> X-Z < C1+(--C2). note that for
   //non-integers, -- leaves the constant unchanged. so the result is
-  //X-Z < C1+C2. but for integers, the result is X-X < C1+C2-1, which
-  //is what we want
+  //X-Z < C1+C2. but for integers, the result is X-Z < C1+C2-1, which
+  //is what we want.
   if(ddd_is_strict(l1) && ddd_is_strict(l2)) {
     constant_t c3 = ddd_cst_decr(c2);
     constant_t c4 = ddd_cst_add(c1,c3);
@@ -608,6 +634,10 @@ lincons_t ddd_dup_lincons(lincons_t l)
 tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
                        ddd_cons_node_t *prev,ddd_cons_t *c)
 {
+  /* XXX This is linear in the number of constraints that are 
+     XXX ever created during the analysis. This may become a bottleneck.
+  */
+
   //if at the end of the list -- create a fresh tdd_node and insert it
   //at the end of the list
   if(curr == NULL) {
@@ -629,10 +659,17 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     return cn->node;
   }
 
+  /* XXX Also need to check for strictness of the constraint */
   //if i found a matching element, return it
   if(ddd_term_equals(&(curr->cons.term),&(c->term)) &&
      ddd_cst_eq(&(curr->cons.cst),&(c->cst))) return curr->node;
 
+  /* XXX tdd needs stronger constraints to appear before weaker ones
+     XXX in the ordering. For example, (t <= 5) has to appear before
+     XXX (t <= 10). (This way, paths like (t <= 5) && (t <= 10) can be
+     XXX simplified during a top-down traverse of the diagram). I
+     XXX belive this does the opposite.
+  */
   //if the curr implies c, then add c just before curr
   if(ddd_is_stronger_cons(&(curr->cons),c)) {
     ddd_cons_node_t *cn = 
@@ -671,8 +708,17 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
   //find the right node. create one if necessary.
   tdd_node *res = ddd_get_node(m,theory->cons_node_map,NULL,(ddd_cons_t*)l);
 
+
   //cleanup
-  if(neg) ddd_destroy_lincons(l);
+  if(neg) 
+    {
+      /* XXX need to negate the result if the constraint was negated.
+	 XXX The following should work:
+	 res = Cudd_Not (res);
+      */
+      ddd_destroy_lincons(l);
+    }
+  
   //all done
   return res;
 }
@@ -725,6 +771,7 @@ void ddd_destroy_theory(theory_t *t)
   ddd_cons_node_t *cnm = ((ddd_theory_t*)t)->cons_node_map;
   while(cnm) {
     free(cnm);
+    /* XXX can 'cnm' be dereferenced after it was freed? */
     cnm = cnm->next;
   }
   //free the theory
