@@ -677,7 +677,7 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
   //cleanup
   if(neg) 
     {
-      res = tdd_not(m,res);
+      res = tdd_not(res);
       ddd_destroy_lincons(l);
     }
   
