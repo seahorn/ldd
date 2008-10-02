@@ -179,23 +179,20 @@ constant_t ddd_cst_add(constant_t c1,constant_t c2)
     }
 }
 
-/**********************************************************************
- * if c is an integer, return c - 1, else return c
- *********************************************************************/
-constant_t ddd_cst_decr(constant_t c)
+
+/* decrements a constant c in place. 
+   Requires c->type == DDD_INT
+   Internal use only
+*/
+void ddd_cst_decr_inplace (ddd_cst_t * c)
 {
-  ddd_cst_t *x = (ddd_cst_t*)c;
-  switch(x->type)
+  switch (c->type)
     {
     case DDD_INT:
-      return ddd_is_pinf_cst(c) || ddd_is_ninf_cst(c) ? 
-        (constant_t)dup_cst(x) : ddd_create_int_cst(x->int_val - 1);
-    case DDD_RAT:
-      return (constant_t)dup_cst(x);
-    case DDD_DBL:
-      return (constant_t)dup_cst(x);
+      if (!ddd_is_pinf_cst(c) && !ddd_is_ninf_cst(c))
+	c->int_val--;
     default:
-      return 0;
+      assert (0);
     }
 }
 
@@ -312,6 +309,10 @@ linterm_t _ddd_create_linterm(int v1,int v2)
  *********************************************************************/
 int _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x,linterm_t *res)
 {
+
+  // XXX Simplify to return the resolvent. Only applies if t1 and t2
+  // can be directly resolved.
+
   ddd_term_t *x1 = (ddd_term_t*)t1;
   ddd_term_t *x2 = (ddd_term_t*)t2;
   //X-Y and Y-Z
@@ -394,7 +395,7 @@ void ddd_destroy_term(linterm_t t)
 /**********************************************************************
  * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
  *********************************************************************/
-lincons_t ddd_create_cons(linterm_t t, bool s, constant_t k)
+lincons_t ddd_create_rat_cons(linterm_t t, bool s, constant_t k)
 {
   ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
   res->term = *((ddd_term_t*)t);
@@ -402,6 +403,25 @@ lincons_t ddd_create_cons(linterm_t t, bool s, constant_t k)
   res->strict = s;
   return (lincons_t)res;
 }
+
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ *********************************************************************/
+lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
+{
+  ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
+  res->term = *((ddd_term_t*)t);
+
+  res->cst = *((ddd_cst_t*)k);
+  if (s)
+    ddd_cst_decr_inplace (&(res->cst));
+  
+
+  /* all integer constraints are non-strict */
+  res->strict = 0;
+  return (lincons_t)res;
+}
+
 
 /**********************************************************************
  * Returns true if l is a strict constraint
@@ -455,7 +475,26 @@ constant_t ddd_get_constant(lincons_t l)
 /**********************************************************************
  * Complements a linear constraint
  *********************************************************************/
-lincons_t ddd_negate_cons(lincons_t l)
+lincons_t ddd_negate_int_cons(lincons_t l)
+{
+  /**
+     XXX Internally, is it possible to create the negated constraint 
+     XXX directly without creating intermediate terms and constraints?
+     XXX This is likelly to be a performance critical method.
+     
+     XXX use inplace functions.
+   */
+  linterm_t x = ddd_get_term(l);
+  linterm_t y = ddd_negate_term(x);
+  constant_t a = ddd_get_constant(l);
+  constant_t b = ddd_negate_cst(a);
+  lincons_t res = ddd_create_int_cons(y,!ddd_is_strict(l),b);
+  ddd_destroy_term(y);
+  ddd_destroy_cst(b);
+  return res;
+}
+
+lincons_t ddd_negate_rat_cons(lincons_t l)
 {
   /**
      XXX Internally, is it possible to create the negated constraint 
@@ -466,11 +505,12 @@ lincons_t ddd_negate_cons(lincons_t l)
   linterm_t y = ddd_negate_term(x);
   constant_t a = ddd_get_constant(l);
   constant_t b = ddd_negate_cst(a);
-  lincons_t res = ddd_create_cons(y,!ddd_is_strict(l),b);
+  lincons_t res = ddd_create_rat_cons(y,!ddd_is_strict(l),b);
   ddd_destroy_term(y);
   ddd_destroy_cst(b);
   return res;
 }
+
 
 /**********************************************************************
  * Returns true if l is a negative constraint (i.e., the smallest
@@ -500,30 +540,56 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
   //if the two terms are not both of the form X-Y return false
   if(y1->var1 != y2->var1 || y1->var2 == y2->var2) return 0;
 
-  /* XXX Shouldn't this be:
-     t < c1 implies t <= c2  IFF c1 <= c2 ?
-     For the corner case, say c1 == c2, then this becomes
-     t < c1 implies t <= c1   which is correct
+  /*
+   * We assume that all integer constraints are non-strict, i.e., of
+   * the form t1 <= c.
+   */
 
-     On the other hand, 
-     t <= c1 implies t < c2 IFF  c1 < c2
-  */
-  //if the terms are X-Y < C1 and X-Y <= C2 then C1 must be <= C2-1
-  if(ddd_is_strict(l1) && !ddd_is_strict(l2)) {
-    constant_t a3 = ddd_cst_decr(a2);
-    bool res = ddd_cst_le(a1,a3);
-    ddd_destroy_cst(a3);
-    return res;
-  }
-  //otherwise C1 must be <= C2
-  else return ddd_cst_le(a1,a2);
+  if (!ddd_is_strict (l1) && ddd_is_strict (l2))
+    return ddd_cst_lt(a1, a2);
+  return ddd_cst_le (a1, a2);  
 }
+
 
 /**********************************************************************
  * Computes the resolvent of l1 and l2 on x. Returns NULL if there is
  * no resolvent.
  *********************************************************************/
-lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
+lincons_t ddd_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
+{
+  //get the constants
+  constant_t c1 = ddd_get_constant(l1);
+  constant_t c2 = ddd_get_constant(l2);
+
+  //if any of the constants is infinity, there is no resolvant
+  if(ddd_is_pinf_cst(c1) || ddd_is_ninf_cst(c1) ||
+     ddd_is_pinf_cst(c2) || ddd_is_ninf_cst(c2)) return NULL;
+
+  //get the terms
+  linterm_t t1 = ddd_get_term(l1);
+  linterm_t t2 = ddd_get_term(l2);
+
+  lincons_t res = NULL;
+  linterm_t t3 = NULL;
+
+  //if there is no resolvent between t1 and t2
+  if(_ddd_terms_have_resolvent(t1,t2,x,&t3) > 0) 
+    {      
+      /*  X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2 */
+      constant_t c3 = ddd_cst_add(c1,c2);
+      res = ddd_create_int_cons(t3,0,c3);
+      ddd_destroy_cst(c3);      
+    }
+
+  //cleanup
+  if (t3 != NULL)
+    ddd_destroy_term(t3);
+
+  //all done
+  return res;
+}
+
+lincons_t ddd_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
 {
   //get the constants
   constant_t c1 = ddd_get_constant(l1);
@@ -549,10 +615,8 @@ lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
   //X-Z < C1+C2. but for integers, the result is X-Z < C1+C2-1, which
   //is what we want.
   if(ddd_is_strict(l1) && ddd_is_strict(l2)) {
-    constant_t c3 = ddd_cst_decr(c2);
-    constant_t c4 = ddd_cst_add(c1,c3);
-    ddd_destroy_cst(c3);
-    res = ddd_create_cons(t3,1,c4);
+    constant_t c4 = ddd_cst_add(c1,c2);
+    res = ddd_create_rat_cons(t3,1,c4);
     ddd_destroy_cst(c4);
   }
 
@@ -560,19 +624,20 @@ lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
   if((ddd_is_strict(l1) && !ddd_is_strict(l2)) ||
      (!ddd_is_strict(l1) && ddd_is_strict(l2))) {
     constant_t c3 = ddd_cst_add(c1,c2);
-    res = ddd_create_cons(t3,1,c3);
+    res = ddd_create_rat_cons(t3,1,c3);
     ddd_destroy_cst(c3);
   }
   //X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2
   if(!ddd_is_strict(l1) && !ddd_is_strict(l2)) {
     constant_t c3 = ddd_cst_add(c1,c2);
-    res = ddd_create_cons(t3,0,c3);
+    res = ddd_create_rat_cons(t3,0,c3);
     ddd_destroy_cst(c3);
   }
 
  DONE:
-  //cleanup
-  ddd_destroy_term(t3);
+  if (t3 != NULL)
+    //cleanup
+    ddd_destroy_term(t3);
 
   //all done
   return res;
@@ -636,7 +701,7 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
      ddd_cst_eq(&(curr->cons.cst),&(c->cst))) return curr->node;
 
   //if the c implies curr, then add c just before curr
-  if(ddd_is_stronger_cons(c,&(curr->cons))) {
+  if(m->theory->is_stronger_cons(c,&(curr->cons))) {
     ddd_cons_node_t *cn = 
       (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
     cn->cons = *c;
@@ -667,8 +732,8 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
   ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
 
   //negate the constraint if necessary
-  bool neg = ddd_is_negative_cons(l);
-  if(neg) l = ddd_negate_cons(l);
+  bool neg = theory->base.is_negative_cons(l);
+  if(neg) l = theory->base.negate_cons (l);
 
   //find the right node. create one if necessary.
   tdd_node *res = ddd_get_node(m,theory->cons_node_map,NULL,(ddd_cons_t*)l);
@@ -688,7 +753,8 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
 /**********************************************************************
  * create a DDD theory - the argument is the number of variables
  *********************************************************************/
-theory_t *ddd_create_theory(ddd_type_t t,size_t vn)
+/* theory of integer constraints */
+theory_t *ddd_create_int_theory(ddd_type_t t,size_t vn)
 {
   ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
   memset((void*)(res),sizeof(ddd_theory_t),0);
@@ -707,14 +773,14 @@ theory_t *ddd_create_theory(ddd_type_t t,size_t vn)
   res->base.negate_term = ddd_negate_term;
   res->base.pick_var = ddd_pick_var;
   res->base.destroy_term = ddd_destroy_term;
-  res->base.create_cons = ddd_create_cons;
+  res->base.create_cons = ddd_create_int_cons;
   res->base.is_strict = ddd_is_strict;
   res->base.get_term = ddd_get_term;
   res->base.get_constant = ddd_get_constant;
-  res->base.negate_cons = ddd_negate_cons;
+  res->base.negate_cons = ddd_negate_int_cons;
   res->base.is_negative_cons = ddd_is_negative_cons;
   res->base.is_stronger_cons = ddd_is_stronger_cons;
-  res->base.resolve_cons = ddd_resolve_cons;
+  res->base.resolve_cons = ddd_resolve_int_cons;
   res->base.destroy_lincons = ddd_destroy_lincons;
   res->base.dup_lincons = ddd_dup_lincons;
   res->base.to_tdd = ddd_to_tdd;
@@ -723,6 +789,44 @@ theory_t *ddd_create_theory(ddd_type_t t,size_t vn)
   res->cons_node_map = NULL;
   return (theory_t*)res;
 }
+
+/* theory of rational constraints */
+theory_t *ddd_create_rat_theory(ddd_type_t t,size_t vn)
+{
+  ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
+  memset((void*)(res),sizeof(ddd_theory_t),0);
+  res->base.create_int_cst = ddd_create_int_cst;
+  res->base.create_rat_cst = ddd_create_rat_cst;
+  res->base.create_double_cst = ddd_create_double_cst;
+  res->base.negate_cst = ddd_negate_cst;
+  res->base.is_pinf_cst = ddd_is_pinf_cst;
+  res->base.is_ninf_cst = ddd_is_ninf_cst;
+  res->base.destroy_cst = ddd_destroy_cst;
+  res->base.create_linterm = ddd_create_linterm;
+  res->base.term_equals = ddd_term_equals;
+  res->base.term_has_var = ddd_term_has_var;
+  res->base.num_of_vars = ddd_num_of_vars;
+  res->base.terms_have_resolvent = ddd_terms_have_resolvent;
+  res->base.negate_term = ddd_negate_term;
+  res->base.pick_var = ddd_pick_var;
+  res->base.destroy_term = ddd_destroy_term;
+  res->base.create_cons = ddd_create_rat_cons;
+  res->base.is_strict = ddd_is_strict;
+  res->base.get_term = ddd_get_term;
+  res->base.get_constant = ddd_get_constant;
+  res->base.negate_cons = ddd_negate_rat_cons;
+  res->base.is_negative_cons = ddd_is_negative_cons;
+  res->base.is_stronger_cons = ddd_is_stronger_cons;
+  res->base.resolve_cons = ddd_resolve_rat_cons;
+  res->base.destroy_lincons = ddd_destroy_lincons;
+  res->base.dup_lincons = ddd_dup_lincons;
+  res->base.to_tdd = ddd_to_tdd;
+  res->type = t;
+  res->var_num = vn;
+  res->cons_node_map = NULL;
+  return (theory_t*)res;
+}
+
 
 /**********************************************************************
  * destroy a DDD theory
