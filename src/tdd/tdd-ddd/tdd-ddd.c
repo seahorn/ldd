@@ -770,9 +770,9 @@ void ddd_destroy_theory(theory_t *t)
   //free the cons_node_map
   ddd_cons_node_t *cnm = ((ddd_theory_t*)t)->cons_node_map;
   while(cnm) {
+    ddd_cons_node_t *next = cnm->next;
     free(cnm);
-    /* XXX can 'cnm' be dereferenced after it was freed? */
-    cnm = cnm->next;
+    cnm = next;
   }
   //free the theory
   free((ddd_theory_t*)t);
