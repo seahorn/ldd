@@ -423,23 +423,13 @@ ddd_term_t *dup_term(ddd_term_t *arg)
 }
 
 /**********************************************************************
- * get the term corresponding to the argument constraint
+ * get the term corresponding to the argument constraint -- the
+ * returned value should NEVER be freed by the user.
  *********************************************************************/
 linterm_t ddd_get_term(lincons_t l)
 {
-  /* XXX Please return x->term instead. 
-     XXX This could be performance critical method and I want to 
-     XXX avoid additional memory allocations.
-     XXX
-     XXX This will also influence performance of other functions that use
-     XXX  ddd_get_term internally.
-     XXX
-     XXX This also requires checking that the result of ddd_get_term is not
-     XXX a NULL pointer since malloc inside dup_term may fail. 
-     XXX
-  */
   ddd_cons_t *x = (ddd_cons_t*)l;  
-  return (linterm_t)dup_term(&(x->term));
+  return (linterm_t)(&(x->term));
 }
 
 /**********************************************************************
@@ -474,7 +464,6 @@ lincons_t ddd_negate_cons(lincons_t l)
    */
   linterm_t x = ddd_get_term(l);
   linterm_t y = ddd_negate_term(x);
-  ddd_destroy_term(x);
   constant_t a = ddd_get_constant(l);
   constant_t b = ddd_negate_cst(a);
   ddd_destroy_cst(a);
@@ -493,7 +482,6 @@ bool ddd_is_negative_cons(lincons_t l)
   linterm_t x = ddd_get_term(l);
   ddd_term_t *y = (ddd_term_t*)x;
   bool res = (y->var2 < y->var1);
-  ddd_destroy_term(x);
   return res;
 }
 
@@ -532,8 +520,6 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
   }
 
   //deallocate
-  ddd_destroy_term(x1);
-  ddd_destroy_term(x2);
   ddd_destroy_cst(a1);
   ddd_destroy_cst(a2);
 
@@ -564,7 +550,7 @@ lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
   linterm_t t2 = ddd_get_term(l2);
 
   lincons_t res = NULL;
-  linterm_t t3;
+  linterm_t t3 = NULL;
 
   //if there is no resolvent between t1 and t2
   if(_ddd_terms_have_resolvent(t1,t2,x,&t3) <= 0) goto DONE;
@@ -600,8 +586,6 @@ lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
   //cleanup
   ddd_destroy_cst(c1);
   ddd_destroy_cst(c2);
-  ddd_destroy_term(t1);
-  ddd_destroy_term(t2);
   ddd_destroy_term(t3);
 
   //all done
