@@ -632,19 +632,14 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     return cn->node;
   }
 
-  /* XXX Also need to check for strictness of the constraint */
   //if i found a matching element, return it
   if(ddd_term_equals(&(curr->cons.term),&(c->term)) &&
+     ((ddd_is_strict(&(curr->cons)) && ddd_is_strict(c)) ||
+      (!ddd_is_strict(&(curr->cons)) && !ddd_is_strict(c))) &&
      ddd_cst_eq(&(curr->cons.cst),&(c->cst))) return curr->node;
 
-  /* XXX tdd needs stronger constraints to appear before weaker ones
-     XXX in the ordering. For example, (t <= 5) has to appear before
-     XXX (t <= 10). (This way, paths like (t <= 5) && (t <= 10) can be
-     XXX simplified during a top-down traverse of the diagram). I
-     XXX belive this does the opposite.
-  */
-  //if the curr implies c, then add c just before curr
-  if(ddd_is_stronger_cons(&(curr->cons),c)) {
+  //if the c implies curr, then add c just before curr
+  if(ddd_is_stronger_cons(c,&(curr->cons))) {
     ddd_cons_node_t *cn = 
       (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
     cn->cons = *c;
