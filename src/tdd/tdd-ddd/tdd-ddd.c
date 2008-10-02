@@ -680,7 +680,7 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
 /**********************************************************************
  * create a DDD theory - the argument is the number of variables
  *********************************************************************/
-theory_t *ddd_create_theory(size_t vn)
+theory_t *ddd_create_theory(ddd_type_t t,size_t vn)
 {
   ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
   memset((void*)(res),sizeof(ddd_theory_t),0);
@@ -710,6 +710,7 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.destroy_lincons = ddd_destroy_lincons;
   res->base.dup_lincons = ddd_dup_lincons;
   res->base.to_tdd = ddd_to_tdd;
+  res->type = t;
   res->var_num = vn;
   res->cons_node_map = NULL;
   return (theory_t*)res;

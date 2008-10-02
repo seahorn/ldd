@@ -23,12 +23,10 @@
  * a generic structure used to represent integer, rational, and double
  * constants.
  *********************************************************************/
-typedef enum ddd_cst_type { DDD_INT, DDD_RAT, DDD_DBL } ddd_cst_type_t;
-
 typedef struct ddd_cst 
 {
   /* the type of the constant */
-  ddd_cst_type_t type;
+  ddd_type_t type;
 
   /* the value of the constant */
   union 
@@ -72,9 +70,10 @@ typedef struct ddd_cons_node
  *********************************************************************/
 typedef struct ddd_theory
 {
-  theory_t base;
-  size_t var_num;
-  ddd_cons_node_t *cons_node_map;
+  theory_t base;                  //the base theory
+  ddd_type_t type;                //type of theory
+  size_t var_num;                 //number of variables
+  ddd_cons_node_t *cons_node_map; //map from constraints to DD nodes
 } ddd_theory_t;
 
 /**********************************************************************
