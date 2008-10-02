@@ -196,6 +196,7 @@ tdd_node* to_tdd(tdd_manager* m, lincons_t l);
 tdd_node* tdd_new_var(tdd_manager* m, lincons_t l);
 tdd_node* tdd_new_var_before (tdd_manager* m, tdd_node* v, lincons_t l);
 
+tdd_node* tdd_not (tdd_manager* m, tdd_node* n);
 tdd_node* tdd_and (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_or (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_xor (tdd_manager* m, tdd_node* n1, tdd_node* n2);
