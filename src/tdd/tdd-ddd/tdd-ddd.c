@@ -65,6 +65,36 @@ constant_t ddd_negate_cst (constant_t c)
 }
 
 /**********************************************************************
+ * Compares c1 and c2 for =
+ * Returns true if c1 and c2 are of same type and c1 = c2
+ * Returns false otherwise
+ *********************************************************************/
+bool ddd_cst_eq (constant_t c1,constant_t c2)
+{
+  ddd_cst_t *x1 = (ddd_cst_t*)c1;
+  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+
+  if(x1->type != x2->type) return 0;
+
+  switch(x1->type)
+    {
+    case DDD_INT:
+      return (x1->int_val == x2->int_val);
+    case DDD_RAT:
+      if(ddd_is_pinf_cst(c1)) return ddd_is_pinf_cst(c2);
+      if(ddd_is_ninf_cst(c1)) return ddd_is_ninf_cst(c2);
+      if(ddd_is_pinf_cst(c2)) return ddd_is_pinf_cst(c1);
+      if(ddd_is_ninf_cst(c2)) return ddd_is_ninf_cst(c1);
+      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem == 
+              x2->rat_val.quot * 1.0 / x2->rat_val.rem);
+    case DDD_DBL:
+      return (x1->dbl_val == x2->dbl_val);
+    default:
+      return 0;
+    }
+}
+
+/**********************************************************************
  * Compares c1 and c2 for <
  * Returns true if c1 and c2 are of same type and c1 < c2
  * Returns false otherwise
@@ -85,7 +115,8 @@ bool ddd_cst_lt (constant_t c1,constant_t c2)
       if(ddd_is_pinf_cst(c2)) return !ddd_is_pinf_cst(c1);
       if(ddd_is_ninf_cst(c1)) return !ddd_is_ninf_cst(c2);
       if(ddd_is_ninf_cst(c2)) return 0;
-      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem < x2->rat_val.quot * 1.0 / x2->rat_val.rem);
+      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem < 
+              x2->rat_val.quot * 1.0 / x2->rat_val.rem);
     case DDD_DBL:
       return (x1->dbl_val < x2->dbl_val);
     default:
@@ -114,7 +145,8 @@ bool ddd_cst_le (constant_t c1,constant_t c2)
       if(ddd_is_pinf_cst(c2)) return 1;
       if(ddd_is_ninf_cst(c1)) return 1;
       if(ddd_is_ninf_cst(c2)) return ddd_is_ninf_cst(c1);
-      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem <= x2->rat_val.quot * 1.0 / x2->rat_val.rem);
+      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem <= 
+              x2->rat_val.quot * 1.0 / x2->rat_val.rem);
     case DDD_DBL:
       return (x1->dbl_val <= x2->dbl_val);
     default:
@@ -569,6 +601,83 @@ lincons_t ddd_dup_lincons(lincons_t l)
 }
 
 /**********************************************************************
+ * recursively go through a list of ddd_cons_node_t and return the
+ * tdd_node* for an element whose cons matches with c. if no such node
+ * exists, create one at the right spot.
+ *********************************************************************/
+tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
+                       ddd_cons_node_t *prev,ddd_cons_t *c)
+{
+  //if at the end of the list -- create a fresh tdd_node and insert it
+  //at the end of the list
+  if(curr == NULL) {
+    ddd_cons_node_t *cn = 
+      (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
+    cn->cons = *c;
+    cn->node = tdd_new_var(m,(lincons_t)c);
+    //if not at the start of the list
+    if(prev) {
+      cn->next = prev->next;
+      prev->next = cn;
+    }
+    //if at the start of the list
+    else {
+      ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
+      cn->next = theory->cons_node_map;
+      theory->cons_node_map = cn;
+    }
+    return cn->node;
+  }
+
+  //if i found a matching element, return it
+  if(ddd_term_equals(&(curr->cons.term),&(c->term)) &&
+     ddd_cst_eq(&(curr->cons.cst),&(c->cst))) return curr->node;
+
+  //if the curr implies c, then add c just before curr
+  if(ddd_is_stronger_cons(&(curr->cons),c)) {
+    ddd_cons_node_t *cn = 
+      (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
+    cn->cons = *c;
+    cn->node = tdd_new_var_before(m,curr->node,(lincons_t)c);
+    //if not at the start of the list
+    if(prev) {
+      cn->next = prev->next;
+      prev->next = cn;
+    }
+    //if at the start of the list
+    else {
+      ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
+      cn->next = theory->cons_node_map;
+      theory->cons_node_map = cn;
+    }
+    return cn->node;
+  }
+
+  //try recursively with the next element
+  return ddd_get_node(m,curr->next,curr,c);
+}
+
+/**********************************************************************
+ * return a TDD node corresponding to l
+ *********************************************************************/
+tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
+{
+  ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
+
+  //negate the constraint if necessary
+  bool neg = ddd_is_negative_cons(l);
+  if(neg) l = ddd_negate_cons(l);
+
+  //find the right node. create one if necessary.
+  tdd_node *res = ddd_get_node(m,theory->cons_node_map,NULL,(ddd_cons_t*)l);
+
+  //cleanup
+  if(neg) ddd_destroy_lincons(l);
+  //all done
+  return res;
+}
+
+/**********************************************************************
  * create a DDD theory - the argument is the number of variables
  *********************************************************************/
 theory_t *ddd_create_theory(size_t vn)
@@ -600,7 +709,9 @@ theory_t *ddd_create_theory(size_t vn)
   res->base.resolve_cons = ddd_resolve_cons;
   res->base.destroy_lincons = ddd_destroy_lincons;
   res->base.dup_lincons = ddd_dup_lincons;
+  res->base.to_tdd = ddd_to_tdd;
   res->var_num = vn;
+  res->cons_node_map = NULL;
   return (theory_t*)res;
 }
 
@@ -609,6 +720,13 @@ theory_t *ddd_create_theory(size_t vn)
  *********************************************************************/
 void ddd_destroy_theory(theory_t *t)
 {
+  //free the cons_node_map
+  ddd_cons_node_t *cnm = ((ddd_theory_t*)t)->cons_node_map;
+  while(cnm) {
+    free(cnm);
+    cnm = cnm->next;
+  }
+  //free the theory
   free((ddd_theory_t*)t);
 }
 

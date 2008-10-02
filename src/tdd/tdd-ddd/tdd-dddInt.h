@@ -20,15 +20,6 @@
  *********************************************************************/
 
 /**********************************************************************
- * the DDD theory struct "extends" the theory struct
- *********************************************************************/
-typedef struct ddd_theory
-{
-  theory_t base;
-  size_t var_num;
-} ddd_theory_t;
-
-/**********************************************************************
  * a generic structure used to represent integer, rational, and double
  * constants.
  *********************************************************************/
@@ -65,6 +56,28 @@ typedef struct ddd_cons
 } ddd_cons_t;
 
 /**********************************************************************
+ * structure for a pair of a constraint and its correponding
+ * tdd_node*. a sorted list of such structures is used to maintain the
+ * map from constraints to tdd_nodes.
+ *********************************************************************/
+typedef struct ddd_cons_node
+{
+  ddd_cons_t cons;
+  tdd_node *node;
+  struct ddd_cons_node *next;
+} ddd_cons_node_t;
+
+/**********************************************************************
+ * the DDD theory struct "extends" the theory struct
+ *********************************************************************/
+typedef struct ddd_theory
+{
+  theory_t base;
+  size_t var_num;
+  ddd_cons_node_t *cons_node_map;
+} ddd_theory_t;
+
+/**********************************************************************
  * private functions
  *********************************************************************/
 
@@ -72,6 +85,7 @@ constant_t ddd_create_int_cst(int v);
 constant_t ddd_create_rat_cst(int n,int d);
 constant_t ddd_create_double_cst(double v);
 constant_t ddd_negate_cst (constant_t c);
+bool ddd_cst_eq(constant_t c1,constant_t c2);
 bool ddd_cst_lt(constant_t c1,constant_t c2);
 bool ddd_cst_le(constant_t c1,constant_t c2);
 constant_t ddd_cst_add(constant_t c1,constant_t c2);
@@ -101,6 +115,9 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2);
 lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x);
 void ddd_destroy_lincons(lincons_t l);
 lincons_t ddd_dup_lincons(lincons_t l);
+tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
+                       ddd_cons_node_t *prev,ddd_cons_t *c);
+tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l);
 
 #endif //__TDD_DDD_INT_H__
 
