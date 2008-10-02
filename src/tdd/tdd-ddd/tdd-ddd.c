@@ -443,13 +443,13 @@ ddd_cst_t *dup_cst(ddd_cst_t *arg)
 }
 
 /**********************************************************************
- * get the constant corresponding to the argument constraint
+ * get the constant corresponding to the argument constraint -- the
+ * returned value should NEVER be freed by the user.
  *********************************************************************/
 constant_t ddd_get_constant(lincons_t l)
 {
-  /* XXX Please return x->cst. See comment for ddd_get_term. */
   ddd_cons_t *x = (ddd_cons_t*)l;  
-  return (constant_t)dup_cst(&(x->cst));
+  return (constant_t)(&(x->cst));
 }
 
 /**********************************************************************
@@ -466,7 +466,6 @@ lincons_t ddd_negate_cons(lincons_t l)
   linterm_t y = ddd_negate_term(x);
   constant_t a = ddd_get_constant(l);
   constant_t b = ddd_negate_cst(a);
-  ddd_destroy_cst(a);
   lincons_t res = ddd_create_cons(y,!ddd_is_strict(l),b);
   ddd_destroy_term(y);
   ddd_destroy_cst(b);
@@ -519,10 +518,6 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
     else res = ddd_cst_le(a1,a2);
   }
 
-  //deallocate
-  ddd_destroy_cst(a1);
-  ddd_destroy_cst(a2);
-
   //all done
   return res;
 }
@@ -539,11 +534,7 @@ lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
 
   //if any of the constants is infinity, there is no resolvant
   if(ddd_is_pinf_cst(c1) || ddd_is_ninf_cst(c1) ||
-     ddd_is_pinf_cst(c2) || ddd_is_ninf_cst(c2)) {
-    ddd_destroy_cst(c1);
-    ddd_destroy_cst(c2);
-    return NULL;
-  }
+     ddd_is_pinf_cst(c2) || ddd_is_ninf_cst(c2)) return NULL;
 
   //get the terms
   linterm_t t1 = ddd_get_term(l1);
@@ -584,8 +575,6 @@ lincons_t ddd_resolve_cons(lincons_t l1, lincons_t l2, int x)
 
  DONE:
   //cleanup
-  ddd_destroy_cst(c1);
-  ddd_destroy_cst(c2);
   ddd_destroy_term(t3);
 
   //all done
