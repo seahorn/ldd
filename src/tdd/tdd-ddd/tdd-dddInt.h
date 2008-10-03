@@ -98,7 +98,7 @@ bool ddd_term_equals(linterm_t t1, linterm_t t2);
 bool ddd_term_has_var (linterm_t t,bool *vars);
 size_t ddd_num_of_vars(theory_t* self);
 linterm_t _ddd_create_linterm(int v1,int v2);
-int _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x,linterm_t *res);
+linterm_t _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 linterm_t ddd_negate_term(linterm_t t);
 int ddd_pick_var (linterm_t t, int* vars);

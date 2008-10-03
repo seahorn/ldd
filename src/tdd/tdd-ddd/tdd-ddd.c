@@ -301,42 +301,23 @@ linterm_t _ddd_create_linterm(int v1,int v2)
 }
 
 /**********************************************************************
- * Returns >0 if t1 and t2 have a resolvent on variable x, 
- * Returns <0 if t1 and -t2 have a resolvent on variable x
- * Return 0 if t1 and t2 do not resolve.
-
- * Return the result of resolving t1 and t2 in res.
+ * Return the result of resolving t1 and t2. If the resolvant does not
+ * exist, return NULL.
  *********************************************************************/
-int _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x,linterm_t *res)
+linterm_t _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 {
-
-  // XXX Simplify to return the resolvent. Only applies if t1 and t2
-  // can be directly resolved.
-
   ddd_term_t *x1 = (ddd_term_t*)t1;
   ddd_term_t *x2 = (ddd_term_t*)t2;
   //X-Y and Y-Z
   if(x1->var2 == x2->var1 && x1->var2 == x) {
-    *res = _ddd_create_linterm(x1->var1,x2->var2);
-    return 1;
+    return _ddd_create_linterm(x1->var1,x2->var2);
   }
   //Y-Z and X-Y
   if(x1->var1 == x2->var2 && x1->var1 == x) {
-    *res = _ddd_create_linterm(x2->var1,x1->var2);
-    return 1;
+    return _ddd_create_linterm(x2->var1,x1->var2);
   }
-  //Y-Z and Y-X
-  if(x1->var1 == x2->var1 && x1->var1 == x) {
-    *res = _ddd_create_linterm(x2->var2,x1->var2);
-    return -1;
-  }
-  //X-Y and Z-Y
-  if(x1->var2 == x2->var2 && x1->var2 == x) {
-    *res = _ddd_create_linterm(x1->var1,x2->var1);
-    return -1;
-  }
-  //no resolvant
-  return 0;
+  //no resolvent
+  return NULL;
 }
 
 
@@ -569,23 +550,15 @@ lincons_t ddd_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
   linterm_t t1 = ddd_get_term(l1);
   linterm_t t2 = ddd_get_term(l2);
 
-  lincons_t res = NULL;
-  linterm_t t3 = NULL;
-
   //if there is no resolvent between t1 and t2
-  if(_ddd_terms_have_resolvent(t1,t2,x,&t3) > 0) 
-    {      
-      /*  X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2 */
-      constant_t c3 = ddd_cst_add(c1,c2);
-      res = ddd_create_int_cons(t3,0,c3);
-      ddd_destroy_cst(c3);      
-    }
+  linterm_t t3 = _ddd_terms_have_resolvent(t1,t2,x);
+  if(!t3) return NULL; 
 
-  //cleanup
-  if (t3 != NULL)
-    ddd_destroy_term(t3);
-
-  //all done
+  /*  X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2 */
+  constant_t c3 = ddd_cst_add(c1,c2);
+  lincons_t res = ddd_create_int_cons(t3,0,c3);
+  ddd_destroy_term(t3);
+  ddd_destroy_cst(c3);      
   return res;
 }
 
@@ -603,43 +576,24 @@ lincons_t ddd_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
   linterm_t t1 = ddd_get_term(l1);
   linterm_t t2 = ddd_get_term(l2);
 
-  lincons_t res = NULL;
-  linterm_t t3 = NULL;
-
   //if there is no resolvent between t1 and t2
-  if(_ddd_terms_have_resolvent(t1,t2,x,&t3) <= 0) goto DONE;
+  linterm_t t3 = _ddd_terms_have_resolvent(t1,t2,x);
+  if(!t3) return NULL;
 
-
-  //X-Y < C1 and Y-Z < C2 ===> X-Z < C1+(--C2). note that for
-  //non-integers, -- leaves the constant unchanged. so the result is
-  //X-Z < C1+C2. but for integers, the result is X-Z < C1+C2-1, which
-  //is what we want.
-  if(ddd_is_strict(l1) && ddd_is_strict(l2)) {
-    constant_t c4 = ddd_cst_add(c1,c2);
-    res = ddd_create_rat_cons(t3,1,c4);
-    ddd_destroy_cst(c4);
-  }
-
-  //X-Y < C1 and Y-Z <= C2 ===> X-Z < C1+C2
-  if((ddd_is_strict(l1) && !ddd_is_strict(l2)) ||
-     (!ddd_is_strict(l1) && ddd_is_strict(l2))) {
-    constant_t c3 = ddd_cst_add(c1,c2);
-    res = ddd_create_rat_cons(t3,1,c3);
-    ddd_destroy_cst(c3);
-  }
   //X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2
   if(!ddd_is_strict(l1) && !ddd_is_strict(l2)) {
     constant_t c3 = ddd_cst_add(c1,c2);
-    res = ddd_create_rat_cons(t3,0,c3);
+    lincons_t res = ddd_create_rat_cons(t3,0,c3);
+    ddd_destroy_term(t3);
     ddd_destroy_cst(c3);
+    return res;
   }
 
- DONE:
-  if (t3 != NULL)
-    //cleanup
-    ddd_destroy_term(t3);
-
-  //all done
+  //for all other cases, X-Z < C1+C2
+  constant_t c3 = ddd_cst_add(c1,c2);
+  lincons_t res = ddd_create_rat_cons(t3,1,c3);
+  ddd_destroy_term(t3);
+  ddd_destroy_cst(c3);
   return res;
 }
   
