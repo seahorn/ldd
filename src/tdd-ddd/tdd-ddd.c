@@ -40,28 +40,44 @@ constant_t ddd_create_double_cst(double v)
 }
 
 /**********************************************************************
- * Return -1*c
+ * Return -1*c -- this one negates in-place and is more efficient
+ *********************************************************************/
+void ddd_negate_cst_inplace (ddd_cst_t *c)
+{
+  switch(c->type)
+    {
+    case DDD_INT:
+      if(c->int_val == INT_MAX) c->int_val = INT_MIN;
+      else if(c->int_val == INT_MIN) c->int_val = INT_MAX;
+      else c->int_val = -(c->int_val);
+      break;
+    case DDD_RAT:
+      if(c->rat_val.quot == INT_MAX) {
+        c->rat_val.quot = INT_MIN;
+        c->rat_val.rem = 1;
+      } else if(c->rat_val.quot == INT_MIN) {
+        c->rat_val.quot = INT_MAX;
+        c->rat_val.rem = 1;
+      } else c->rat_val.quot = -(c->rat_val.quot);
+      break;
+    case DDD_DBL:
+      if(c->dbl_val == DBL_MAX) c->dbl_val = DBL_MIN;
+      else if(c->dbl_val == DBL_MIN) c->dbl_val = DBL_MAX;
+      else c->dbl_val = -(c->dbl_val);
+      return;
+    default:
+      break;
+    }
+}
+
+/**********************************************************************
+ * Return -1*c -- this one allocates new memory
  *********************************************************************/
 constant_t ddd_negate_cst (constant_t c)
 {
-  ddd_cst_t *x = (ddd_cst_t*)c;
-  switch(x->type)
-    {
-    case DDD_INT:
-      if(x->int_val == INT_MAX) return ddd_create_int_cst(INT_MIN);
-      if(x->int_val == INT_MIN) return ddd_create_int_cst(INT_MAX);
-      return ddd_create_int_cst(-(x->int_val));
-    case DDD_RAT:
-      if(x->rat_val.quot == INT_MAX) return ddd_create_rat_cst(INT_MIN,1);
-      if(x->rat_val.quot == INT_MIN) return ddd_create_rat_cst(INT_MAX,1);
-      return ddd_create_rat_cst(-(x->rat_val.quot),x->rat_val.rem); 
-    case DDD_DBL:
-      if(x->dbl_val == DBL_MAX) return ddd_create_double_cst(DBL_MIN);
-      if(x->dbl_val == DBL_MIN) return ddd_create_double_cst(DBL_MAX);
-      return ddd_create_double_cst(-(x->dbl_val));
-    default:
-      return 0;
-    }
+  ddd_cst_t *x = dup_cst((ddd_cst_t*)c);
+  ddd_negate_cst_inplace(x);
+  return (constant_t)x;
 }
 
 /**********************************************************************
@@ -179,11 +195,11 @@ constant_t ddd_cst_add(constant_t c1,constant_t c2)
     }
 }
 
-
-/* decrements a constant c in place. 
-   Requires c->type == DDD_INT
-   Internal use only
-*/
+/**********************************************************************
+ * decrements a constant c in place. 
+ * Requires c->type == DDD_INT
+ * Internal use only
+ *********************************************************************/
 void ddd_cst_decr_inplace (ddd_cst_t * c)
 {
   switch (c->type)
@@ -467,11 +483,10 @@ lincons_t ddd_negate_int_cons(lincons_t l)
    */
   linterm_t x = ddd_get_term(l);
   linterm_t y = ddd_negate_term(x);
-  constant_t a = ddd_get_constant(l);
-  constant_t b = ddd_negate_cst(a);
-  lincons_t res = ddd_create_int_cons(y,!ddd_is_strict(l),b);
+  ddd_cst_t a = *((ddd_cst_t*)ddd_get_constant(l));
+  ddd_negate_cst_inplace(&a);
+  lincons_t res = ddd_create_int_cons(y,!ddd_is_strict(l),&a);
   ddd_destroy_term(y);
-  ddd_destroy_cst(b);
   return res;
 }
 
@@ -484,11 +499,10 @@ lincons_t ddd_negate_rat_cons(lincons_t l)
    */
   linterm_t x = ddd_get_term(l);
   linterm_t y = ddd_negate_term(x);
-  constant_t a = ddd_get_constant(l);
-  constant_t b = ddd_negate_cst(a);
-  lincons_t res = ddd_create_rat_cons(y,!ddd_is_strict(l),b);
+  ddd_cst_t a = *((ddd_cst_t*)ddd_get_constant(l));
+  ddd_negate_cst_inplace(&a);
+  lincons_t res = ddd_create_rat_cons(y,!ddd_is_strict(l),&a);
   ddd_destroy_term(y);
-  ddd_destroy_cst(b);
   return res;
 }
 

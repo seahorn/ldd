@@ -84,6 +84,7 @@ typedef struct ddd_theory
 constant_t ddd_create_int_cst(int v);
 constant_t ddd_create_rat_cst(int n,int d);
 constant_t ddd_create_double_cst(double v);
+void ddd_negate_cst_inplace (ddd_cst_t *c);
 constant_t ddd_negate_cst (constant_t c);
 bool ddd_cst_eq(constant_t c1,constant_t c2);
 bool ddd_cst_lt(constant_t c1,constant_t c2);
