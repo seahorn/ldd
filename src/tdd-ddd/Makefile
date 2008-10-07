@@ -1,7 +1,13 @@
 CC = gcc
-CFLAGS = -Wall -I../../../cudd-2.4.1/include
+CFLAGS = -Wall -I../../cudd-2.4.1/include
+AR = ar -rcs
+OBJS = tdd-ddd.o
+LIB = libtdd-ddd.a
 
-all : tdd-ddd.o
+all : $(LIB)
+
+$(LIB) : $(OBJS)
+	$(AR) $@ $(OBJS)
 
 %.d : %.c
 	$(CC) -MM $(CFLAGS) -c -o $@ $<
@@ -12,4 +18,4 @@ all : tdd-ddd.o
 -include tdd-ddd.d
 
 clean :
-	rm -f *.o *.d
+	rm -f $(LIB) $(OBJS) *.d

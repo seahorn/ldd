@@ -1,8 +1,14 @@
 CUDD=../../cudd-2.4.1
 CC = gcc
 CFLAGS = -Wall -I$(CUDD)/include
+AR = ar -rcs
+OBJS = tdd_init.o tdd_ite.o tdd_vars.o tdd_abs.o
+LIB = libtdd.a
 
-all : tdd_init.o tdd_ite.o tdd_vars.o tdd_abs.o
+all : $(LIB)
+
+$(LIB) : $(OBJS)
+	$(AR) $@ $(OBJS)
 
 %.d : %.c
 	$(CC) -MM $(CFLAGS) -c -o $@ $<
@@ -13,4 +19,4 @@ all : tdd_init.o tdd_ite.o tdd_vars.o tdd_abs.o
 #-include tdd-ddd.d
 
 clean :
-	rm -f *.o *.d
+	rm -f $(LIB) $(OBJS) *.d

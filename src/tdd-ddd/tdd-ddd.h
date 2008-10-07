@@ -5,7 +5,7 @@
 #ifndef __TDD_DDD_H__
 #define __TDD_DDD_H__
 
-#include "../tdd.h"
+#include "../tdd/tdd.h"
 
 /**********************************************************************
  * the types of DDD theories -- currently, we support integer,

@@ -14,7 +14,7 @@
 #include <string.h>
 #include <assert.h>
 #include "tdd-ddd.h"
-#include "../tddInt.h"
+#include "../tdd/tddInt.h"
 
 /**********************************************************************
  * private data structures
