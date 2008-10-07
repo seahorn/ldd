@@ -40,7 +40,7 @@ constant_t ddd_create_double_cst(double v)
 }
 
 /**********************************************************************
- * Return -1*c -- this one negates in-place and is more efficient
+ * create -1*c in place
  *********************************************************************/
 void ddd_negate_cst_inplace (ddd_cst_t *c)
 {
@@ -358,15 +358,23 @@ int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 }
 
 /**********************************************************************
+ * create -1*t in place -- swaps the two variables
+ *********************************************************************/
+void ddd_negate_term_inplace(ddd_term_t *t)
+{
+  t->var1 ^= t->var2;
+  t->var2 = t->var1 ^ t->var2;
+  t->var1 = t->var1 ^ t->var2;
+}
+
+/**********************************************************************
  * return -1*t
  *********************************************************************/
 linterm_t ddd_negate_term(linterm_t t)
 {
-  ddd_term_t *x = (ddd_term_t*)t;
-  ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
-  res->var1 = x->var2;
-  res->var2 = x->var1;
-  return (linterm_t)res;
+  ddd_term_t *x = dup_term((ddd_term_t*)t);
+  ddd_negate_term_inplace(x);
+  return (linterm_t)x;
 }
 
 /**********************************************************************
@@ -474,35 +482,21 @@ constant_t ddd_get_constant(lincons_t l)
  *********************************************************************/
 lincons_t ddd_negate_int_cons(lincons_t l)
 {
-  /**
-     XXX Internally, is it possible to create the negated constraint 
-     XXX directly without creating intermediate terms and constraints?
-     XXX This is likelly to be a performance critical method.
-     
-     XXX use inplace functions.
-   */
-  linterm_t x = ddd_get_term(l);
-  linterm_t y = ddd_negate_term(x);
-  ddd_cst_t a = *((ddd_cst_t*)ddd_get_constant(l));
-  ddd_negate_cst_inplace(&a);
-  lincons_t res = ddd_create_int_cons(y,!ddd_is_strict(l),&a);
-  ddd_destroy_term(y);
+  ddd_term_t t = *((ddd_term_t*)ddd_get_term(l));
+  ddd_negate_term_inplace(&t);
+  ddd_cst_t c = *((ddd_cst_t*)ddd_get_constant(l));
+  ddd_negate_cst_inplace(&c);
+  lincons_t res = ddd_create_int_cons(&t,!ddd_is_strict(l),&c);
   return res;
 }
 
 lincons_t ddd_negate_rat_cons(lincons_t l)
 {
-  /**
-     XXX Internally, is it possible to create the negated constraint 
-     XXX directly without creating intermediate terms and constraints?
-     XXX This is likelly to be a performance critical method.
-   */
-  linterm_t x = ddd_get_term(l);
-  linterm_t y = ddd_negate_term(x);
-  ddd_cst_t a = *((ddd_cst_t*)ddd_get_constant(l));
-  ddd_negate_cst_inplace(&a);
-  lincons_t res = ddd_create_rat_cons(y,!ddd_is_strict(l),&a);
-  ddd_destroy_term(y);
+  ddd_term_t t = *((ddd_term_t*)ddd_get_term(l));
+  ddd_negate_term_inplace(&t);
+  ddd_cst_t c = *((ddd_cst_t*)ddd_get_constant(l));
+  ddd_negate_cst_inplace(&c);
+  lincons_t res = ddd_create_rat_cons(&t,!ddd_is_strict(l),&c);
   return res;
 }
 

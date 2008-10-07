@@ -101,6 +101,7 @@ size_t ddd_num_of_vars(theory_t* self);
 linterm_t _ddd_create_linterm(int v1,int v2);
 linterm_t _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
+void ddd_negate_term_inplace(ddd_term_t *t);
 linterm_t ddd_negate_term(linterm_t t);
 int ddd_pick_var (linterm_t t, int* vars);
 void ddd_destroy_term(linterm_t t);
