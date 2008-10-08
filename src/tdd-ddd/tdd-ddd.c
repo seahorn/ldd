@@ -631,10 +631,6 @@ lincons_t ddd_dup_lincons(lincons_t l)
 tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
                        ddd_cons_node_t *prev,ddd_cons_t *c)
 {
-  /* XXX This is linear in the number of constraints that are 
-     XXX ever created during the analysis. This may become a bottleneck.
-  */
-
   //if at the end of the list -- create a fresh tdd_node and insert it
   //at the end of the list
   if(curr == NULL) {
@@ -650,8 +646,8 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     //if at the start of the list
     else {
       ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
-      cn->next = theory->cons_node_map;
-      theory->cons_node_map = cn;
+      cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
+      theory->cons_node_map[c->term.var1][c->term.var2] = cn;
     }
     return cn->node;
   }
@@ -676,8 +672,8 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     //if at the start of the list
     else {
       ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
-      cn->next = theory->cons_node_map;
-      theory->cons_node_map = cn;
+      cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
+      theory->cons_node_map[c->term.var1][c->term.var2] = cn;
     }
     return cn->node;
   }
@@ -697,16 +693,18 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
   bool neg = theory->base.is_negative_cons(l);
   if(neg) l = theory->base.negate_cons (l);
 
-  //find the right node. create one if necessary.
-  tdd_node *res = ddd_get_node(m,theory->cons_node_map,NULL,(ddd_cons_t*)l);
+  //convert to right type
+  ddd_cons_t *c = (ddd_cons_t*)l;
 
+  //find the right node. create one if necessary.
+  tdd_node *res = 
+    ddd_get_node(m,theory->cons_node_map[c->term.var1][c->term.var2],NULL,c);
 
   //cleanup
-  if(neg) 
-    {
-      res = tdd_not(res);
-      ddd_destroy_lincons(l);
-    }
+  if(neg) {
+    res = tdd_not(res);
+    ddd_destroy_lincons(l);
+  }
   
   //all done
   return res;
@@ -785,7 +783,14 @@ theory_t *ddd_create_rat_theory(ddd_type_t t,size_t vn)
   res->base.to_tdd = ddd_to_tdd;
   res->type = t;
   res->var_num = vn;
-  res->cons_node_map = NULL;
+  //create maps from constraints to DD nodes -- one per variable pair
+  res->cons_node_map = (ddd_cons_node_t ***)malloc(vn * sizeof(ddd_cons_node_t **));
+  size_t i = 0;
+  for(;i < vn;++i) {
+    res->cons_node_map[i] = (ddd_cons_node_t **)malloc(vn * sizeof(ddd_cons_node_t *));
+    size_t j = 0;
+    for(;j < vn;++j) res->cons_node_map[i][j] = NULL;
+  }
   return (theory_t*)res;
 }
 
@@ -796,12 +801,23 @@ theory_t *ddd_create_rat_theory(ddd_type_t t,size_t vn)
 void ddd_destroy_theory(theory_t *t)
 {
   //free the cons_node_map
-  ddd_cons_node_t *cnm = ((ddd_theory_t*)t)->cons_node_map;
-  while(cnm) {
-    ddd_cons_node_t *next = cnm->next;
-    free(cnm);
-    cnm = next;
+  ddd_cons_node_t ***cnm = ((ddd_theory_t*)t)->cons_node_map;
+  size_t vn = ((ddd_theory_t*)t)->var_num;
+  size_t i = 0;
+  for(;i < vn;++i) {
+    size_t j = 0;
+    for(;j < vn;++j) {
+      ddd_cons_node_t *curr = cnm[i][j];
+      while(curr) {
+        ddd_cons_node_t *next = curr->next;
+        free(curr);
+        curr = next;
+      }
+    }
+    free(cnm[i]);
   }
+  free(cnm);
+
   //free the theory
   free((ddd_theory_t*)t);
 }
