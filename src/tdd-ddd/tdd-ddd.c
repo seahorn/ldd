@@ -195,22 +195,6 @@ constant_t ddd_cst_add(constant_t c1,constant_t c2)
     }
 }
 
-/**********************************************************************
- * decrements a constant c in place. 
- * Requires c->type == DDD_INT
- * Internal use only
- *********************************************************************/
-void ddd_cst_decr_inplace (ddd_cst_t * c)
-{
-  switch (c->type)
-    {
-    case DDD_INT:
-      if (!ddd_is_pinf_cst(c) && !ddd_is_ninf_cst(c))
-	c->int_val--;
-    default:
-      assert (0);
-    }
-}
 
 /**********************************************************************
  * return true if the argument is positive infinity
@@ -418,12 +402,14 @@ lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
   res->term = *((ddd_term_t*)t);
 
   res->cst = *((ddd_cst_t*)k);
-  if (s)
-    ddd_cst_decr_inplace (&(res->cst));
-  
+
+  /* convert '<' inequalities to '<=' */
+  if (s && !ddd_is_pinf_cst(&(res->cst)) && !ddd_is_ninf_cst(&(res->cst)))
+    res->cst.int_val--;
 
   /* all integer constraints are non-strict */
   res->strict = 0;
+
   return (lincons_t)res;
 }
 
@@ -526,8 +512,16 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
   constant_t a1 = ddd_get_constant(l1);
   constant_t a2 = ddd_get_constant(l2);
 
+
+  printf ("is_stronger_cons ( x%d - x%d %s %d with x%d - x%d %s %d )\n",
+	  y1->var1, y1->var2, (ddd_is_strict (l1) ? "<" : "<="), 
+	  ((ddd_cst_t*) a1)->int_val, 
+	  y2->var1, y2->var2, (ddd_is_strict (l2) ? "<" : "<="), 
+	  ((ddd_cst_t*) a2)->int_val);
+
+
   //if the two terms are not both of the form X-Y return false
-  if(y1->var1 != y2->var1 || y1->var2 == y2->var2) return 0;
+  if(y1->var1 != y2->var1 || y1->var2 != y2->var2) return 0;
 
   /*
    * We assume that all integer constraints are non-strict, i.e., of
@@ -645,7 +639,7 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     }
     //if at the start of the list
     else {
-      ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
+      ddd_theory_t *theory = (ddd_theory_t*)m->theory;
       cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
       theory->cons_node_map[c->term.var1][c->term.var2] = cn;
     }
@@ -671,7 +665,7 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     }
     //if at the start of the list
     else {
-      ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
+      ddd_theory_t *theory = (ddd_theory_t*)m->theory;
       cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
       theory->cons_node_map[c->term.var1][c->term.var2] = cn;
     }
@@ -687,7 +681,7 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
  *********************************************************************/
 tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
 {
-  ddd_theory_t *theory = (ddd_theory_t*)get_theory(m);
+  ddd_theory_t *theory = (ddd_theory_t*)m->theory;
 
   //negate the constraint if necessary
   bool neg = theory->base.is_negative_cons(l);
@@ -714,7 +708,7 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
  * create a DDD theory - the argument is the number of variables
  *********************************************************************/
 /* theory of integer constraints */
-theory_t *ddd_create_int_theory(ddd_type_t t,size_t vn)
+theory_t *ddd_create_int_theory(size_t vn)
 {
   ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
   memset((void*)(res),sizeof(ddd_theory_t),0);
@@ -744,14 +738,21 @@ theory_t *ddd_create_int_theory(ddd_type_t t,size_t vn)
   res->base.destroy_lincons = ddd_destroy_lincons;
   res->base.dup_lincons = ddd_dup_lincons;
   res->base.to_tdd = ddd_to_tdd;
-  res->type = t;
+  res->type = DDD_INT;
   res->var_num = vn;
-  res->cons_node_map = NULL;
+  //create maps from constraints to DD nodes -- one per variable pair
+  res->cons_node_map = (ddd_cons_node_t ***)malloc(vn * sizeof(ddd_cons_node_t **));
+  size_t i = 0;
+  for(;i < vn;++i) {
+    res->cons_node_map[i] = (ddd_cons_node_t **)malloc(vn * sizeof(ddd_cons_node_t *));
+    size_t j = 0;
+    for(;j < vn;++j) res->cons_node_map[i][j] = NULL;
+  }
   return (theory_t*)res;
 }
 
 /* theory of rational constraints */
-theory_t *ddd_create_rat_theory(ddd_type_t t,size_t vn)
+theory_t *ddd_create_rat_theory(size_t vn)
 {
   ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
   memset((void*)(res),sizeof(ddd_theory_t),0);
@@ -781,13 +782,15 @@ theory_t *ddd_create_rat_theory(ddd_type_t t,size_t vn)
   res->base.destroy_lincons = ddd_destroy_lincons;
   res->base.dup_lincons = ddd_dup_lincons;
   res->base.to_tdd = ddd_to_tdd;
-  res->type = t;
+  res->type = DDD_RAT;
   res->var_num = vn;
   //create maps from constraints to DD nodes -- one per variable pair
-  res->cons_node_map = (ddd_cons_node_t ***)malloc(vn * sizeof(ddd_cons_node_t **));
+  res->cons_node_map = (ddd_cons_node_t ***)
+    malloc(vn * sizeof(ddd_cons_node_t **));
   size_t i = 0;
   for(;i < vn;++i) {
-    res->cons_node_map[i] = (ddd_cons_node_t **)malloc(vn * sizeof(ddd_cons_node_t *));
+    res->cons_node_map[i] = (ddd_cons_node_t **)
+      malloc(vn * sizeof(ddd_cons_node_t *));
     size_t j = 0;
     for(;j < vn;++j) res->cons_node_map[i][j] = NULL;
   }

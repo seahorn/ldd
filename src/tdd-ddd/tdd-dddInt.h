@@ -91,7 +91,6 @@ bool ddd_cst_eq(constant_t c1,constant_t c2);
 bool ddd_cst_lt(constant_t c1,constant_t c2);
 bool ddd_cst_le(constant_t c1,constant_t c2);
 constant_t ddd_cst_add(constant_t c1,constant_t c2);
-void ddd_cst_decr_inplace(ddd_cst_t* c);
 bool ddd_is_pinf_cst(constant_t c);
 bool ddd_is_ninf_cst(constant_t c);
 void ddd_destroy_cst(constant_t c);

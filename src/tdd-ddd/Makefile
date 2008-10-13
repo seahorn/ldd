@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -I../../cudd-2.4.1/include
-AR = ar -rcs
+CFLAGS = -Wall -I../../cudd-2.4.1/include -g -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD
+AR = ar -rcs 
 OBJS = tdd-ddd.o
 LIB = libtdd-ddd.a
 
