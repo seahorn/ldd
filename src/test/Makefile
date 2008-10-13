@@ -7,9 +7,14 @@ AR = ar -rcs
 BINS = test1
 OBJS = test1.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
+TESTLIBS = $(CUDD)/cudd/libcudd.a $(CUDD)/st/libst.a \
+	   $(CUDD)/util/libutil.a $(CUDD)/mtr/libmtr.a \
+	   $(CUDD)/epd/libepd.a $(CUDD)/dddmp/libdddmp.a \
+	   ../tdd/libtdd.a ../tdd-ddd/libtdd-ddd.a
 
 all : $(BINS) 
 
+$(BINS) : $(TESTLIBS)
 
 %.d : %.c
 	$(CC) -MM $(CFLAGS) -c -o $@ $<

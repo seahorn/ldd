@@ -22,7 +22,7 @@ int main(void)
   linterm_t t1, t2, t3;
   lincons_t l1, l2, l3;
 
-  tdd_node *d1, *d2, *d3, *d4, *d5, *d6, *d7, *d8, *d9;
+  tdd_node *d1, *d2, *d3, *d4, *d5, *d6, *d7;
 
   printf ("Creating the world...\n");
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
