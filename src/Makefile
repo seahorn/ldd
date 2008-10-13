@@ -194,7 +194,7 @@ DDWDIR	= .
 IDIR	= $(DDWDIR)/include
 INCLUDE = -I$(IDIR)
 
-DIRS	= ddd tdd tdd-ddd
+DIRS	= ddd tdd tdd-ddd test
 
 #------------------------------------------------------------------------
 
