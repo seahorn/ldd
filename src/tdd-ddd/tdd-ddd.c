@@ -520,8 +520,8 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
 	  ((ddd_cst_t*) a2)->int_val);
 #endif
 
-  //if the two terms are not both of the form X-Y return false
-  if(y1->var1 != y2->var1 || y1->var2 != y2->var2) return 0;
+  //if the terms are different return false
+  if(!ddd_term_equals(x1,x2)) return 0;
 
   /*
    * We assume that all integer constraints are non-strict, i.e., of
