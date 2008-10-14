@@ -403,8 +403,8 @@ linterm_t oct_negate_term(linterm_t t)
 }
 
 /**********************************************************************
- * Returns a variable in vars that has a non-zero coefficient in
- * t. Returns <0 if no such variable exists.
+ * Returns a variable that has a non-zero coefficient in t. Returns <0
+ * if no such variable exists.
  *********************************************************************/
 int oct_pick_var (linterm_t t, bool* vars)
 {
