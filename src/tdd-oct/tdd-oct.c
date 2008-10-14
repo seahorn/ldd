@@ -1,16 +1,16 @@
 /**********************************************************************
- * The main file that provides the DDD theory.
+ * The main file that provides the OCT theory.
  *********************************************************************/
 
-#include "tdd-dddInt.h"
+#include "tdd-octInt.h"
 
 /**********************************************************************
  * create an integer constant
  *********************************************************************/
-constant_t ddd_create_int_cst(int v)
+constant_t oct_create_int_cst(int v)
 {
-  ddd_cst_t *res = (ddd_cst_t*)malloc(sizeof(ddd_cst_t));
-  res->type = DDD_INT;
+  oct_cst_t *res = (oct_cst_t*)malloc(sizeof(oct_cst_t));
+  res->type = OCT_INT;
   res->int_val = v;
   return (constant_t)res;
 }
@@ -19,10 +19,10 @@ constant_t ddd_create_int_cst(int v)
  * create a rational constant. we use the div_t datatype to store the
  * numerator and denominator.
  *********************************************************************/
-constant_t ddd_create_rat_cst(int n,int d)
+constant_t oct_create_rat_cst(int n,int d)
 {
-  ddd_cst_t *res = (ddd_cst_t*)malloc(sizeof(ddd_cst_t));
-  res->type = DDD_RAT;
+  oct_cst_t *res = (oct_cst_t*)malloc(sizeof(oct_cst_t));
+  res->type = OCT_RAT;
   res->rat_val.quot = n;
   res->rat_val.rem = d;
   return (constant_t)res;
@@ -31,10 +31,10 @@ constant_t ddd_create_rat_cst(int n,int d)
 /**********************************************************************
  * create a double constant
  *********************************************************************/
-constant_t ddd_create_double_cst(double v)
+constant_t oct_create_double_cst(double v)
 {
-  ddd_cst_t *res = (ddd_cst_t*)malloc(sizeof(ddd_cst_t));
-  res->type = DDD_DBL;
+  oct_cst_t *res = (oct_cst_t*)malloc(sizeof(oct_cst_t));
+  res->type = OCT_DBL;
   res->dbl_val = v;
   return (constant_t)res;
 }
@@ -42,16 +42,16 @@ constant_t ddd_create_double_cst(double v)
 /**********************************************************************
  * create -1*c in place
  *********************************************************************/
-void ddd_negate_cst_inplace (ddd_cst_t *c)
+void oct_negate_cst_inplace (oct_cst_t *c)
 {
   switch(c->type)
     {
-    case DDD_INT:
+    case OCT_INT:
       if(c->int_val == INT_MAX) c->int_val = INT_MIN;
       else if(c->int_val == INT_MIN) c->int_val = INT_MAX;
       else c->int_val = -(c->int_val);
       break;
-    case DDD_RAT:
+    case OCT_RAT:
       if(c->rat_val.quot == INT_MAX) {
         c->rat_val.quot = INT_MIN;
         c->rat_val.rem = 1;
@@ -60,7 +60,7 @@ void ddd_negate_cst_inplace (ddd_cst_t *c)
         c->rat_val.rem = 1;
       } else c->rat_val.quot = -(c->rat_val.quot);
       break;
-    case DDD_DBL:
+    case OCT_DBL:
       if(c->dbl_val == DBL_MAX) c->dbl_val = DBL_MIN;
       else if(c->dbl_val == DBL_MIN) c->dbl_val = DBL_MAX;
       else c->dbl_val = -(c->dbl_val);
@@ -73,10 +73,10 @@ void ddd_negate_cst_inplace (ddd_cst_t *c)
 /**********************************************************************
  * Return -1*c -- this one allocates new memory
  *********************************************************************/
-constant_t ddd_negate_cst (constant_t c)
+constant_t oct_negate_cst (constant_t c)
 {
-  ddd_cst_t *x = dup_cst((ddd_cst_t*)c);
-  ddd_negate_cst_inplace(x);
+  oct_cst_t *x = dup_cst((oct_cst_t*)c);
+  oct_negate_cst_inplace(x);
   return (constant_t)x;
 }
 
@@ -85,25 +85,25 @@ constant_t ddd_negate_cst (constant_t c)
  * Returns true if c1 and c2 are of same type and c1 = c2
  * Returns false otherwise
  *********************************************************************/
-bool ddd_cst_eq (constant_t c1,constant_t c2)
+bool oct_cst_eq (constant_t c1,constant_t c2)
 {
-  ddd_cst_t *x1 = (ddd_cst_t*)c1;
-  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+  oct_cst_t *x1 = (oct_cst_t*)c1;
+  oct_cst_t *x2 = (oct_cst_t*)c2;
 
   if(x1->type != x2->type) return 0;
 
   switch(x1->type)
     {
-    case DDD_INT:
+    case OCT_INT:
       return (x1->int_val == x2->int_val);
-    case DDD_RAT:
-      if(ddd_is_pinf_cst(c1)) return ddd_is_pinf_cst(c2);
-      if(ddd_is_ninf_cst(c1)) return ddd_is_ninf_cst(c2);
-      if(ddd_is_pinf_cst(c2)) return ddd_is_pinf_cst(c1);
-      if(ddd_is_ninf_cst(c2)) return ddd_is_ninf_cst(c1);
+    case OCT_RAT:
+      if(oct_is_pinf_cst(c1)) return oct_is_pinf_cst(c2);
+      if(oct_is_ninf_cst(c1)) return oct_is_ninf_cst(c2);
+      if(oct_is_pinf_cst(c2)) return oct_is_pinf_cst(c1);
+      if(oct_is_ninf_cst(c2)) return oct_is_ninf_cst(c1);
       return (x1->rat_val.quot * 1.0 / x1->rat_val.rem == 
               x2->rat_val.quot * 1.0 / x2->rat_val.rem);
-    case DDD_DBL:
+    case OCT_DBL:
       return (x1->dbl_val == x2->dbl_val);
     default:
       return 0;
@@ -115,25 +115,25 @@ bool ddd_cst_eq (constant_t c1,constant_t c2)
  * Returns true if c1 and c2 are of same type and c1 < c2
  * Returns false otherwise
  *********************************************************************/
-bool ddd_cst_lt (constant_t c1,constant_t c2)
+bool oct_cst_lt (constant_t c1,constant_t c2)
 {
-  ddd_cst_t *x1 = (ddd_cst_t*)c1;
-  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+  oct_cst_t *x1 = (oct_cst_t*)c1;
+  oct_cst_t *x2 = (oct_cst_t*)c2;
 
   if(x1->type != x2->type) return 0;
 
   switch(x1->type)
     {
-    case DDD_INT:
+    case OCT_INT:
       return (x1->int_val < x2->int_val);
-    case DDD_RAT:
-      if(ddd_is_pinf_cst(c1)) return 0;
-      if(ddd_is_pinf_cst(c2)) return !ddd_is_pinf_cst(c1);
-      if(ddd_is_ninf_cst(c1)) return !ddd_is_ninf_cst(c2);
-      if(ddd_is_ninf_cst(c2)) return 0;
+    case OCT_RAT:
+      if(oct_is_pinf_cst(c1)) return 0;
+      if(oct_is_pinf_cst(c2)) return !oct_is_pinf_cst(c1);
+      if(oct_is_ninf_cst(c1)) return !oct_is_ninf_cst(c2);
+      if(oct_is_ninf_cst(c2)) return 0;
       return (x1->rat_val.quot * 1.0 / x1->rat_val.rem < 
               x2->rat_val.quot * 1.0 / x2->rat_val.rem);
-    case DDD_DBL:
+    case OCT_DBL:
       return (x1->dbl_val < x2->dbl_val);
     default:
       return 0;
@@ -145,25 +145,25 @@ bool ddd_cst_lt (constant_t c1,constant_t c2)
  * Returns true if c1 and c2 are of same type and c1 <= c2
  * Returns false otherwise
  *********************************************************************/
-bool ddd_cst_le (constant_t c1,constant_t c2)
+bool oct_cst_le (constant_t c1,constant_t c2)
 {
-  ddd_cst_t *x1 = (ddd_cst_t*)c1;
-  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+  oct_cst_t *x1 = (oct_cst_t*)c1;
+  oct_cst_t *x2 = (oct_cst_t*)c2;
 
   if(x1->type != x2->type) return 0;
 
   switch(x1->type)
     {
-    case DDD_INT:
+    case OCT_INT:
       return (x1->int_val <= x2->int_val);
-    case DDD_RAT:
-      if(ddd_is_pinf_cst(c1)) return ddd_is_pinf_cst(c2);
-      if(ddd_is_pinf_cst(c2)) return 1;
-      if(ddd_is_ninf_cst(c1)) return 1;
-      if(ddd_is_ninf_cst(c2)) return ddd_is_ninf_cst(c1);
+    case OCT_RAT:
+      if(oct_is_pinf_cst(c1)) return oct_is_pinf_cst(c2);
+      if(oct_is_pinf_cst(c2)) return 1;
+      if(oct_is_ninf_cst(c1)) return 1;
+      if(oct_is_ninf_cst(c2)) return oct_is_ninf_cst(c1);
       return (x1->rat_val.quot * 1.0 / x1->rat_val.rem <= 
               x2->rat_val.quot * 1.0 / x2->rat_val.rem);
-    case DDD_DBL:
+    case OCT_DBL:
       return (x1->dbl_val <= x2->dbl_val);
     default:
       return 0;
@@ -173,23 +173,23 @@ bool ddd_cst_le (constant_t c1,constant_t c2)
 /**********************************************************************
  * Return c1 + c2. If c1 and c2 are not of same type, return NULL.
  *********************************************************************/
-constant_t ddd_cst_add(constant_t c1,constant_t c2)
+constant_t oct_cst_add(constant_t c1,constant_t c2)
 {
-  ddd_cst_t *x1 = (ddd_cst_t*)c1;
-  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+  oct_cst_t *x1 = (oct_cst_t*)c1;
+  oct_cst_t *x2 = (oct_cst_t*)c2;
 
   if(x1->type != x2->type) return NULL;
 
   switch(x1->type)
     {
-    case DDD_INT:
-      return ddd_create_int_cst(x1->int_val + x2->int_val);
-    case DDD_RAT:
-      return ddd_create_rat_cst(x1->rat_val.quot * x2->rat_val.rem + 
+    case OCT_INT:
+      return oct_create_int_cst(x1->int_val + x2->int_val);
+    case OCT_RAT:
+      return oct_create_rat_cst(x1->rat_val.quot * x2->rat_val.rem + 
                                 x2->rat_val.quot * x1->rat_val.rem,
                                 x1->rat_val.rem * x2->rat_val.rem);
-    case DDD_DBL:
-      return ddd_create_double_cst(x1->dbl_val + x2->dbl_val);
+    case OCT_DBL:
+      return oct_create_double_cst(x1->dbl_val + x2->dbl_val);
     default:
       return 0;
     }
@@ -199,16 +199,16 @@ constant_t ddd_cst_add(constant_t c1,constant_t c2)
 /**********************************************************************
  * return true if the argument is positive infinity
  *********************************************************************/
-bool ddd_is_pinf_cst(constant_t c)
+bool oct_is_pinf_cst(constant_t c)
 {
-  ddd_cst_t *x = (ddd_cst_t*)c;
+  oct_cst_t *x = (oct_cst_t*)c;
   switch(x->type)
     {
-    case DDD_INT:
+    case OCT_INT:
       return x->int_val == INT_MAX;
-    case DDD_RAT:
+    case OCT_RAT:
       return (x->rat_val.quot == INT_MAX); 
-    case DDD_DBL:
+    case OCT_DBL:
       return (x->dbl_val == DBL_MAX);
     default:
       return 0;
@@ -218,16 +218,16 @@ bool ddd_is_pinf_cst(constant_t c)
 /**********************************************************************
  * return true if the argument is negative infinity
  *********************************************************************/
-bool ddd_is_ninf_cst(constant_t c)
+bool oct_is_ninf_cst(constant_t c)
 {
-  ddd_cst_t *x = (ddd_cst_t*)c;
+  oct_cst_t *x = (oct_cst_t*)c;
   switch(x->type)
     {
-    case DDD_INT:
+    case OCT_INT:
       return x->int_val == INT_MIN;
-    case DDD_RAT:
+    case OCT_RAT:
       return (x->rat_val.quot == INT_MIN); 
-    case DDD_DBL:
+    case OCT_DBL:
       return (x->dbl_val == DBL_MIN);
     default:
       return 0;
@@ -237,9 +237,9 @@ bool ddd_is_ninf_cst(constant_t c)
 /**********************************************************************
  * destroy a constant
  *********************************************************************/
-void ddd_destroy_cst(constant_t c)
+void oct_destroy_cst(constant_t c)
 {
-  free((ddd_cst_t*)c);
+  free((oct_cst_t*)c);
 }
 
 /**********************************************************************
@@ -247,9 +247,9 @@ void ddd_destroy_cst(constant_t c)
  * coefficients. the second argument is the size of the array of
  * coefficients.
  *********************************************************************/
-linterm_t ddd_create_linterm(int* coeffs, size_t n)
+linterm_t oct_create_linterm(int* coeffs, size_t n)
 {
-  ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
+  oct_term_t *res = (oct_term_t*)malloc(sizeof(oct_term_t));
   size_t i = 0;
   for(;i < n;++i) {
     if(coeffs[i] == 1) res->var1 = i;
@@ -261,10 +261,10 @@ linterm_t ddd_create_linterm(int* coeffs, size_t n)
 /**********************************************************************
  * Returns true if t1 is the same term as t2
  *********************************************************************/
-bool ddd_term_equals(linterm_t t1, linterm_t t2)
+bool oct_term_equals(linterm_t t1, linterm_t t2)
 {
-  ddd_term_t *x1 = (ddd_term_t*)t1;
-  ddd_term_t *x2 = (ddd_term_t*)t2;
+  oct_term_t *x1 = (oct_term_t*)t1;
+  oct_term_t *x2 = (oct_term_t*)t2;
   return (x1->var1 == x2->var1 && x1->var2 == x2->var2);
 }
 
@@ -275,26 +275,26 @@ bool ddd_term_equals(linterm_t t1, linterm_t t2)
  * t is a term, var is represented as an array of booleans, and n is
  * the size of var.
  *********************************************************************/
-bool ddd_term_has_var (linterm_t t,bool *vars)
+bool oct_term_has_var (linterm_t t,bool *vars)
 {
-  ddd_term_t *x = (ddd_term_t*)t;
+  oct_term_t *x = (oct_term_t*)t;
   return vars[x->var1] || vars[x->var2];
 }
 
 /**********************************************************************
  * Returns the number of variables of the theory
  *********************************************************************/
-size_t ddd_num_of_vars(theory_t* self)
+size_t oct_num_of_vars(theory_t* self)
 {
-  return ((ddd_theory_t*)self)->var_num;
+  return ((oct_theory_t*)self)->var_num;
 }
 
 /**********************************************************************
  * Create a term given its two variables. This is a private function.
  *********************************************************************/
-linterm_t _ddd_create_linterm(int v1,int v2)
+linterm_t _oct_create_linterm(int v1,int v2)
 {
-  ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
+  oct_term_t *res = (oct_term_t*)malloc(sizeof(oct_term_t));
   res->var1 = v1;
   res->var2 = v2;
   return (linterm_t)res;
@@ -304,17 +304,17 @@ linterm_t _ddd_create_linterm(int v1,int v2)
  * Return the result of resolving t1 and t2. If the resolvant does not
  * exist, return NULL.
  *********************************************************************/
-linterm_t _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
+linterm_t _oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 {
-  ddd_term_t *x1 = (ddd_term_t*)t1;
-  ddd_term_t *x2 = (ddd_term_t*)t2;
+  oct_term_t *x1 = (oct_term_t*)t1;
+  oct_term_t *x2 = (oct_term_t*)t2;
   //X-Y and Y-Z
   if(x1->var2 == x2->var1 && x1->var2 == x) {
-    return _ddd_create_linterm(x1->var1,x2->var2);
+    return _oct_create_linterm(x1->var1,x2->var2);
   }
   //Y-Z and X-Y
   if(x1->var1 == x2->var2 && x1->var1 == x) {
-    return _ddd_create_linterm(x2->var1,x1->var2);
+    return _oct_create_linterm(x2->var1,x1->var2);
   }
   //no resolvent
   return NULL;
@@ -327,10 +327,10 @@ linterm_t _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
  * Returns <0 if t1 and -t2 have a resolvent on variable x
  * Return 0 if t1 and t2 do not resolve.
  *********************************************************************/
-int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
+int oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 {
-  ddd_term_t *x1 = (ddd_term_t*)t1;
-  ddd_term_t *x2 = (ddd_term_t*)t2;
+  oct_term_t *x1 = (oct_term_t*)t1;
+  oct_term_t *x2 = (oct_term_t*)t2;
   //X-Y and Y-Z OR Y-Z and X-Y
   if((x1->var2 == x2->var1 && x1->var2 == x) || 
      (x1->var1 == x2->var2 && x1->var1 == x)) return 1;
@@ -344,7 +344,7 @@ int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 /**********************************************************************
  * create -1*t in place -- swaps the two variables
  *********************************************************************/
-void ddd_negate_term_inplace(ddd_term_t *t)
+void oct_negate_term_inplace(oct_term_t *t)
 {
   t->var1 ^= t->var2;
   t->var2 = t->var1 ^ t->var2;
@@ -354,10 +354,10 @@ void ddd_negate_term_inplace(ddd_term_t *t)
 /**********************************************************************
  * return -1*t
  *********************************************************************/
-linterm_t ddd_negate_term(linterm_t t)
+linterm_t oct_negate_term(linterm_t t)
 {
-  ddd_term_t *x = dup_term((ddd_term_t*)t);
-  ddd_negate_term_inplace(x);
+  oct_term_t *x = dup_term((oct_term_t*)t);
+  oct_negate_term_inplace(x);
   return (linterm_t)x;
 }
 
@@ -365,9 +365,9 @@ linterm_t ddd_negate_term(linterm_t t)
  * Returns a variable in vars that has a non-zero coefficient in
  * t. Returns <0 if no such variable exists.
  *********************************************************************/
-int ddd_pick_var (linterm_t t, bool* vars)
+int oct_pick_var (linterm_t t, bool* vars)
 {
-  ddd_term_t *x = (ddd_term_t*)t;
+  oct_term_t *x = (oct_term_t*)t;
   if(vars[x->var1]) return x->var1;
   if(vars[x->var2]) return x->var2;
   return -1;
@@ -376,19 +376,19 @@ int ddd_pick_var (linterm_t t, bool* vars)
 /**********************************************************************
  * reclaim resources allocated by t
  *********************************************************************/
-void ddd_destroy_term(linterm_t t)
+void oct_destroy_term(linterm_t t)
 {
-  free((ddd_term_t*)t);
+  free((oct_term_t*)t);
 }
 
 /**********************************************************************
  * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
  *********************************************************************/
-lincons_t ddd_create_rat_cons(linterm_t t, bool s, constant_t k)
+lincons_t oct_create_rat_cons(linterm_t t, bool s, constant_t k)
 {
-  ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
-  res->term = *((ddd_term_t*)t);
-  res->cst = *((ddd_cst_t*)k);
+  oct_cons_t *res = (oct_cons_t*)malloc(sizeof(oct_cons_t));
+  res->term = *((oct_term_t*)t);
+  res->cst = *((oct_cst_t*)k);
   res->strict = s;
   return (lincons_t)res;
 }
@@ -396,15 +396,15 @@ lincons_t ddd_create_rat_cons(linterm_t t, bool s, constant_t k)
 /**********************************************************************
  * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
  *********************************************************************/
-lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
+lincons_t oct_create_int_cons(linterm_t t, bool s, constant_t k)
 {
-  ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
-  res->term = *((ddd_term_t*)t);
+  oct_cons_t *res = (oct_cons_t*)malloc(sizeof(oct_cons_t));
+  res->term = *((oct_term_t*)t);
 
-  res->cst = *((ddd_cst_t*)k);
+  res->cst = *((oct_cst_t*)k);
 
   /* convert '<' inequalities to '<=' */
-  if (s && !ddd_is_pinf_cst(&(res->cst)) && !ddd_is_ninf_cst(&(res->cst)))
+  if (s && !oct_is_pinf_cst(&(res->cst)) && !oct_is_ninf_cst(&(res->cst)))
     res->cst.int_val--;
 
   /* all integer constraints are non-strict */
@@ -417,18 +417,18 @@ lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
 /**********************************************************************
  * Returns true if l is a strict constraint
  *********************************************************************/
-bool ddd_is_strict(lincons_t l)
+bool oct_is_strict(lincons_t l)
 {
-  ddd_cons_t *x = (ddd_cons_t*)l;
+  oct_cons_t *x = (oct_cons_t*)l;
   return x->strict;
 }
 
 /**********************************************************************
  * duplicate a term. this is a private function.
  *********************************************************************/
-ddd_term_t *dup_term(ddd_term_t *arg)
+oct_term_t *dup_term(oct_term_t *arg)
 {
-  ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
+  oct_term_t *res = (oct_term_t*)malloc(sizeof(oct_term_t));
   *res = *arg;
   return res;
 }
@@ -437,18 +437,18 @@ ddd_term_t *dup_term(ddd_term_t *arg)
  * get the term corresponding to the argument constraint -- the
  * returned value should NEVER be freed by the user.
  *********************************************************************/
-linterm_t ddd_get_term(lincons_t l)
+linterm_t oct_get_term(lincons_t l)
 {
-  ddd_cons_t *x = (ddd_cons_t*)l;  
+  oct_cons_t *x = (oct_cons_t*)l;  
   return (linterm_t)(&(x->term));
 }
 
 /**********************************************************************
  * duplicate a constant. this is a private function.
  *********************************************************************/
-ddd_cst_t *dup_cst(ddd_cst_t *arg)
+oct_cst_t *dup_cst(oct_cst_t *arg)
 {
-  ddd_cst_t *res = (ddd_cst_t*)malloc(sizeof(ddd_cst_t));
+  oct_cst_t *res = (oct_cst_t*)malloc(sizeof(oct_cst_t));
   *res = *arg;
   return res;
 }
@@ -457,32 +457,32 @@ ddd_cst_t *dup_cst(ddd_cst_t *arg)
  * get the constant corresponding to the argument constraint -- the
  * returned value should NEVER be freed by the user.
  *********************************************************************/
-constant_t ddd_get_constant(lincons_t l)
+constant_t oct_get_constant(lincons_t l)
 {
-  ddd_cons_t *x = (ddd_cons_t*)l;  
+  oct_cons_t *x = (oct_cons_t*)l;  
   return (constant_t)(&(x->cst));
 }
 
 /**********************************************************************
  * Complements a linear constraint
  *********************************************************************/
-lincons_t ddd_negate_int_cons(lincons_t l)
+lincons_t oct_negate_int_cons(lincons_t l)
 {
-  ddd_term_t t = *((ddd_term_t*)ddd_get_term(l));
-  ddd_negate_term_inplace(&t);
-  ddd_cst_t c = *((ddd_cst_t*)ddd_get_constant(l));
-  ddd_negate_cst_inplace(&c);
-  lincons_t res = ddd_create_int_cons(&t,!ddd_is_strict(l),&c);
+  oct_term_t t = *((oct_term_t*)oct_get_term(l));
+  oct_negate_term_inplace(&t);
+  oct_cst_t c = *((oct_cst_t*)oct_get_constant(l));
+  oct_negate_cst_inplace(&c);
+  lincons_t res = oct_create_int_cons(&t,!oct_is_strict(l),&c);
   return res;
 }
 
-lincons_t ddd_negate_rat_cons(lincons_t l)
+lincons_t oct_negate_rat_cons(lincons_t l)
 {
-  ddd_term_t t = *((ddd_term_t*)ddd_get_term(l));
-  ddd_negate_term_inplace(&t);
-  ddd_cst_t c = *((ddd_cst_t*)ddd_get_constant(l));
-  ddd_negate_cst_inplace(&c);
-  lincons_t res = ddd_create_rat_cons(&t,!ddd_is_strict(l),&c);
+  oct_term_t t = *((oct_term_t*)oct_get_term(l));
+  oct_negate_term_inplace(&t);
+  oct_cst_t c = *((oct_cst_t*)oct_get_constant(l));
+  oct_negate_cst_inplace(&c);
+  lincons_t res = oct_create_rat_cons(&t,!oct_is_strict(l),&c);
   return res;
 }
 
@@ -491,10 +491,10 @@ lincons_t ddd_negate_rat_cons(lincons_t l)
  * Returns true if l is a negative constraint (i.e., the smallest
  * non-zero dimension has a negative coefficient.)
  *********************************************************************/
-bool ddd_is_negative_cons(lincons_t l)
+bool oct_is_negative_cons(lincons_t l)
 {
-  linterm_t x = ddd_get_term(l);
-  ddd_term_t *y = (ddd_term_t*)x;
+  linterm_t x = oct_get_term(l);
+  oct_term_t *y = (oct_term_t*)x;
   bool res = (y->var2 < y->var1);
   return res;
 }
@@ -502,22 +502,22 @@ bool ddd_is_negative_cons(lincons_t l)
 /**********************************************************************
  * If is_stronger_cons(l1, l2) then l1 implies l2
  *********************************************************************/
-bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
+bool oct_is_stronger_cons(lincons_t l1, lincons_t l2)
 {
   //get the terms and constants
-  linterm_t x1 = ddd_get_term(l1);
-  linterm_t x2 = ddd_get_term(l2);
-  ddd_term_t *y1 = (ddd_term_t*)x1;
-  ddd_term_t *y2 = (ddd_term_t*)x2;
-  constant_t a1 = ddd_get_constant(l1);
-  constant_t a2 = ddd_get_constant(l2);
+  linterm_t x1 = oct_get_term(l1);
+  linterm_t x2 = oct_get_term(l2);
+  oct_term_t *y1 = (oct_term_t*)x1;
+  oct_term_t *y2 = (oct_term_t*)x2;
+  constant_t a1 = oct_get_constant(l1);
+  constant_t a2 = oct_get_constant(l2);
 
 
   printf ("is_stronger_cons ( x%d - x%d %s %d with x%d - x%d %s %d )\n",
-	  y1->var1, y1->var2, (ddd_is_strict (l1) ? "<" : "<="), 
-	  ((ddd_cst_t*) a1)->int_val, 
-	  y2->var1, y2->var2, (ddd_is_strict (l2) ? "<" : "<="), 
-	  ((ddd_cst_t*) a2)->int_val);
+	  y1->var1, y1->var2, (oct_is_strict (l1) ? "<" : "<="), 
+	  ((oct_cst_t*) a1)->int_val, 
+	  y2->var1, y2->var2, (oct_is_strict (l2) ? "<" : "<="), 
+	  ((oct_cst_t*) a2)->int_val);
 
 
   //if the two terms are not both of the form X-Y return false
@@ -528,9 +528,9 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
    * the form t1 <= c.
    */
 
-  if (!ddd_is_strict (l1) && ddd_is_strict (l2))
-    return ddd_cst_lt(a1, a2);
-  return ddd_cst_le (a1, a2);  
+  if (!oct_is_strict (l1) && oct_is_strict (l2))
+    return oct_cst_lt(a1, a2);
+  return oct_cst_le (a1, a2);  
 }
 
 
@@ -538,98 +538,98 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
  * Computes the resolvent of l1 and l2 on x. Returns NULL if there is
  * no resolvent.
  *********************************************************************/
-lincons_t ddd_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
+lincons_t oct_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
 {
   //get the constants
-  constant_t c1 = ddd_get_constant(l1);
-  constant_t c2 = ddd_get_constant(l2);
+  constant_t c1 = oct_get_constant(l1);
+  constant_t c2 = oct_get_constant(l2);
 
   //if any of the constants is infinity, there is no resolvant
-  if(ddd_is_pinf_cst(c1) || ddd_is_ninf_cst(c1) ||
-     ddd_is_pinf_cst(c2) || ddd_is_ninf_cst(c2)) return NULL;
+  if(oct_is_pinf_cst(c1) || oct_is_ninf_cst(c1) ||
+     oct_is_pinf_cst(c2) || oct_is_ninf_cst(c2)) return NULL;
 
   //get the terms
-  linterm_t t1 = ddd_get_term(l1);
-  linterm_t t2 = ddd_get_term(l2);
+  linterm_t t1 = oct_get_term(l1);
+  linterm_t t2 = oct_get_term(l2);
 
   //if there is no resolvent between t1 and t2
-  linterm_t t3 = _ddd_terms_have_resolvent(t1,t2,x);
+  linterm_t t3 = _oct_terms_have_resolvent(t1,t2,x);
   if(!t3) return NULL; 
 
   /*  X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2 */
-  constant_t c3 = ddd_cst_add(c1,c2);
-  lincons_t res = ddd_create_int_cons(t3,0,c3);
-  ddd_destroy_term(t3);
-  ddd_destroy_cst(c3);      
+  constant_t c3 = oct_cst_add(c1,c2);
+  lincons_t res = oct_create_int_cons(t3,0,c3);
+  oct_destroy_term(t3);
+  oct_destroy_cst(c3);      
   return res;
 }
 
-lincons_t ddd_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
+lincons_t oct_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
 {
   //get the constants
-  constant_t c1 = ddd_get_constant(l1);
-  constant_t c2 = ddd_get_constant(l2);
+  constant_t c1 = oct_get_constant(l1);
+  constant_t c2 = oct_get_constant(l2);
 
   //if any of the constants is infinity, there is no resolvant
-  if(ddd_is_pinf_cst(c1) || ddd_is_ninf_cst(c1) ||
-     ddd_is_pinf_cst(c2) || ddd_is_ninf_cst(c2)) return NULL;
+  if(oct_is_pinf_cst(c1) || oct_is_ninf_cst(c1) ||
+     oct_is_pinf_cst(c2) || oct_is_ninf_cst(c2)) return NULL;
 
   //get the terms
-  linterm_t t1 = ddd_get_term(l1);
-  linterm_t t2 = ddd_get_term(l2);
+  linterm_t t1 = oct_get_term(l1);
+  linterm_t t2 = oct_get_term(l2);
 
   //if there is no resolvent between t1 and t2
-  linterm_t t3 = _ddd_terms_have_resolvent(t1,t2,x);
+  linterm_t t3 = _oct_terms_have_resolvent(t1,t2,x);
   if(!t3) return NULL;
 
   //X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2
-  if(!ddd_is_strict(l1) && !ddd_is_strict(l2)) {
-    constant_t c3 = ddd_cst_add(c1,c2);
-    lincons_t res = ddd_create_rat_cons(t3,0,c3);
-    ddd_destroy_term(t3);
-    ddd_destroy_cst(c3);
+  if(!oct_is_strict(l1) && !oct_is_strict(l2)) {
+    constant_t c3 = oct_cst_add(c1,c2);
+    lincons_t res = oct_create_rat_cons(t3,0,c3);
+    oct_destroy_term(t3);
+    oct_destroy_cst(c3);
     return res;
   }
 
   //for all other cases, X-Z < C1+C2
-  constant_t c3 = ddd_cst_add(c1,c2);
-  lincons_t res = ddd_create_rat_cons(t3,1,c3);
-  ddd_destroy_term(t3);
-  ddd_destroy_cst(c3);
+  constant_t c3 = oct_cst_add(c1,c2);
+  lincons_t res = oct_create_rat_cons(t3,1,c3);
+  oct_destroy_term(t3);
+  oct_destroy_cst(c3);
   return res;
 }
   
 /**********************************************************************
  * destroy a linear constraint
  *********************************************************************/
-void ddd_destroy_lincons(lincons_t l)
+void oct_destroy_lincons(lincons_t l)
 {
-  free((ddd_cons_t*)l);
+  free((oct_cons_t*)l);
 }
   
 /**********************************************************************
  * copy a linear constraint
  *********************************************************************/
-lincons_t ddd_dup_lincons(lincons_t l)
+lincons_t oct_dup_lincons(lincons_t l)
 {
-  ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
-  *res = *((ddd_cons_t*)l);
+  oct_cons_t *res = (oct_cons_t*)malloc(sizeof(oct_cons_t));
+  *res = *((oct_cons_t*)l);
   return (lincons_t)res;
 }
 
 /**********************************************************************
- * recursively go through a list of ddd_cons_node_t and return the
+ * recursively go through a list of oct_cons_node_t and return the
  * tdd_node* for an element whose cons matches with c. if no such node
  * exists, create one at the right spot.
  *********************************************************************/
-tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
-                       ddd_cons_node_t *prev,ddd_cons_t *c)
+tdd_node *oct_get_node(tdd_manager* m,oct_cons_node_t *curr,
+                       oct_cons_node_t *prev,oct_cons_t *c)
 {
   //if at the end of the list -- create a fresh tdd_node and insert it
   //at the end of the list
   if(curr == NULL) {
-    ddd_cons_node_t *cn = 
-      (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
+    oct_cons_node_t *cn = 
+      (oct_cons_node_t*)malloc(sizeof(oct_cons_node_t));
     cn->cons = *c;
     cn->node = tdd_new_var(m,(lincons_t)c);
     //if not at the start of the list
@@ -639,7 +639,7 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     }
     //if at the start of the list
     else {
-      ddd_theory_t *theory = (ddd_theory_t*)m->theory;
+      oct_theory_t *theory = (oct_theory_t*)m->theory;
       cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
       theory->cons_node_map[c->term.var1][c->term.var2] = cn;
     }
@@ -647,15 +647,15 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
   }
 
   //if i found a matching element, return it
-  if(ddd_term_equals(&(curr->cons.term),&(c->term)) &&
-     ((ddd_is_strict(&(curr->cons)) && ddd_is_strict(c)) ||
-      (!ddd_is_strict(&(curr->cons)) && !ddd_is_strict(c))) &&
-     ddd_cst_eq(&(curr->cons.cst),&(c->cst))) return curr->node;
+  if(oct_term_equals(&(curr->cons.term),&(c->term)) &&
+     ((oct_is_strict(&(curr->cons)) && oct_is_strict(c)) ||
+      (!oct_is_strict(&(curr->cons)) && !oct_is_strict(c))) &&
+     oct_cst_eq(&(curr->cons.cst),&(c->cst))) return curr->node;
 
   //if the c implies curr, then add c just before curr
   if(m->theory->is_stronger_cons(c,&(curr->cons))) {
-    ddd_cons_node_t *cn = 
-      (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
+    oct_cons_node_t *cn = 
+      (oct_cons_node_t*)malloc(sizeof(oct_cons_node_t));
     cn->cons = *c;
     cn->node = tdd_new_var_before(m,curr->node,(lincons_t)c);
     //if not at the start of the list
@@ -665,7 +665,7 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     }
     //if at the start of the list
     else {
-      ddd_theory_t *theory = (ddd_theory_t*)m->theory;
+      oct_theory_t *theory = (oct_theory_t*)m->theory;
       cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
       theory->cons_node_map[c->term.var1][c->term.var2] = cn;
     }
@@ -673,31 +673,31 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
   }
 
   //try recursively with the next element
-  return ddd_get_node(m,curr->next,curr,c);
+  return oct_get_node(m,curr->next,curr,c);
 }
 
 /**********************************************************************
  * return a TDD node corresponding to l
  *********************************************************************/
-tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
+tdd_node* oct_to_tdd(tdd_manager* m, lincons_t l)
 {
-  ddd_theory_t *theory = (ddd_theory_t*)m->theory;
+  oct_theory_t *theory = (oct_theory_t*)m->theory;
 
   //negate the constraint if necessary
   bool neg = theory->base.is_negative_cons(l);
   if(neg) l = theory->base.negate_cons (l);
 
   //convert to right type
-  ddd_cons_t *c = (ddd_cons_t*)l;
+  oct_cons_t *c = (oct_cons_t*)l;
 
   //find the right node. create one if necessary.
   tdd_node *res = 
-    ddd_get_node(m,theory->cons_node_map[c->term.var1][c->term.var2],NULL,c);
+    oct_get_node(m,theory->cons_node_map[c->term.var1][c->term.var2],NULL,c);
 
   //cleanup
   if(neg) {
     res = tdd_not(res);
-    ddd_destroy_lincons(l);
+    oct_destroy_lincons(l);
   }
   
   //all done
@@ -705,46 +705,46 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
 }
 
 /**********************************************************************
- * create a DDD theory - the argument is the number of variables
+ * create a OCT theory - the argument is the number of variables
  *********************************************************************/
 /* theory of integer constraints */
-theory_t *ddd_create_int_theory(size_t vn)
+theory_t *oct_create_int_theory(size_t vn)
 {
-  ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
-  memset((void*)(res),sizeof(ddd_theory_t),0);
-  res->base.create_int_cst = ddd_create_int_cst;
-  res->base.create_rat_cst = ddd_create_rat_cst;
-  res->base.create_double_cst = ddd_create_double_cst;
-  res->base.negate_cst = ddd_negate_cst;
-  res->base.is_pinf_cst = ddd_is_pinf_cst;
-  res->base.is_ninf_cst = ddd_is_ninf_cst;
-  res->base.destroy_cst = ddd_destroy_cst;
-  res->base.create_linterm = ddd_create_linterm;
-  res->base.term_equals = ddd_term_equals;
-  res->base.term_has_var = ddd_term_has_var;
-  res->base.num_of_vars = ddd_num_of_vars;
-  res->base.terms_have_resolvent = ddd_terms_have_resolvent;
-  res->base.negate_term = ddd_negate_term;
-  res->base.pick_var = ddd_pick_var;
-  res->base.destroy_term = ddd_destroy_term;
-  res->base.create_cons = ddd_create_int_cons;
-  res->base.is_strict = ddd_is_strict;
-  res->base.get_term = ddd_get_term;
-  res->base.get_constant = ddd_get_constant;
-  res->base.negate_cons = ddd_negate_int_cons;
-  res->base.is_negative_cons = ddd_is_negative_cons;
-  res->base.is_stronger_cons = ddd_is_stronger_cons;
-  res->base.resolve_cons = ddd_resolve_int_cons;
-  res->base.destroy_lincons = ddd_destroy_lincons;
-  res->base.dup_lincons = ddd_dup_lincons;
-  res->base.to_tdd = ddd_to_tdd;
-  res->type = DDD_INT;
+  oct_theory_t *res = (oct_theory_t*)malloc(sizeof(oct_theory_t));
+  memset((void*)(res),sizeof(oct_theory_t),0);
+  res->base.create_int_cst = oct_create_int_cst;
+  res->base.create_rat_cst = oct_create_rat_cst;
+  res->base.create_double_cst = oct_create_double_cst;
+  res->base.negate_cst = oct_negate_cst;
+  res->base.is_pinf_cst = oct_is_pinf_cst;
+  res->base.is_ninf_cst = oct_is_ninf_cst;
+  res->base.destroy_cst = oct_destroy_cst;
+  res->base.create_linterm = oct_create_linterm;
+  res->base.term_equals = oct_term_equals;
+  res->base.term_has_var = oct_term_has_var;
+  res->base.num_of_vars = oct_num_of_vars;
+  res->base.terms_have_resolvent = oct_terms_have_resolvent;
+  res->base.negate_term = oct_negate_term;
+  res->base.pick_var = oct_pick_var;
+  res->base.destroy_term = oct_destroy_term;
+  res->base.create_cons = oct_create_int_cons;
+  res->base.is_strict = oct_is_strict;
+  res->base.get_term = oct_get_term;
+  res->base.get_constant = oct_get_constant;
+  res->base.negate_cons = oct_negate_int_cons;
+  res->base.is_negative_cons = oct_is_negative_cons;
+  res->base.is_stronger_cons = oct_is_stronger_cons;
+  res->base.resolve_cons = oct_resolve_int_cons;
+  res->base.destroy_lincons = oct_destroy_lincons;
+  res->base.dup_lincons = oct_dup_lincons;
+  res->base.to_tdd = oct_to_tdd;
+  res->type = OCT_INT;
   res->var_num = vn;
   //create maps from constraints to DD nodes -- one per variable pair
-  res->cons_node_map = (ddd_cons_node_t ***)malloc(vn * sizeof(ddd_cons_node_t **));
+  res->cons_node_map = (oct_cons_node_t ***)malloc(vn * sizeof(oct_cons_node_t **));
   size_t i = 0;
   for(;i < vn;++i) {
-    res->cons_node_map[i] = (ddd_cons_node_t **)malloc(vn * sizeof(ddd_cons_node_t *));
+    res->cons_node_map[i] = (oct_cons_node_t **)malloc(vn * sizeof(oct_cons_node_t *));
     size_t j = 0;
     for(;j < vn;++j) res->cons_node_map[i][j] = NULL;
   }
@@ -752,45 +752,45 @@ theory_t *ddd_create_int_theory(size_t vn)
 }
 
 /* theory of rational constraints */
-theory_t *ddd_create_rat_theory(size_t vn)
+theory_t *oct_create_rat_theory(size_t vn)
 {
-  ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
-  memset((void*)(res),sizeof(ddd_theory_t),0);
-  res->base.create_int_cst = ddd_create_int_cst;
-  res->base.create_rat_cst = ddd_create_rat_cst;
-  res->base.create_double_cst = ddd_create_double_cst;
-  res->base.negate_cst = ddd_negate_cst;
-  res->base.is_pinf_cst = ddd_is_pinf_cst;
-  res->base.is_ninf_cst = ddd_is_ninf_cst;
-  res->base.destroy_cst = ddd_destroy_cst;
-  res->base.create_linterm = ddd_create_linterm;
-  res->base.term_equals = ddd_term_equals;
-  res->base.term_has_var = ddd_term_has_var;
-  res->base.num_of_vars = ddd_num_of_vars;
-  res->base.terms_have_resolvent = ddd_terms_have_resolvent;
-  res->base.negate_term = ddd_negate_term;
-  res->base.pick_var = ddd_pick_var;
-  res->base.destroy_term = ddd_destroy_term;
-  res->base.create_cons = ddd_create_rat_cons;
-  res->base.is_strict = ddd_is_strict;
-  res->base.get_term = ddd_get_term;
-  res->base.get_constant = ddd_get_constant;
-  res->base.negate_cons = ddd_negate_rat_cons;
-  res->base.is_negative_cons = ddd_is_negative_cons;
-  res->base.is_stronger_cons = ddd_is_stronger_cons;
-  res->base.resolve_cons = ddd_resolve_rat_cons;
-  res->base.destroy_lincons = ddd_destroy_lincons;
-  res->base.dup_lincons = ddd_dup_lincons;
-  res->base.to_tdd = ddd_to_tdd;
-  res->type = DDD_RAT;
+  oct_theory_t *res = (oct_theory_t*)malloc(sizeof(oct_theory_t));
+  memset((void*)(res),sizeof(oct_theory_t),0);
+  res->base.create_int_cst = oct_create_int_cst;
+  res->base.create_rat_cst = oct_create_rat_cst;
+  res->base.create_double_cst = oct_create_double_cst;
+  res->base.negate_cst = oct_negate_cst;
+  res->base.is_pinf_cst = oct_is_pinf_cst;
+  res->base.is_ninf_cst = oct_is_ninf_cst;
+  res->base.destroy_cst = oct_destroy_cst;
+  res->base.create_linterm = oct_create_linterm;
+  res->base.term_equals = oct_term_equals;
+  res->base.term_has_var = oct_term_has_var;
+  res->base.num_of_vars = oct_num_of_vars;
+  res->base.terms_have_resolvent = oct_terms_have_resolvent;
+  res->base.negate_term = oct_negate_term;
+  res->base.pick_var = oct_pick_var;
+  res->base.destroy_term = oct_destroy_term;
+  res->base.create_cons = oct_create_rat_cons;
+  res->base.is_strict = oct_is_strict;
+  res->base.get_term = oct_get_term;
+  res->base.get_constant = oct_get_constant;
+  res->base.negate_cons = oct_negate_rat_cons;
+  res->base.is_negative_cons = oct_is_negative_cons;
+  res->base.is_stronger_cons = oct_is_stronger_cons;
+  res->base.resolve_cons = oct_resolve_rat_cons;
+  res->base.destroy_lincons = oct_destroy_lincons;
+  res->base.dup_lincons = oct_dup_lincons;
+  res->base.to_tdd = oct_to_tdd;
+  res->type = OCT_RAT;
   res->var_num = vn;
   //create maps from constraints to DD nodes -- one per variable pair
-  res->cons_node_map = (ddd_cons_node_t ***)
-    malloc(vn * sizeof(ddd_cons_node_t **));
+  res->cons_node_map = (oct_cons_node_t ***)
+    malloc(vn * sizeof(oct_cons_node_t **));
   size_t i = 0;
   for(;i < vn;++i) {
-    res->cons_node_map[i] = (ddd_cons_node_t **)
-      malloc(vn * sizeof(ddd_cons_node_t *));
+    res->cons_node_map[i] = (oct_cons_node_t **)
+      malloc(vn * sizeof(oct_cons_node_t *));
     size_t j = 0;
     for(;j < vn;++j) res->cons_node_map[i][j] = NULL;
   }
@@ -799,20 +799,20 @@ theory_t *ddd_create_rat_theory(size_t vn)
 
 
 /**********************************************************************
- * destroy a DDD theory
+ * destroy a OCT theory
  *********************************************************************/
-void ddd_destroy_theory(theory_t *t)
+void oct_destroy_theory(theory_t *t)
 {
   //free the cons_node_map
-  ddd_cons_node_t ***cnm = ((ddd_theory_t*)t)->cons_node_map;
-  size_t vn = ((ddd_theory_t*)t)->var_num;
+  oct_cons_node_t ***cnm = ((oct_theory_t*)t)->cons_node_map;
+  size_t vn = ((oct_theory_t*)t)->var_num;
   size_t i = 0;
   for(;i < vn;++i) {
     size_t j = 0;
     for(;j < vn;++j) {
-      ddd_cons_node_t *curr = cnm[i][j];
+      oct_cons_node_t *curr = cnm[i][j];
       while(curr) {
-        ddd_cons_node_t *next = curr->next;
+        oct_cons_node_t *next = curr->next;
         free(curr);
         curr = next;
       }
@@ -822,9 +822,9 @@ void ddd_destroy_theory(theory_t *t)
   free(cnm);
 
   //free the theory
-  free((ddd_theory_t*)t);
+  free((oct_theory_t*)t);
 }
 
 /**********************************************************************
- * end of tdd-ddd.c
+ * end of tdd-oct.c
  *********************************************************************/
