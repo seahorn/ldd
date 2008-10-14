@@ -705,10 +705,10 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
 }
 
 /**********************************************************************
- * create a DDD theory - the argument is the number of variables
+ * common steps when creating any theory - argument is the number of
+ * variables
  *********************************************************************/
-/* theory of integer constraints */
-theory_t *ddd_create_int_theory(size_t vn)
+ddd_theory_t *ddd_create_theory_common(size_t vn)
 {
   ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
   memset((void*)(res),sizeof(ddd_theory_t),0);
@@ -727,18 +727,14 @@ theory_t *ddd_create_int_theory(size_t vn)
   res->base.negate_term = ddd_negate_term;
   res->base.pick_var = ddd_pick_var;
   res->base.destroy_term = ddd_destroy_term;
-  res->base.create_cons = ddd_create_int_cons;
   res->base.is_strict = ddd_is_strict;
   res->base.get_term = ddd_get_term;
   res->base.get_constant = ddd_get_constant;
-  res->base.negate_cons = ddd_negate_int_cons;
   res->base.is_negative_cons = ddd_is_negative_cons;
   res->base.is_stronger_cons = ddd_is_stronger_cons;
-  res->base.resolve_cons = ddd_resolve_int_cons;
   res->base.destroy_lincons = ddd_destroy_lincons;
   res->base.dup_lincons = ddd_dup_lincons;
   res->base.to_tdd = ddd_to_tdd;
-  res->type = DDD_INT;
   res->var_num = vn;
   //create maps from constraints to DD nodes -- one per variable pair
   res->cons_node_map = (ddd_cons_node_t ***)malloc(vn * sizeof(ddd_cons_node_t **));
@@ -748,55 +744,36 @@ theory_t *ddd_create_int_theory(size_t vn)
     size_t j = 0;
     for(;j < vn;++j) res->cons_node_map[i][j] = NULL;
   }
+  return res;
+}
+
+/**********************************************************************
+ * create a DDD theory of integers - the argument is the number of
+ * variables
+ *********************************************************************/
+theory_t *ddd_create_int_theory(size_t vn)
+{
+  ddd_theory_t *res = ddd_create_theory_common(vn);
+  res->base.create_cons = ddd_create_int_cons;
+  res->base.negate_cons = ddd_negate_int_cons;
+  res->base.resolve_cons = ddd_resolve_int_cons;
+  res->type = DDD_INT;
   return (theory_t*)res;
 }
 
-/* theory of rational constraints */
+/**********************************************************************
+ * create a DDD theory of rationals - the argument is the number of
+ * variables
+ *********************************************************************/
 theory_t *ddd_create_rat_theory(size_t vn)
 {
-  ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
-  memset((void*)(res),sizeof(ddd_theory_t),0);
-  res->base.create_int_cst = ddd_create_int_cst;
-  res->base.create_rat_cst = ddd_create_rat_cst;
-  res->base.create_double_cst = ddd_create_double_cst;
-  res->base.negate_cst = ddd_negate_cst;
-  res->base.is_pinf_cst = ddd_is_pinf_cst;
-  res->base.is_ninf_cst = ddd_is_ninf_cst;
-  res->base.destroy_cst = ddd_destroy_cst;
-  res->base.create_linterm = ddd_create_linterm;
-  res->base.term_equals = ddd_term_equals;
-  res->base.term_has_var = ddd_term_has_var;
-  res->base.num_of_vars = ddd_num_of_vars;
-  res->base.terms_have_resolvent = ddd_terms_have_resolvent;
-  res->base.negate_term = ddd_negate_term;
-  res->base.pick_var = ddd_pick_var;
-  res->base.destroy_term = ddd_destroy_term;
+  ddd_theory_t *res = ddd_create_theory_common(vn);
   res->base.create_cons = ddd_create_rat_cons;
-  res->base.is_strict = ddd_is_strict;
-  res->base.get_term = ddd_get_term;
-  res->base.get_constant = ddd_get_constant;
   res->base.negate_cons = ddd_negate_rat_cons;
-  res->base.is_negative_cons = ddd_is_negative_cons;
-  res->base.is_stronger_cons = ddd_is_stronger_cons;
   res->base.resolve_cons = ddd_resolve_rat_cons;
-  res->base.destroy_lincons = ddd_destroy_lincons;
-  res->base.dup_lincons = ddd_dup_lincons;
-  res->base.to_tdd = ddd_to_tdd;
   res->type = DDD_RAT;
-  res->var_num = vn;
-  //create maps from constraints to DD nodes -- one per variable pair
-  res->cons_node_map = (ddd_cons_node_t ***)
-    malloc(vn * sizeof(ddd_cons_node_t **));
-  size_t i = 0;
-  for(;i < vn;++i) {
-    res->cons_node_map[i] = (ddd_cons_node_t **)
-      malloc(vn * sizeof(ddd_cons_node_t *));
-    size_t j = 0;
-    for(;j < vn;++j) res->cons_node_map[i][j] = NULL;
-  }
   return (theory_t*)res;
 }
-
 
 /**********************************************************************
  * destroy a DDD theory

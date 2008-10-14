@@ -123,6 +123,7 @@ lincons_t ddd_dup_lincons(lincons_t l);
 tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
                        ddd_cons_node_t *prev,ddd_cons_t *c);
 tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l);
+ddd_theory_t *ddd_create_theory_common(size_t vn);
 
 #endif //__TDD_DDD_INT_H__
 
