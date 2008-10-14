@@ -39,9 +39,10 @@ typedef struct oct_cst
 } oct_cst_t;
 
 /**********************************************************************
- * a OCT term is of the form X-Y and consists of two variables
+ * a OCT term is of the form (+-X +-Y) and consists of two
+ * variables. they are maintained in a normalized form where X < Y.
  *********************************************************************/
-typedef struct oct_term { int var1,var2; } oct_term_t;
+typedef struct oct_term { int coeff1,var1,coeff2,var2; } oct_term_t;
   
 /**********************************************************************
  * a OCT constraint is of the form T < C or T <= C where T is a term
@@ -98,7 +99,7 @@ linterm_t oct_create_linterm(int* coeffs, size_t n);
 bool oct_term_equals(linterm_t t1, linterm_t t2);
 bool oct_term_has_var (linterm_t t,bool *vars);
 size_t oct_num_of_vars(theory_t* self);
-linterm_t _oct_create_linterm(int v1,int v2);
+linterm_t _oct_create_linterm(int cf1,int v1,int cf2,int v2);
 linterm_t _oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 int oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 void oct_negate_term_inplace(oct_term_t *t);

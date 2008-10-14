@@ -250,10 +250,18 @@ void oct_destroy_cst(constant_t c)
 linterm_t oct_create_linterm(int* coeffs, size_t n)
 {
   oct_term_t *res = (oct_term_t*)malloc(sizeof(oct_term_t));
+  memset((void*)(res),sizeof(oct_term_t),0);
   size_t i = 0;
   for(;i < n;++i) {
-    if(coeffs[i] == 1) res->var1 = i;
-    if(coeffs[i] == -1) res->var2 = i;
+    if(coeffs[i]) {
+      if(res->coeff1) {
+        res->coeff2 = coeffs[i];
+        res->var2 = i;
+      } else {
+        res->coeff1 = coeffs[i];
+        res->var1 = i;
+      }
+    }
   }
   return (linterm_t)res;
 }
@@ -265,7 +273,8 @@ bool oct_term_equals(linterm_t t1, linterm_t t2)
 {
   oct_term_t *x1 = (oct_term_t*)t1;
   oct_term_t *x2 = (oct_term_t*)t2;
-  return (x1->var1 == x2->var1 && x1->var2 == x2->var2);
+  return (x1->coeff1 == x2->coeff1 && x1->var1 == x2->var1 && 
+          x1->coeff2 == x2->coeff2 && x1->var2 == x2->var2);
 }
 
 /**********************************************************************
@@ -292,11 +301,21 @@ size_t oct_num_of_vars(theory_t* self)
 /**********************************************************************
  * Create a term given its two variables. This is a private function.
  *********************************************************************/
-linterm_t _oct_create_linterm(int v1,int v2)
+linterm_t _oct_create_linterm(int cf1,int v1,int cf2,int v2)
 {
   oct_term_t *res = (oct_term_t*)malloc(sizeof(oct_term_t));
-  res->var1 = v1;
-  res->var2 = v2;
+  //ensure canonical form, i.e., v1 < v2
+  if(v1 < v2) {
+    res->coeff1 = cf1;
+    res->var1 = v1;
+    res->coeff2 = cf2;
+    res->var2 = v2;
+  } else {
+    res->coeff1 = cf2;
+    res->var1 = v2;
+    res->coeff2 = cf1;
+    res->var2 = v1;
+  }
   return (linterm_t)res;
 }
 
@@ -308,13 +327,25 @@ linterm_t _oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 {
   oct_term_t *x1 = (oct_term_t*)t1;
   oct_term_t *x2 = (oct_term_t*)t2;
-  //X-Y and Y-Z
-  if(x1->var2 == x2->var1 && x1->var2 == x) {
-    return _oct_create_linterm(x1->var1,x2->var2);
+  //first and first variables cancel
+  if(x1->var1 == x2->var1 && x1->var1 == x && 
+     x1->coeff1 == -(x2->coeff1) && x1->var2 != x2->var2) {
+    return _oct_create_linterm(x1->coeff2,x1->var2,x2->coeff2,x2->var2);
   }
-  //Y-Z and X-Y
-  if(x1->var1 == x2->var2 && x1->var1 == x) {
-    return _oct_create_linterm(x2->var1,x1->var2);
+  //first and second variables cancel
+  if(x1->var1 == x2->var2 && x1->var1 == x && 
+     x1->coeff1 == -(x2->coeff2) && x1->var2 != x2->var1) {
+    return _oct_create_linterm(x1->coeff2,x1->var2,x2->coeff1,x2->var1);
+  }
+  //second and first variables cancel
+  if(x1->var2 == x2->var1 && x1->var2 == x && 
+     x1->coeff2 == -(x2->coeff1) && x1->var1 != x2->var2) {
+    return _oct_create_linterm(x1->coeff1,x1->var1,x2->coeff2,x2->var2);
+  }
+  //second and second variables cancel
+  if(x1->var2 == x2->var2 && x1->var2 == x && 
+     x1->coeff2 == -(x2->coeff2) && x1->var1 != x2->var1) {
+    return _oct_create_linterm(x1->coeff1,x1->var1,x2->coeff1,x2->var1);
   }
   //no resolvent
   return NULL;
@@ -331,24 +362,34 @@ int oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 {
   oct_term_t *x1 = (oct_term_t*)t1;
   oct_term_t *x2 = (oct_term_t*)t2;
-  //X-Y and Y-Z OR Y-Z and X-Y
-  if((x1->var2 == x2->var1 && x1->var2 == x) || 
-     (x1->var1 == x2->var2 && x1->var1 == x)) return 1;
-  //Y-Z and Y-X OR X-Y and Z-Y
-  if((x1->var1 == x2->var1 && x1->var1 == x) ||
-     (x1->var2 == x2->var2 && x1->var2 == x)) return -1;
-  //no resolvant
+  //first and first variables cancel
+  if(x1->var1 == x2->var1 && x1->var1 == x && x1->var2 != x2->var2) {
+    return (x1->coeff1 == -(x2->coeff1)) ? 1 : (x1->coeff1 == x2->coeff1 ? -1 : 0);
+  }
+  //first and second variables cancel
+  if(x1->var1 == x2->var2 && x1->var1 == x && x1->var2 != x2->var1) {
+    return (x1->coeff1 == -(x2->coeff2)) ? 1 : (x1->coeff1 == x2->coeff2 ? -1 : 0);
+  }
+  //second and first variables cancel
+  if(x1->var2 == x2->var1 && x1->var2 == x && x1->var1 != x2->var2) {
+    return (x1->coeff2 == -(x2->coeff1)) ? 1 : (x1->coeff2 == x2->coeff1 ? -1 : 0);
+  }
+  //second and second variables cancel
+  if(x1->var2 == x2->var2 && x1->var2 == x && x1->var1 != x2->var1) {
+    return (x1->coeff2 == -(x2->coeff2)) ? 1 : (x1->coeff2 == x2->coeff2 ? -1 : 0);
+  }
+  //no resolution
   return 0;
 }
 
 /**********************************************************************
- * create -1*t in place -- swaps the two variables
+ * create -1*t in place -- negates the two coefficients -- variables
+ * are left unchanged to preserve canonicity
  *********************************************************************/
 void oct_negate_term_inplace(oct_term_t *t)
 {
-  t->var1 ^= t->var2;
-  t->var2 = t->var1 ^ t->var2;
-  t->var1 = t->var1 ^ t->var2;
+  t->coeff1 = -(t->coeff1);
+  t->coeff2 = -(t->coeff2);
 }
 
 /**********************************************************************
