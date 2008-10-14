@@ -313,7 +313,7 @@ linterm_t _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
     return _ddd_create_linterm(x1->var1,x2->var2);
   }
   //Y-Z and X-Y
-  if(x1->var1 == x2->var2 && x1->var1 == x && x2->var1 != x1->var2) {
+  if(x1->var1 == x2->var2 && x1->var1 == x && x1->var2 != x1->var1) {
     return _ddd_create_linterm(x2->var1,x1->var2);
   }
   //no resolvent
