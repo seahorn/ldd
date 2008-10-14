@@ -123,9 +123,10 @@ lincons_t oct_dup_lincons(lincons_t l);
 tdd_node *oct_get_node(tdd_manager* m,oct_cons_node_t *curr,
                        oct_cons_node_t *prev,oct_cons_t *c);
 tdd_node* oct_to_tdd(tdd_manager* m, lincons_t l);
+oct_theory_t *oct_create_theory_common(size_t vn);
 
 #endif //__TDD_OCT_INT_H__
 
 /**********************************************************************
- * end of tdd-oct.h
+ * end of tdd-octInt.h
  *********************************************************************/

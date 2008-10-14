@@ -128,5 +128,5 @@ ddd_theory_t *ddd_create_theory_common(size_t vn);
 #endif //__TDD_DDD_INT_H__
 
 /**********************************************************************
- * end of tdd-ddd.h
+ * end of tdd-dddInt.h
  *********************************************************************/
