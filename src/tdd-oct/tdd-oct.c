@@ -548,12 +548,12 @@ bool oct_is_stronger_cons(lincons_t l1, lincons_t l2)
   //get the terms and constants
   linterm_t x1 = oct_get_term(l1);
   linterm_t x2 = oct_get_term(l2);
-  oct_term_t *y1 = (oct_term_t*)x1;
-  oct_term_t *y2 = (oct_term_t*)x2;
   constant_t a1 = oct_get_constant(l1);
   constant_t a2 = oct_get_constant(l2);
 
 #ifdef DEBUG
+  oct_term_t *y1 = (oct_term_t*)x1;
+  oct_term_t *y2 = (oct_term_t*)x2;
   printf ("is_stronger_cons ( x%d - x%d %s %d with x%d - x%d %s %d )\n",
 	  y1->var1, y1->var2, (oct_is_strict (l1) ? "<" : "<="), 
 	  ((oct_cst_t*) a1)->int_val, 
@@ -561,8 +561,8 @@ bool oct_is_stronger_cons(lincons_t l1, lincons_t l2)
 	  ((oct_cst_t*) a2)->int_val);
 #endif
 
-  //if the two terms are not both of the form X-Y return false
-  if(y1->var1 != y2->var1 || y1->var2 != y2->var2) return 0;
+  //if the terms are different return false
+  if(!oct_term_equals(x1,x2)) return 0;
 
   /*
    * We assume that all integer constraints are non-strict, i.e., of
