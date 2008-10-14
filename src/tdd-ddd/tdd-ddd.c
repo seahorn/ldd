@@ -309,11 +309,11 @@ linterm_t _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
   ddd_term_t *x1 = (ddd_term_t*)t1;
   ddd_term_t *x2 = (ddd_term_t*)t2;
   //X-Y and Y-Z
-  if(x1->var2 == x2->var1 && x1->var2 == x) {
+  if(x1->var2 == x2->var1 && x1->var2 == x && x1->var1 != x2->var2) {
     return _ddd_create_linterm(x1->var1,x2->var2);
   }
   //Y-Z and X-Y
-  if(x1->var1 == x2->var2 && x1->var1 == x) {
+  if(x1->var1 == x2->var2 && x1->var1 == x && x2->var1 != x1->var2) {
     return _ddd_create_linterm(x2->var1,x1->var2);
   }
   //no resolvent
@@ -332,11 +332,11 @@ int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
   ddd_term_t *x1 = (ddd_term_t*)t1;
   ddd_term_t *x2 = (ddd_term_t*)t2;
   //X-Y and Y-Z OR Y-Z and X-Y
-  if((x1->var2 == x2->var1 && x1->var2 == x) || 
-     (x1->var1 == x2->var2 && x1->var1 == x)) return 1;
+  if((x1->var2 == x2->var1 && x1->var2 == x && x1->var1 != x2->var2) || 
+     (x1->var1 == x2->var2 && x1->var1 == x && x1->var2 != x2->var1)) return 1;
   //Y-Z and Y-X OR X-Y and Z-Y
-  if((x1->var1 == x2->var1 && x1->var1 == x) ||
-     (x1->var2 == x2->var2 && x1->var2 == x)) return -1;
+  if((x1->var1 == x2->var1 && x1->var1 == x && x1->var2 != x2->var2) ||
+     (x1->var2 == x2->var2 && x1->var2 == x && x1->var1 != x2->var1)) return -1;
   //no resolvant
   return 0;
 }
