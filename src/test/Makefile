@@ -1,16 +1,18 @@
 CC = gcc
 CUDD = ../../cudd-2.4.1
 CFLAGS = -Wall -I$(CUDD)/include -I../include -g  -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD
-LDFLAGS = -L$(CUDD)/cudd  -L../tdd -L../tdd-ddd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp
-LDLIBS = -lcudd -ltdd-ddd -ltdd -lst -lutil -lmtr -lepd -ldddmp -lm
+LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp \
+	  -L../tdd -L../tdd-ddd -L../tdd-oct 
+LDLIBS = -lcudd -ltdd-ddd -ltdd-oct -ltdd -lst -lutil -lmtr -lepd -ldddmp -lm
 AR = ar -rcs
-BINS = test1
-OBJS = test1.o
+BINS = test1 test2
+OBJS = test1.o test2.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
 TESTLIBS = $(CUDD)/cudd/libcudd.a $(CUDD)/st/libst.a \
 	   $(CUDD)/util/libutil.a $(CUDD)/mtr/libmtr.a \
 	   $(CUDD)/epd/libepd.a $(CUDD)/dddmp/libdddmp.a \
-	   ../tdd/libtdd.a ../tdd-ddd/libtdd-ddd.a
+	   ../tdd/libtdd.a ../tdd-ddd/libtdd-ddd.a \
+	   ../tdd-oct/libtdd-oct.a
 
 all : $(BINS) 
 
