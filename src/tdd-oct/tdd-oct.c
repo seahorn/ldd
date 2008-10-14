@@ -75,7 +75,7 @@ void oct_negate_cst_inplace (oct_cst_t *c)
  *********************************************************************/
 constant_t oct_negate_cst (constant_t c)
 {
-  oct_cst_t *x = dup_cst((oct_cst_t*)c);
+  oct_cst_t *x = oct_dup_cst((oct_cst_t*)c);
   oct_negate_cst_inplace(x);
   return (constant_t)x;
 }
@@ -397,7 +397,7 @@ void oct_negate_term_inplace(oct_term_t *t)
  *********************************************************************/
 linterm_t oct_negate_term(linterm_t t)
 {
-  oct_term_t *x = dup_term((oct_term_t*)t);
+  oct_term_t *x = oct_dup_term((oct_term_t*)t);
   oct_negate_term_inplace(x);
   return (linterm_t)x;
 }
@@ -467,7 +467,7 @@ bool oct_is_strict(lincons_t l)
 /**********************************************************************
  * duplicate a term. this is a private function.
  *********************************************************************/
-oct_term_t *dup_term(oct_term_t *arg)
+oct_term_t *oct_dup_term(oct_term_t *arg)
 {
   oct_term_t *res = (oct_term_t*)malloc(sizeof(oct_term_t));
   *res = *arg;
@@ -487,7 +487,7 @@ linterm_t oct_get_term(lincons_t l)
 /**********************************************************************
  * duplicate a constant. this is a private function.
  *********************************************************************/
-oct_cst_t *dup_cst(oct_cst_t *arg)
+oct_cst_t *oct_dup_cst(oct_cst_t *arg)
 {
   oct_cst_t *res = (oct_cst_t*)malloc(sizeof(oct_cst_t));
   *res = *arg;

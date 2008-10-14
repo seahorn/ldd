@@ -75,7 +75,7 @@ void ddd_negate_cst_inplace (ddd_cst_t *c)
  *********************************************************************/
 constant_t ddd_negate_cst (constant_t c)
 {
-  ddd_cst_t *x = dup_cst((ddd_cst_t*)c);
+  ddd_cst_t *x = ddd_dup_cst((ddd_cst_t*)c);
   ddd_negate_cst_inplace(x);
   return (constant_t)x;
 }
@@ -356,7 +356,7 @@ void ddd_negate_term_inplace(ddd_term_t *t)
  *********************************************************************/
 linterm_t ddd_negate_term(linterm_t t)
 {
-  ddd_term_t *x = dup_term((ddd_term_t*)t);
+  ddd_term_t *x = ddd_dup_term((ddd_term_t*)t);
   ddd_negate_term_inplace(x);
   return (linterm_t)x;
 }
@@ -426,7 +426,7 @@ bool ddd_is_strict(lincons_t l)
 /**********************************************************************
  * duplicate a term. this is a private function.
  *********************************************************************/
-ddd_term_t *dup_term(ddd_term_t *arg)
+ddd_term_t *ddd_dup_term(ddd_term_t *arg)
 {
   ddd_term_t *res = (ddd_term_t*)malloc(sizeof(ddd_term_t));
   *res = *arg;
@@ -446,7 +446,7 @@ linterm_t ddd_get_term(lincons_t l)
 /**********************************************************************
  * duplicate a constant. this is a private function.
  *********************************************************************/
-ddd_cst_t *dup_cst(ddd_cst_t *arg)
+ddd_cst_t *ddd_dup_cst(ddd_cst_t *arg)
 {
   ddd_cst_t *res = (ddd_cst_t*)malloc(sizeof(ddd_cst_t));
   *res = *arg;
