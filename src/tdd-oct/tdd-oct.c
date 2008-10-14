@@ -250,7 +250,7 @@ void oct_destroy_cst(constant_t c)
 linterm_t oct_create_linterm(int* coeffs, size_t n)
 {
   oct_term_t *res = (oct_term_t*)malloc(sizeof(oct_term_t));
-  res->coeff1 = res->coeff2 = 0;
+  memset((void*)(res),0,sizeof(oct_term_t));
   size_t i = 0;
   for(;i < n;++i) {
     if(coeffs[i]) {
@@ -755,7 +755,7 @@ tdd_node* oct_to_tdd(tdd_manager* m, lincons_t l)
 oct_theory_t *oct_create_theory_common(size_t vn)
 {
   oct_theory_t *res = (oct_theory_t*)malloc(sizeof(oct_theory_t));
-  memset((void*)(res),sizeof(oct_theory_t),0);
+  memset((void*)(res),0,sizeof(oct_theory_t));
   res->base.create_int_cst = oct_create_int_cst;
   res->base.create_rat_cst = oct_create_rat_cst;
   res->base.create_double_cst = oct_create_double_cst;

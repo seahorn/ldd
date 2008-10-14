@@ -714,7 +714,7 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
 ddd_theory_t *ddd_create_theory_common(size_t vn)
 {
   ddd_theory_t *res = (ddd_theory_t*)malloc(sizeof(ddd_theory_t));
-  memset((void*)(res),sizeof(ddd_theory_t),0);
+  memset((void*)(res),0,sizeof(ddd_theory_t));
   res->base.create_int_cst = ddd_create_int_cst;
   res->base.create_rat_cst = ddd_create_rat_cst;
   res->base.create_double_cst = ddd_create_double_cst;
