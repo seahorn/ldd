@@ -574,10 +574,9 @@ bool oct_is_stronger_cons(lincons_t l1, lincons_t l2)
   return oct_cst_le (a1, a2);  
 }
 
-
 /**********************************************************************
- * Computes the resolvent of l1 and l2 on x. Returns NULL if there is
- * no resolvent.
+ * Computes the resolvent of constraints l1 and l2 from an integer
+ * theory on x. Returns NULL if there is no resolvent.
  *********************************************************************/
 lincons_t oct_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
 {
@@ -605,6 +604,10 @@ lincons_t oct_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
   return res;
 }
 
+/**********************************************************************
+ * Computes the resolvent of constraints l1 and l2 from a rational
+ * theory on x. Returns NULL if there is no resolvent.
+ *********************************************************************/
 lincons_t oct_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
 {
   //get the constants
