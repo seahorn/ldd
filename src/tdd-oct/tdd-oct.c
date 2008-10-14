@@ -250,7 +250,7 @@ void oct_destroy_cst(constant_t c)
 linterm_t oct_create_linterm(int* coeffs, size_t n)
 {
   oct_term_t *res = (oct_term_t*)malloc(sizeof(oct_term_t));
-  memset((void*)(res),sizeof(oct_term_t),0);
+  res->coeff1 = res->coeff2 = 0;
   size_t i = 0;
   for(;i < n;++i) {
     if(coeffs[i]) {
