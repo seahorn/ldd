@@ -507,12 +507,12 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
   //get the terms and constants
   linterm_t x1 = ddd_get_term(l1);
   linterm_t x2 = ddd_get_term(l2);
-  ddd_term_t *y1 = (ddd_term_t*)x1;
-  ddd_term_t *y2 = (ddd_term_t*)x2;
   constant_t a1 = ddd_get_constant(l1);
   constant_t a2 = ddd_get_constant(l2);
 
 #ifdef DEBUG
+  ddd_term_t *y1 = (ddd_term_t*)x1;
+  ddd_term_t *y2 = (ddd_term_t*)x2;
   printf ("is_stronger_cons ( x%d - x%d %s %d with x%d - x%d %s %d )\n",
 	  y1->var1, y1->var2, (ddd_is_strict (l1) ? "<" : "<="), 
 	  ((ddd_cst_t*) a1)->int_val, 
