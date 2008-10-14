@@ -512,13 +512,13 @@ bool ddd_is_stronger_cons(lincons_t l1, lincons_t l2)
   constant_t a1 = ddd_get_constant(l1);
   constant_t a2 = ddd_get_constant(l2);
 
-
+#ifdef DEBUG
   printf ("is_stronger_cons ( x%d - x%d %s %d with x%d - x%d %s %d )\n",
 	  y1->var1, y1->var2, (ddd_is_strict (l1) ? "<" : "<="), 
 	  ((ddd_cst_t*) a1)->int_val, 
 	  y2->var1, y2->var2, (ddd_is_strict (l2) ? "<" : "<="), 
 	  ((ddd_cst_t*) a2)->int_val);
-
+#endif
 
   //if the two terms are not both of the form X-Y return false
   if(y1->var1 != y2->var1 || y1->var2 != y2->var2) return 0;

@@ -536,7 +536,7 @@ bool oct_is_negative_cons(lincons_t l)
 {
   linterm_t x = oct_get_term(l);
   oct_term_t *y = (oct_term_t*)x;
-  bool res = (y->var2 < y->var1);
+  bool res = (y->coeff1 == -1);
   return res;
 }
 
@@ -553,13 +553,13 @@ bool oct_is_stronger_cons(lincons_t l1, lincons_t l2)
   constant_t a1 = oct_get_constant(l1);
   constant_t a2 = oct_get_constant(l2);
 
-
+#ifdef DEBUG
   printf ("is_stronger_cons ( x%d - x%d %s %d with x%d - x%d %s %d )\n",
 	  y1->var1, y1->var2, (oct_is_strict (l1) ? "<" : "<="), 
 	  ((oct_cst_t*) a1)->int_val, 
 	  y2->var1, y2->var2, (oct_is_strict (l2) ? "<" : "<="), 
 	  ((oct_cst_t*) a2)->int_val);
-
+#endif
 
   //if the two terms are not both of the form X-Y return false
   if(y1->var1 != y2->var1 || y1->var2 != y2->var2) return 0;
