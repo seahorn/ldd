@@ -23,8 +23,9 @@ constant_t tvpi_create_rat_cst(int n,int d)
 {
   tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
   res->type = TVPI_RAT;
-  res->rat_val.quot = n;
-  res->rat_val.rem = d;
+  mpq_init(res->rat_val);
+  mpq_set_si(res->rat_val,n,d);
+  mpq_canonicalize(res->rat_val);
   return (constant_t)res;
 }
 
@@ -52,13 +53,11 @@ void tvpi_negate_cst_inplace (tvpi_cst_t *c)
       else c->int_val = -(c->int_val);
       break;
     case TVPI_RAT:
-      if(c->rat_val.quot == INT_MAX) {
-        c->rat_val.quot = INT_MIN;
-        c->rat_val.rem = 1;
-      } else if(c->rat_val.quot == INT_MIN) {
-        c->rat_val.quot = INT_MAX;
-        c->rat_val.rem = 1;
-      } else c->rat_val.quot = -(c->rat_val.quot);
+      if(mpz_get_si(mpq_numref(c->rat_val)) == INT_MAX) {
+        mpz_set_si(mpq_numref(c->rat_val),INT_MIN);
+      } else if(mpz_get_si(mpq_numref(c->rat_val)) == INT_MIN) {
+        mpz_set_si(mpq_numref(c->rat_val),INT_MAX);
+      } else mpz_neg(mpq_numref(c->rat_val),mpq_numref(c->rat_val));
       break;
     case TVPI_DBL:
       if(c->dbl_val == DBL_MAX) c->dbl_val = DBL_MIN;
@@ -101,8 +100,7 @@ bool tvpi_cst_eq (constant_t c1,constant_t c2)
       if(tvpi_is_ninf_cst(c1)) return tvpi_is_ninf_cst(c2);
       if(tvpi_is_pinf_cst(c2)) return tvpi_is_pinf_cst(c1);
       if(tvpi_is_ninf_cst(c2)) return tvpi_is_ninf_cst(c1);
-      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem == 
-              x2->rat_val.quot * 1.0 / x2->rat_val.rem);
+      return mpq_equal(x1->rat_val,x2->rat_val);
     case TVPI_DBL:
       return (x1->dbl_val == x2->dbl_val);
     default:
@@ -131,8 +129,7 @@ bool tvpi_cst_lt (constant_t c1,constant_t c2)
       if(tvpi_is_pinf_cst(c2)) return !tvpi_is_pinf_cst(c1);
       if(tvpi_is_ninf_cst(c1)) return !tvpi_is_ninf_cst(c2);
       if(tvpi_is_ninf_cst(c2)) return 0;
-      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem < 
-              x2->rat_val.quot * 1.0 / x2->rat_val.rem);
+      return mpq_cmp(x1->rat_val,x2->rat_val) < 0;
     case TVPI_DBL:
       return (x1->dbl_val < x2->dbl_val);
     default:
@@ -161,8 +158,7 @@ bool tvpi_cst_le (constant_t c1,constant_t c2)
       if(tvpi_is_pinf_cst(c2)) return 1;
       if(tvpi_is_ninf_cst(c1)) return 1;
       if(tvpi_is_ninf_cst(c2)) return tvpi_is_ninf_cst(c1);
-      return (x1->rat_val.quot * 1.0 / x1->rat_val.rem <= 
-              x2->rat_val.quot * 1.0 / x2->rat_val.rem);
+      return mpq_cmp(x1->rat_val,x2->rat_val) <= 0;
     case TVPI_DBL:
       return (x1->dbl_val <= x2->dbl_val);
     default:
@@ -185,9 +181,13 @@ constant_t tvpi_cst_add(constant_t c1,constant_t c2)
     case TVPI_INT:
       return tvpi_create_int_cst(x1->int_val + x2->int_val);
     case TVPI_RAT:
-      return tvpi_create_rat_cst(x1->rat_val.quot * x2->rat_val.rem + 
-                                x2->rat_val.quot * x1->rat_val.rem,
-                                x1->rat_val.rem * x2->rat_val.rem);
+      {
+        tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
+        res->type = TVPI_RAT;
+        mpq_init(res->rat_val);
+        mpq_add(res->rat_val,x1->rat_val,x2->rat_val);
+        return (constant_t)res;
+      }
     case TVPI_DBL:
       return tvpi_create_double_cst(x1->dbl_val + x2->dbl_val);
     default:
@@ -207,7 +207,7 @@ bool tvpi_is_pinf_cst(constant_t c)
     case TVPI_INT:
       return x->int_val == INT_MAX;
     case TVPI_RAT:
-      return (x->rat_val.quot == INT_MAX); 
+      return (mpz_get_si(mpq_numref(x->rat_val)) == INT_MAX);
     case TVPI_DBL:
       return (x->dbl_val == DBL_MAX);
     default:
@@ -226,7 +226,7 @@ bool tvpi_is_ninf_cst(constant_t c)
     case TVPI_INT:
       return x->int_val == INT_MIN;
     case TVPI_RAT:
-      return (x->rat_val.quot == INT_MIN); 
+      return (mpz_get_si(mpq_numref(x->rat_val)) == INT_MIN);
     case TVPI_DBL:
       return (x->dbl_val == DBL_MIN);
     default:
@@ -239,7 +239,9 @@ bool tvpi_is_ninf_cst(constant_t c)
  *********************************************************************/
 void tvpi_destroy_cst(constant_t c)
 {
-  free((tvpi_cst_t*)c);
+  tvpi_cst_t *x = (tvpi_cst_t*)c;
+  if(x->type == TVPI_RAT) mpq_clear(x->rat_val);
+  free(x);
 }
 
 /**********************************************************************
@@ -429,7 +431,7 @@ lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
 {
   tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
   res->term = *((tvpi_term_t*)t);
-  res->cst = *((tvpi_cst_t*)k);
+  res->cst = tvpi_dup_cst((tvpi_cst_t*)k);
   res->strict = s;
   return (lincons_t)res;
 }
@@ -441,12 +443,11 @@ lincons_t tvpi_create_int_cons(linterm_t t, bool s, constant_t k)
 {
   tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
   res->term = *((tvpi_term_t*)t);
-
-  res->cst = *((tvpi_cst_t*)k);
+  res->cst = tvpi_dup_cst((tvpi_cst_t*)k);
 
   /* convert '<' inequalities to '<=' */
   if (s && !tvpi_is_pinf_cst(&(res->cst)) && !tvpi_is_ninf_cst(&(res->cst)))
-    res->cst.int_val--;
+    res->cst->int_val--;
 
   /* all integer constraints are non-strict */
   res->strict = 0;
@@ -490,7 +491,11 @@ linterm_t tvpi_get_term(lincons_t l)
 tvpi_cst_t *tvpi_dup_cst(tvpi_cst_t *arg)
 {
   tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
-  *res = *arg;
+  if(arg->type == TVPI_RAT) {
+    res->type = TVPI_RAT;
+    mpq_init(res->rat_val);
+    mpq_set(res->rat_val,arg->rat_val);
+  } else *res = *arg;
   return res;
 }
 
@@ -501,7 +506,7 @@ tvpi_cst_t *tvpi_dup_cst(tvpi_cst_t *arg)
 constant_t tvpi_get_constant(lincons_t l)
 {
   tvpi_cons_t *x = (tvpi_cons_t*)l;  
-  return (constant_t)(&(x->cst));
+  return (constant_t)(x->cst);
 }
 
 /**********************************************************************
@@ -511,9 +516,8 @@ lincons_t tvpi_negate_int_cons(lincons_t l)
 {
   tvpi_term_t t = *((tvpi_term_t*)tvpi_get_term(l));
   tvpi_negate_term_inplace(&t);
-  tvpi_cst_t c = *((tvpi_cst_t*)tvpi_get_constant(l));
-  tvpi_negate_cst_inplace(&c);
-  lincons_t res = tvpi_create_int_cons(&t,!tvpi_is_strict(l),&c);
+  lincons_t res = tvpi_create_int_cons(&t,!tvpi_is_strict(l),tvpi_get_constant(l));
+  tvpi_negate_cst_inplace(tvpi_get_constant(res));
   return res;
 }
 
@@ -521,9 +525,8 @@ lincons_t tvpi_negate_rat_cons(lincons_t l)
 {
   tvpi_term_t t = *((tvpi_term_t*)tvpi_get_term(l));
   tvpi_negate_term_inplace(&t);
-  tvpi_cst_t c = *((tvpi_cst_t*)tvpi_get_constant(l));
-  tvpi_negate_cst_inplace(&c);
-  lincons_t res = tvpi_create_rat_cons(&t,!tvpi_is_strict(l),&c);
+  lincons_t res = tvpi_create_rat_cons(&t,!tvpi_is_strict(l),tvpi_get_constant(l));
+  tvpi_negate_cst_inplace(tvpi_get_constant(res));
   return res;
 }
 
@@ -656,8 +659,11 @@ void tvpi_destroy_lincons(lincons_t l)
  *********************************************************************/
 lincons_t tvpi_dup_lincons(lincons_t l)
 {
+  tvpi_cons_t *x = (tvpi_cons_t*)l;
   tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
-  *res = *((tvpi_cons_t*)l);
+  res->term = x->term;
+  res->cst = tvpi_dup_cst(x->cst);
+  res->strict = x->strict;
   return (lincons_t)res;
 }
 

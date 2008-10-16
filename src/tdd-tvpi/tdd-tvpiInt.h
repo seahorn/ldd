@@ -13,6 +13,7 @@
 #include <float.h>
 #include <string.h>
 #include <assert.h>
+#include <gmp.h>
 #include "tdd-tvpi.h"
 #include "../tdd/tddInt.h"
 
@@ -39,7 +40,7 @@ typedef struct tvpi_cst
   union 
   {
     int int_val;
-    div_t rat_val;
+    mpq_t rat_val;
     double dbl_val;
   };
 } tvpi_cst_t;
@@ -57,7 +58,7 @@ typedef struct tvpi_term { int coeff1,var1,coeff2,var2; } tvpi_term_t;
 typedef struct tvpi_cons
 { 
   tvpi_term_t term; //the term
-  tvpi_cst_t cst; //the constant
+  tvpi_cst_t *cst; //the constant
   bool strict; //whether the inequality is strict
 } tvpi_cons_t;
 
