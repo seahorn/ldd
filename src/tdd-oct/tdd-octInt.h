@@ -21,6 +21,12 @@
  *********************************************************************/
 
 /**********************************************************************
+ * the types of OCT theories -- currently, we support integer,
+ * rational and double
+ *********************************************************************/
+typedef enum oct_type { OCT_INT, OCT_RAT, OCT_DBL } oct_type_t;
+
+/**********************************************************************
  * a generic structure used to represent integer, rational, and double
  * constants.
  *********************************************************************/

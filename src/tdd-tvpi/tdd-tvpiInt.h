@@ -21,6 +21,12 @@
  *********************************************************************/
 
 /**********************************************************************
+ * the types of TVPI theories -- currently, we support integer,
+ * rational and double
+ *********************************************************************/
+typedef enum tvpi_type { TVPI_INT, TVPI_RAT, TVPI_DBL } tvpi_type_t;
+
+/**********************************************************************
  * a generic structure used to represent integer, rational, and double
  * constants.
  *********************************************************************/

@@ -8,12 +8,6 @@
 #include "../tdd/tdd.h"
 
 /**********************************************************************
- * the types of DDD theories -- currently, we support integer,
- * rational and double
- *********************************************************************/
-typedef enum ddd_type { DDD_INT, DDD_RAT, DDD_DBL } ddd_type_t;
-
-/**********************************************************************
  * public functions -- for creating and destroying a DDD theory
  *********************************************************************/
 

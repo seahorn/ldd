@@ -8,12 +8,6 @@
 #include "../tdd/tdd.h"
 
 /**********************************************************************
- * the types of TVPI theories -- currently, we support integer,
- * rational and double
- *********************************************************************/
-typedef enum tvpi_type { TVPI_INT, TVPI_RAT, TVPI_DBL } tvpi_type_t;
-
-/**********************************************************************
  * public functions -- for creating and destroying a TVPI theory
  *********************************************************************/
 
