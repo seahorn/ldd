@@ -535,8 +535,7 @@ bool oct_is_negative_cons(lincons_t l)
 {
   linterm_t x = oct_get_term(l);
   oct_term_t *y = (oct_term_t*)x;
-  bool res = (y->coeff1 == -1);
-  return res;
+  return (y->coeff1 == -1);
 }
 
 /**********************************************************************

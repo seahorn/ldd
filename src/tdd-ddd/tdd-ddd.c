@@ -494,8 +494,7 @@ bool ddd_is_negative_cons(lincons_t l)
 {
   linterm_t x = ddd_get_term(l);
   ddd_term_t *y = (ddd_term_t*)x;
-  bool res = (y->var2 < y->var1);
-  return res;
+  return (y->var2 < y->var1);
 }
 
 /**********************************************************************
