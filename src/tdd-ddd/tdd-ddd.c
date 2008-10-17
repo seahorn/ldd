@@ -384,18 +384,6 @@ void ddd_destroy_term(linterm_t t)
 /**********************************************************************
  * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
  *********************************************************************/
-lincons_t ddd_create_rat_cons(linterm_t t, bool s, constant_t k)
-{
-  ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
-  res->term = *((ddd_term_t*)t);
-  res->cst = *((ddd_cst_t*)k);
-  res->strict = s;
-  return (lincons_t)res;
-}
-
-/**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
- *********************************************************************/
 lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
 {
   ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
@@ -413,6 +401,17 @@ lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
   return (lincons_t)res;
 }
 
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ *********************************************************************/
+lincons_t ddd_create_rat_cons(linterm_t t, bool s, constant_t k)
+{
+  ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
+  res->term = *((ddd_term_t*)t);
+  res->cst = *((ddd_cst_t*)k);
+  res->strict = s;
+  return (lincons_t)res;
+}
 
 /**********************************************************************
  * Returns true if l is a strict constraint

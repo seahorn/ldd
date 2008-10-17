@@ -425,18 +425,6 @@ void oct_destroy_term(linterm_t t)
 /**********************************************************************
  * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
  *********************************************************************/
-lincons_t oct_create_rat_cons(linterm_t t, bool s, constant_t k)
-{
-  oct_cons_t *res = (oct_cons_t*)malloc(sizeof(oct_cons_t));
-  res->term = *((oct_term_t*)t);
-  res->cst = *((oct_cst_t*)k);
-  res->strict = s;
-  return (lincons_t)res;
-}
-
-/**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
- *********************************************************************/
 lincons_t oct_create_int_cons(linterm_t t, bool s, constant_t k)
 {
   oct_cons_t *res = (oct_cons_t*)malloc(sizeof(oct_cons_t));
@@ -454,6 +442,17 @@ lincons_t oct_create_int_cons(linterm_t t, bool s, constant_t k)
   return (lincons_t)res;
 }
 
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ *********************************************************************/
+lincons_t oct_create_rat_cons(linterm_t t, bool s, constant_t k)
+{
+  oct_cons_t *res = (oct_cons_t*)malloc(sizeof(oct_cons_t));
+  res->term = *((oct_term_t*)t);
+  res->cst = *((oct_cst_t*)k);
+  res->strict = s;
+  return (lincons_t)res;
+}
 
 /**********************************************************************
  * Returns true if l is a strict constraint
