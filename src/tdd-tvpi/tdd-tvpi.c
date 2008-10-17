@@ -430,7 +430,7 @@ void tvpi_destroy_term(linterm_t t)
 lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
 {
   tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
-  res->term = *((tvpi_term_t*)t);
+  res->term = tvpi_dup_term((tvpi_term_t*)t);
   res->cst = tvpi_dup_cst((tvpi_cst_t*)k);
   res->strict = s;
   return (lincons_t)res;
@@ -442,7 +442,7 @@ lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
 lincons_t tvpi_create_int_cons(linterm_t t, bool s, constant_t k)
 {
   tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
-  res->term = *((tvpi_term_t*)t);
+  res->term = tvpi_dup_term((tvpi_term_t*)t);
   res->cst = tvpi_dup_cst((tvpi_cst_t*)k);
 
   /* convert '<' inequalities to '<=' */
@@ -482,7 +482,7 @@ tvpi_term_t *tvpi_dup_term(tvpi_term_t *arg)
 linterm_t tvpi_get_term(lincons_t l)
 {
   tvpi_cons_t *x = (tvpi_cons_t*)l;  
-  return (linterm_t)(&(x->term));
+  return (linterm_t)(x->term);
 }
 
 /**********************************************************************
@@ -514,18 +514,18 @@ constant_t tvpi_get_constant(lincons_t l)
  *********************************************************************/
 lincons_t tvpi_negate_int_cons(lincons_t l)
 {
-  tvpi_term_t t = *((tvpi_term_t*)tvpi_get_term(l));
-  tvpi_negate_term_inplace(&t);
-  lincons_t res = tvpi_create_int_cons(&t,!tvpi_is_strict(l),tvpi_get_constant(l));
+  lincons_t res = tvpi_create_int_cons(tvpi_get_term(l),!tvpi_is_strict(l),
+                                       tvpi_get_constant(l));
+  tvpi_negate_term_inplace(tvpi_get_term(res));
   tvpi_negate_cst_inplace(tvpi_get_constant(res));
   return res;
 }
 
 lincons_t tvpi_negate_rat_cons(lincons_t l)
 {
-  tvpi_term_t t = *((tvpi_term_t*)tvpi_get_term(l));
-  tvpi_negate_term_inplace(&t);
-  lincons_t res = tvpi_create_rat_cons(&t,!tvpi_is_strict(l),tvpi_get_constant(l));
+  lincons_t res = tvpi_create_rat_cons(tvpi_get_term(l),!tvpi_is_strict(l),
+                                       tvpi_get_constant(l));
+  tvpi_negate_term_inplace(tvpi_get_term(res));
   tvpi_negate_cst_inplace(tvpi_get_constant(res));
   return res;
 }
@@ -651,6 +651,8 @@ lincons_t tvpi_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
  *********************************************************************/
 void tvpi_destroy_lincons(lincons_t l)
 {
+  tvpi_destroy_term(tvpi_get_term(l));
+  tvpi_destroy_cst(tvpi_get_constant(l));
   free((tvpi_cons_t*)l);
 }
   
@@ -661,7 +663,7 @@ lincons_t tvpi_dup_lincons(lincons_t l)
 {
   tvpi_cons_t *x = (tvpi_cons_t*)l;
   tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
-  res->term = x->term;
+  res->term = tvpi_dup_term(x->term);
   res->cst = tvpi_dup_cst(x->cst);
   res->strict = x->strict;
   return (lincons_t)res;
@@ -690,8 +692,8 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
     //if at the start of the list
     else {
       tvpi_theory_t *theory = (tvpi_theory_t*)m->theory;
-      cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
-      theory->cons_node_map[c->term.var1][c->term.var2] = cn;
+      cn->next = theory->cons_node_map[c->term->var1][c->term->var2];
+      theory->cons_node_map[c->term->var1][c->term->var2] = cn;
     }
     return cn->node;
   }
@@ -716,8 +718,8 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
     //if at the start of the list
     else {
       tvpi_theory_t *theory = (tvpi_theory_t*)m->theory;
-      cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
-      theory->cons_node_map[c->term.var1][c->term.var2] = cn;
+      cn->next = theory->cons_node_map[c->term->var1][c->term->var2];
+      theory->cons_node_map[c->term->var1][c->term->var2] = cn;
     }
     return cn->node;
   }
@@ -742,7 +744,7 @@ tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l)
 
   //find the right node. create one if necessary.
   tdd_node *res = 
-    tvpi_get_node(m,theory->cons_node_map[c->term.var1][c->term.var2],NULL,c);
+    tvpi_get_node(m,theory->cons_node_map[c->term->var1][c->term->var2],NULL,c);
 
   //cleanup
   if(neg) {

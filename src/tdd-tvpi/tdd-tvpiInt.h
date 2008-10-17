@@ -49,7 +49,13 @@ typedef struct tvpi_cst
  * a TVPI term is of the form (+-X +-Y) and consists of two
  * variables. they are maintained in a normalized form where X < Y.
  *********************************************************************/
-typedef struct tvpi_term { int coeff1,var1,coeff2,var2; } tvpi_term_t;
+typedef struct tvpi_term { 
+  /* coefficients */
+  int coeff1,coeff2; 
+  //mpq_t coeff1,coeff2; 
+  /* variables */
+  int var1,var2;
+} tvpi_term_t;
   
 /**********************************************************************
  * a TVPI constraint is of the form T < C or T <= C where T is a term
@@ -57,9 +63,9 @@ typedef struct tvpi_term { int coeff1,var1,coeff2,var2; } tvpi_term_t;
  *********************************************************************/
 typedef struct tvpi_cons
 { 
-  tvpi_term_t term; //the term
-  tvpi_cst_t *cst; //the constant
-  bool strict; //whether the inequality is strict
+  tvpi_term_t *term; //the term
+  tvpi_cst_t *cst;   //the constant
+  bool strict;       //whether the inequality is strict
 } tvpi_cons_t;
 
 /**********************************************************************
