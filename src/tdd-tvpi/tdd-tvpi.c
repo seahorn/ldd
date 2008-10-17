@@ -195,6 +195,39 @@ constant_t tvpi_cst_add(constant_t c1,constant_t c2)
     }
 }
 
+/**********************************************************************
+ * add a constant by a rational
+ *********************************************************************/
+constant_t tvpi_cst_mul(constant_t c1,mpq_t c2)
+{
+  tvpi_cst_t *x1 = (tvpi_cst_t*)c1;
+
+  switch(x1->type)
+    {
+    case TVPI_INT:
+      {
+        tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
+        res->type = TVPI_RAT;
+        mpq_init(res->rat_val);
+        mpq_set_si(res->rat_val,x1->int_val,1);
+        mpq_mul(res->rat_val,res->rat_val,c2);
+        return (constant_t)res;
+      }
+      return tvpi_create_int_cst(x1->int_val);
+    case TVPI_RAT:
+      {
+        tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
+        res->type = TVPI_RAT;
+        mpq_init(res->rat_val);
+        mpq_mul(res->rat_val,x1->rat_val,c2);
+        return (constant_t)res;
+      }
+    case TVPI_DBL:
+      return tvpi_create_double_cst(x1->dbl_val + mpq_get_d(c2));
+    default:
+      return 0;
+    }
+}
 
 /**********************************************************************
  * return true if the argument is positive infinity
@@ -253,15 +286,17 @@ linterm_t tvpi_create_linterm(int* coeffs, size_t n)
 {
   tvpi_term_t *res = (tvpi_term_t*)malloc(sizeof(tvpi_term_t));
   memset((void*)(res),0,sizeof(tvpi_term_t));
+  mpq_init(res->coeffs[0]);
+  mpq_init(res->coeffs[1]);
   size_t i = 0;
   for(;i < n;++i) {
     if(coeffs[i]) {
-      if(res->coeff1) {
-        res->coeff2 = coeffs[i];
-        res->var2 = i;
+      if(mpq_sgn(res->coeffs[0])) {
+        mpq_set_si(res->coeffs[1],coeffs[i],1);
+        res->vars[1] = i;
       } else {
-        res->coeff1 = coeffs[i];
-        res->var1 = i;
+        mpq_set_si(res->coeffs[0],coeffs[i],1);
+        res->vars[0] = i;
       }
     }
   }
@@ -275,8 +310,8 @@ bool tvpi_term_equals(linterm_t t1, linterm_t t2)
 {
   tvpi_term_t *x1 = (tvpi_term_t*)t1;
   tvpi_term_t *x2 = (tvpi_term_t*)t2;
-  return (x1->coeff1 == x2->coeff1 && x1->var1 == x2->var1 && 
-          x1->coeff2 == x2->coeff2 && x1->var2 == x2->var2);
+  return (mpq_equal(x1->coeffs[0],x2->coeffs[0]) && x1->vars[0] == x2->vars[0] && 
+          mpq_equal(x1->coeffs[1],x2->coeffs[1]) && x1->vars[1] == x2->vars[1]);
 }
 
 /**********************************************************************
@@ -289,7 +324,7 @@ bool tvpi_term_equals(linterm_t t1, linterm_t t2)
 bool tvpi_term_has_var (linterm_t t,bool *vars)
 {
   tvpi_term_t *x = (tvpi_term_t*)t;
-  return vars[x->var1] || vars[x->var2];
+  return vars[x->vars[0]] || vars[x->vars[1]];
 }
 
 /**********************************************************************
@@ -301,22 +336,28 @@ size_t tvpi_num_of_vars(theory_t* self)
 }
 
 /**********************************************************************
- * Create a term given its two variables. This is a private function.
+ * Create a term given its two variables and their coefficients. Each
+ * coefficient is provided as a pair of rational numbers X and Y. The
+ * actual coefficient is obtained by multiplying X and Y. This is a
+ * private function.
  *********************************************************************/
-linterm_t _tvpi_create_linterm(int cf1,int v1,int cf2,int v2)
+linterm_t _tvpi_create_linterm(mpq_t cf11,mpq_t cf12,int v1,
+                               mpq_t cf21,mpq_t cf22,int v2)
 {
   tvpi_term_t *res = (tvpi_term_t*)malloc(sizeof(tvpi_term_t));
+  mpq_init(res->coeffs[0]);
+  mpq_init(res->coeffs[1]);
   //ensure canonical form, i.e., v1 < v2
   if(v1 < v2) {
-    res->coeff1 = cf1;
-    res->var1 = v1;
-    res->coeff2 = cf2;
-    res->var2 = v2;
+    mpq_mul(res->coeffs[0],cf11,cf12);
+    res->vars[0] = v1;
+    mpq_mul(res->coeffs[1],cf21,cf22);
+    res->vars[1] = v2;
   } else {
-    res->coeff1 = cf2;
-    res->var1 = v2;
-    res->coeff2 = cf1;
-    res->var2 = v1;
+    mpq_mul(res->coeffs[0],cf21,cf22);
+    res->vars[0] = v2;
+    mpq_mul(res->coeffs[1],cf11,cf12);
+    res->vars[1] = v1;
   }
   return (linterm_t)res;
 }
@@ -325,35 +366,45 @@ linterm_t _tvpi_create_linterm(int cf1,int v1,int cf2,int v2)
  * Return the result of resolving t1 and t2. If the resolvant does not
  * exist, return NULL.
  *********************************************************************/
-linterm_t _tvpi_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
+tvpi_resolve_t _tvpi_terms_have_resolvent(tvpi_term_t *x1,tvpi_term_t *x2, int x)
 {
-  tvpi_term_t *x1 = (tvpi_term_t*)t1;
-  tvpi_term_t *x2 = (tvpi_term_t*)t2;
+  tvpi_resolve_t res;
+  res.term = NULL; 
   //first and first variables cancel
-  if(x1->var1 == x2->var1 && x1->var1 == x && 
-     x1->coeff1 == -(x2->coeff1) && x1->var2 != x2->var2) {
-    return _tvpi_create_linterm(x1->coeff2,x1->var2,x2->coeff2,x2->var2);
+  if(x1->vars[0] == x2->vars[0] && x1->vars[0] == x && 
+     mpq_sgn(x1->coeffs[0]) == -(mpq_sgn(x2->coeffs[0])) && x1->vars[1] != x2->vars[1]) {
+    res.term = _tvpi_create_linterm(x1->coeffs[1],x2->coeffs[0],x1->vars[1],
+                                    x2->coeffs[1],x1->coeffs[0],x2->vars[1]);
+    res.cst1 = 0;
+    res.cst2 = 0;
   }
   //first and second variables cancel
-  if(x1->var1 == x2->var2 && x1->var1 == x && 
-     x1->coeff1 == -(x2->coeff2) && x1->var2 != x2->var1) {
-    return _tvpi_create_linterm(x1->coeff2,x1->var2,x2->coeff1,x2->var1);
+  if(x1->vars[0] == x2->vars[1] && x1->vars[0] == x && 
+     mpq_sgn(x1->coeffs[0]) == -(mpq_sgn(x2->coeffs[1])) && x1->vars[1] != x2->vars[0]) {
+    res.term = _tvpi_create_linterm(x1->coeffs[1],x2->coeffs[1],x1->vars[1],
+                                    x2->coeffs[0],x1->coeffs[0],x2->vars[0]);
+    res.cst1 = 1;
+    res.cst2 = 0;
   }
   //second and first variables cancel
-  if(x1->var2 == x2->var1 && x1->var2 == x && 
-     x1->coeff2 == -(x2->coeff1) && x1->var1 != x2->var2) {
-    return _tvpi_create_linterm(x1->coeff1,x1->var1,x2->coeff2,x2->var2);
+  if(x1->vars[1] == x2->vars[0] && x1->vars[1] == x && 
+     mpq_sgn(x1->coeffs[1]) == -(mpq_sgn(x2->coeffs[0])) && x1->vars[0] != x2->vars[1]) {
+    res.term = _tvpi_create_linterm(x1->coeffs[0],x2->coeffs[0],x1->vars[0],
+                                    x2->coeffs[1],x1->coeffs[1],x2->vars[1]);
+    res.cst1 = 0;
+    res.cst2 = 1;
   }
   //second and second variables cancel
-  if(x1->var2 == x2->var2 && x1->var2 == x && 
-     x1->coeff2 == -(x2->coeff2) && x1->var1 != x2->var1) {
-    return _tvpi_create_linterm(x1->coeff1,x1->var1,x2->coeff1,x2->var1);
+  if(x1->vars[1] == x2->vars[1] && x1->vars[1] == x && 
+     mpq_sgn(x1->coeffs[1]) == -(mpq_sgn(x2->coeffs[1])) && x1->vars[0] != x2->vars[0]) {
+    res.term = _tvpi_create_linterm(x1->coeffs[0],x2->coeffs[1],x1->vars[0],
+                                    x2->coeffs[0],x1->coeffs[1],x2->vars[0]);
+    res.cst1 = 1;
+    res.cst2 = 1;
   }
-  //no resolvent
-  return NULL;
+  //all done
+  return res;
 }
-
-
 
 /**********************************************************************
  * Returns >0 if t1 and t2 have a resolvent on variable x, 
@@ -365,20 +416,24 @@ int tvpi_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
   tvpi_term_t *x1 = (tvpi_term_t*)t1;
   tvpi_term_t *x2 = (tvpi_term_t*)t2;
   //first and first variables cancel
-  if(x1->var1 == x2->var1 && x1->var1 == x && x1->var2 != x2->var2) {
-    return (x1->coeff1 == -(x2->coeff1)) ? 1 : (x1->coeff1 == x2->coeff1 ? -1 : 0);
+  if(x1->vars[0] == x2->vars[0] && x1->vars[0] == x && x1->vars[1] != x2->vars[1]) {
+    return (mpq_sgn(x1->coeffs[0]) == -(mpq_sgn(x2->coeffs[0]))) ? 1 : 
+      (mpq_sgn(x1->coeffs[0]) == mpq_sgn(x2->coeffs[0]) ? -1 : 0);
   }
   //first and second variables cancel
-  if(x1->var1 == x2->var2 && x1->var1 == x && x1->var2 != x2->var1) {
-    return (x1->coeff1 == -(x2->coeff2)) ? 1 : (x1->coeff1 == x2->coeff2 ? -1 : 0);
+  if(x1->vars[0] == x2->vars[1] && x1->vars[0] == x && x1->vars[1] != x2->vars[0]) {
+    return (mpq_sgn(x1->coeffs[0]) == -(mpq_sgn(x2->coeffs[1]))) ? 1 : 
+      (mpq_sgn(x1->coeffs[0]) == mpq_sgn(x2->coeffs[1]) ? -1 : 0);
   }
   //second and first variables cancel
-  if(x1->var2 == x2->var1 && x1->var2 == x && x1->var1 != x2->var2) {
-    return (x1->coeff2 == -(x2->coeff1)) ? 1 : (x1->coeff2 == x2->coeff1 ? -1 : 0);
+  if(x1->vars[1] == x2->vars[0] && x1->vars[1] == x && x1->vars[0] != x2->vars[1]) {
+    return (mpq_sgn(x1->coeffs[1]) == -(mpq_sgn(x2->coeffs[0]))) ? 1 : 
+      (mpq_sgn(x1->coeffs[1]) == mpq_sgn(x2->coeffs[0]) ? -1 : 0);
   }
   //second and second variables cancel
-  if(x1->var2 == x2->var2 && x1->var2 == x && x1->var1 != x2->var1) {
-    return (x1->coeff2 == -(x2->coeff2)) ? 1 : (x1->coeff2 == x2->coeff2 ? -1 : 0);
+  if(x1->vars[1] == x2->vars[1] && x1->vars[1] == x && x1->vars[0] != x2->vars[0]) {
+    return (mpq_sgn(x1->coeffs[1]) == -(mpq_sgn(x2->coeffs[1]))) ? 1 : 
+      (mpq_sgn(x1->coeffs[1]) == mpq_sgn(x2->coeffs[1]) ? -1 : 0);
   }
   //no resolution
   return 0;
@@ -390,8 +445,8 @@ int tvpi_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
  *********************************************************************/
 void tvpi_negate_term_inplace(tvpi_term_t *t)
 {
-  t->coeff1 = -(t->coeff1);
-  t->coeff2 = -(t->coeff2);
+  mpq_neg(t->coeffs[0],t->coeffs[0]);
+  mpq_neg(t->coeffs[1],t->coeffs[1]);
 }
 
 /**********************************************************************
@@ -411,8 +466,8 @@ linterm_t tvpi_negate_term(linterm_t t)
 int tvpi_pick_var (linterm_t t, bool* vars)
 {
   tvpi_term_t *x = (tvpi_term_t*)t;
-  if(vars[x->var1]) return x->var1;
-  if(vars[x->var2]) return x->var2;
+  if(vars[x->vars[0]]) return x->vars[0];
+  if(vars[x->vars[1]]) return x->vars[1];
   return -1;
 }
 
@@ -421,19 +476,35 @@ int tvpi_pick_var (linterm_t t, bool* vars)
  *********************************************************************/
 void tvpi_destroy_term(linterm_t t)
 {
-  free((tvpi_term_t*)t);
+  tvpi_term_t *x = (tvpi_term_t*)t;
+  mpq_clear(x->coeffs[0]);
+  mpq_clear(x->coeffs[1]);
+  free(x);
 }
 
 /**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ * canonicalize a constraint -- divide all coefficients and the
+ * constant by the absolute value of the first coefficient so that the
+ * first coefficient effectively becomes +1 or -1
  *********************************************************************/
-lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
+void _tvpi_canonicalize_cons(tvpi_cons_t *l)
 {
-  tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
-  res->term = tvpi_dup_term((tvpi_term_t*)t);
-  res->cst = tvpi_dup_cst((tvpi_cst_t*)k);
-  res->strict = s;
-  return (lincons_t)res;
+  mpq_t abs;
+  mpq_init(abs);
+  mpq_abs(abs,l->term->coeffs[0]);
+  mpq_div(l->term->coeffs[0],l->term->coeffs[0],abs);
+  mpq_div(l->term->coeffs[1],l->term->coeffs[1],abs);
+  if(l->cst->type != TVPI_RAT) {
+    mpq_init(l->cst->rat_val);
+    if(l->cst->type == TVPI_INT) {
+      mpq_set_si(l->cst->rat_val,l->cst->int_val,1);
+    } else {
+      mpq_set_d(l->cst->rat_val,l->cst->dbl_val);
+    }
+    l->cst->type = TVPI_RAT;
+  }
+  mpq_div(l->cst->rat_val,l->cst->rat_val,abs);
+  mpq_clear(abs);
 }
 
 /**********************************************************************
@@ -452,9 +523,22 @@ lincons_t tvpi_create_int_cons(linterm_t t, bool s, constant_t k)
   /* all integer constraints are non-strict */
   res->strict = 0;
 
+  _tvpi_canonicalize_cons(res);
   return (lincons_t)res;
 }
 
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ *********************************************************************/
+lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
+{
+  tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
+  res->term = tvpi_dup_term((tvpi_term_t*)t);
+  res->cst = tvpi_dup_cst((tvpi_cst_t*)k);
+  res->strict = s;
+  _tvpi_canonicalize_cons(res);
+  return (lincons_t)res;
+}
 
 /**********************************************************************
  * Returns true if l is a strict constraint
@@ -471,7 +555,12 @@ bool tvpi_is_strict(lincons_t l)
 tvpi_term_t *tvpi_dup_term(tvpi_term_t *arg)
 {
   tvpi_term_t *res = (tvpi_term_t*)malloc(sizeof(tvpi_term_t));
-  *res = *arg;
+  mpq_init(res->coeffs[0]);
+  mpq_set(res->coeffs[0],arg->coeffs[0]);
+  mpq_init(res->coeffs[1]);
+  mpq_set(res->coeffs[1],arg->coeffs[1]);
+  res->vars[0] = arg->vars[0];
+  res->vars[1] = arg->vars[1];
   return res;
 }
 
@@ -539,8 +628,7 @@ bool tvpi_is_negative_cons(lincons_t l)
 {
   linterm_t x = tvpi_get_term(l);
   tvpi_term_t *y = (tvpi_term_t*)x;
-  bool res = (y->coeff1 == -1);
-  return res;
+  return mpq_sgn(y->coeffs[0]) < 0;
 }
 
 /**********************************************************************
@@ -558,9 +646,9 @@ bool tvpi_is_stronger_cons(lincons_t l1, lincons_t l2)
   tvpi_term_t *y1 = (tvpi_term_t*)x1;
   tvpi_term_t *y2 = (tvpi_term_t*)x2;
   printf ("is_stronger_cons ( x%d - x%d %s %d with x%d - x%d %s %d )\n",
-	  y1->var1, y1->var2, (tvpi_is_strict (l1) ? "<" : "<="), 
+	  y1->vars[0], y1->vars[1], (tvpi_is_strict (l1) ? "<" : "<="), 
 	  ((tvpi_cst_t*) a1)->int_val, 
-	  y2->var1, y2->var2, (tvpi_is_strict (l2) ? "<" : "<="), 
+	  y2->vars[0], y2->vars[1], (tvpi_is_strict (l2) ? "<" : "<="), 
 	  ((tvpi_cst_t*) a2)->int_val);
 #endif
 
@@ -593,16 +681,23 @@ lincons_t tvpi_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
 
   //get the terms
   linterm_t t1 = tvpi_get_term(l1);
+  tvpi_term_t *x1 = (tvpi_term_t*)t1;
   linterm_t t2 = tvpi_get_term(l2);
+  tvpi_term_t *x2 = (tvpi_term_t*)t2;
 
   //if there is no resolvent between t1 and t2
-  linterm_t t3 = _tvpi_terms_have_resolvent(t1,t2,x);
-  if(!t3) return NULL; 
+  tvpi_resolve_t resolve = _tvpi_terms_have_resolvent(x1,x2,x);
+  if(!resolve.term) return NULL; 
 
   /*  X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2 */
-  constant_t c3 = tvpi_cst_add(c1,c2);
-  lincons_t res = tvpi_create_int_cons(t3,0,c3);
-  tvpi_destroy_term(t3);
+  constant_t c12 = tvpi_cst_mul(c1,x2->coeffs[resolve.cst1]);
+  constant_t c21 = tvpi_cst_mul(c2,x1->coeffs[resolve.cst2]);
+  constant_t c3 = tvpi_cst_add(c12,c21);
+  tvpi_destroy_cst(c12);      
+  tvpi_destroy_cst(c21);      
+
+  lincons_t res = tvpi_create_int_cons(resolve.term,0,c3);
+  tvpi_destroy_term(resolve.term);
   tvpi_destroy_cst(c3);      
   return res;
 }
@@ -623,25 +718,32 @@ lincons_t tvpi_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
 
   //get the terms
   linterm_t t1 = tvpi_get_term(l1);
+  tvpi_term_t *x1 = (tvpi_term_t*)t1;
   linterm_t t2 = tvpi_get_term(l2);
+  tvpi_term_t *x2 = (tvpi_term_t*)t2;
 
   //if there is no resolvent between t1 and t2
-  linterm_t t3 = _tvpi_terms_have_resolvent(t1,t2,x);
-  if(!t3) return NULL;
+  tvpi_resolve_t resolve = _tvpi_terms_have_resolvent(x1,x2,x);
+  if(!resolve.term) return NULL;
+
+  //get the constant
+  constant_t c12 = tvpi_cst_mul(c1,x2->coeffs[resolve.cst1]);
+  constant_t c21 = tvpi_cst_mul(c2,x1->coeffs[resolve.cst2]);
+  constant_t c3 = tvpi_cst_add(c12,c21);
+  tvpi_destroy_cst(c12);      
+  tvpi_destroy_cst(c21);      
 
   //X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2
   if(!tvpi_is_strict(l1) && !tvpi_is_strict(l2)) {
-    constant_t c3 = tvpi_cst_add(c1,c2);
-    lincons_t res = tvpi_create_rat_cons(t3,0,c3);
-    tvpi_destroy_term(t3);
+    lincons_t res = tvpi_create_rat_cons(resolve.term,0,c3);
+    tvpi_destroy_term(resolve.term);
     tvpi_destroy_cst(c3);
     return res;
   }
 
   //for all other cases, X-Z < C1+C2
-  constant_t c3 = tvpi_cst_add(c1,c2);
-  lincons_t res = tvpi_create_rat_cons(t3,1,c3);
-  tvpi_destroy_term(t3);
+  lincons_t res = tvpi_create_rat_cons(resolve.term,1,c3);
+  tvpi_destroy_term(resolve.term);
   tvpi_destroy_cst(c3);
   return res;
 }
@@ -692,8 +794,8 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
     //if at the start of the list
     else {
       tvpi_theory_t *theory = (tvpi_theory_t*)m->theory;
-      cn->next = theory->cons_node_map[c->term->var1][c->term->var2];
-      theory->cons_node_map[c->term->var1][c->term->var2] = cn;
+      cn->next = theory->cons_node_map[c->term->vars[0]][c->term->vars[1]];
+      theory->cons_node_map[c->term->vars[0]][c->term->vars[1]] = cn;
     }
     return cn->node;
   }
@@ -718,8 +820,8 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
     //if at the start of the list
     else {
       tvpi_theory_t *theory = (tvpi_theory_t*)m->theory;
-      cn->next = theory->cons_node_map[c->term->var1][c->term->var2];
-      theory->cons_node_map[c->term->var1][c->term->var2] = cn;
+      cn->next = theory->cons_node_map[c->term->vars[0]][c->term->vars[1]];
+      theory->cons_node_map[c->term->vars[0]][c->term->vars[1]] = cn;
     }
     return cn->node;
   }
@@ -744,7 +846,7 @@ tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l)
 
   //find the right node. create one if necessary.
   tdd_node *res = 
-    tvpi_get_node(m,theory->cons_node_map[c->term->var1][c->term->var2],NULL,c);
+    tvpi_get_node(m,theory->cons_node_map[c->term->vars[0]][c->term->vars[1]],NULL,c);
 
   //cleanup
   if(neg) {

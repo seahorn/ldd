@@ -51,10 +51,9 @@ typedef struct tvpi_cst
  *********************************************************************/
 typedef struct tvpi_term { 
   /* coefficients */
-  int coeff1,coeff2; 
-  //mpq_t coeff1,coeff2; 
+  mpq_t coeffs[2]; 
   /* variables */
-  int var1,var2;
+  int vars[2];
 } tvpi_term_t;
   
 /**********************************************************************
@@ -81,6 +80,21 @@ typedef struct tvpi_cons_node
 } tvpi_cons_node_t;
 
 /**********************************************************************
+ * this structure is used to return the result of the function that
+ * checks if two terms can be resolved on a variable. if resolution is
+ * possible, then "term" is the resulting term, "cst1" is index of the
+ * coefficient of the second term by which the first term had to be
+ * multiplied, and "cst2" is the index of the coefficient of the first
+ * term by which the second term had to be multiplied. if no
+ * resolution is possible, then "term" is NULL, and "cst1" and "cst2"
+ * are undefined.
+ *********************************************************************/
+typedef struct tvpi_resolve {
+  linterm_t term;
+  int cst1,cst2;
+} tvpi_resolve_t;
+
+/**********************************************************************
  * the TVPI theory struct "extends" the theory struct
  *********************************************************************/
 typedef struct tvpi_theory
@@ -105,6 +119,7 @@ bool tvpi_cst_eq(constant_t c1,constant_t c2);
 bool tvpi_cst_lt(constant_t c1,constant_t c2);
 bool tvpi_cst_le(constant_t c1,constant_t c2);
 constant_t tvpi_cst_add(constant_t c1,constant_t c2);
+constant_t tvpi_cst_mul(constant_t c1,mpq_t c2);
 bool tvpi_is_pinf_cst(constant_t c);
 bool tvpi_is_ninf_cst(constant_t c);
 void tvpi_destroy_cst(constant_t c);
@@ -112,13 +127,15 @@ linterm_t tvpi_create_linterm(int* coeffs, size_t n);
 bool tvpi_term_equals(linterm_t t1, linterm_t t2);
 bool tvpi_term_has_var (linterm_t t,bool *vars);
 size_t tvpi_num_of_vars(theory_t* self);
-linterm_t _tvpi_create_linterm(int cf1,int v1,int cf2,int v2);
-linterm_t _tvpi_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
+linterm_t _tvpi_create_linterm(mpq_t cf11,mpq_t cf12,int v1,
+                               mpq_t cf21,mpq_t cf22,int v2);
+tvpi_resolve_t _tvpi_terms_have_resolvent(tvpi_term_t *x1,tvpi_term_t *x2, int x);
 int tvpi_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 void tvpi_negate_term_inplace(tvpi_term_t *t);
 linterm_t tvpi_negate_term(linterm_t t);
 int tvpi_pick_var (linterm_t t, int* vars);
 void tvpi_destroy_term(linterm_t t);
+void _tvpi_canonicalize_cons(tvpi_cons_t *l);
 lincons_t tvpi_create_int_cons(linterm_t t, bool s, constant_t k);
 lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k);
 bool tvpi_is_strict(lincons_t l);
