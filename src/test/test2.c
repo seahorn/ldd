@@ -92,11 +92,14 @@ int main(void)
   
   {
     bool vars[3] = {1, 1, 1};
+    d7 = tdd_univ_abstract (tdd, d6, vars);
+    printf ("univ d7 is:\n");
+    Cudd_PrintMinterm (cudd, d7);
+
     d7 = tdd_exist_abstract (tdd, d6, vars);
-    printf ("d7 is:\n");
+    printf ("exist d7 is:\n");
     Cudd_PrintMinterm (cudd, d7);
   }
-      
 
   printf ("Destroying the world...\n");
   tdd_quit (tdd);
