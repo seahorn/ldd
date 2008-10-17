@@ -1,107 +1,85 @@
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
-#include "tdd-oct.h"
-
+#include "tdd-tvpi.h"
 
 #include <stdio.h>
 
-int main(void)
+/**
+ * A structure describing a test case. Each testcase is of the form C1
+ * && ... && Cn => C where Ci's and C are constraints.
+ */
+typedef struct testcase {
+  int varnum;
+  int consnum;
+  int **ante;
+  int *cons;
+} testcase_t;
+
+DdManager *cudd = NULL;
+tdd_manager* tdd = NULL;
+theory_t * theory = NULL;
+bool *vars = NULL;
+
+tdd_node *create_cons(testcase_t *tc,int *arg)
 {
-  
-  DdManager *cudd;
-  tdd_manager* tdd;
-  theory_t * t;
-  
-  constant_t i5, i10, i15;
-  int cf1[3] = {1, -1, 0};
-  int cf2[3] = {0, 1, -1};
-  int cf3[3] = {1, 0, -1};
-  
-  
-  linterm_t t1, t2, t3;
-  lincons_t l1, l2, l3;
+  constant_t c = theory->create_int_cst(arg[tc->varnum]);
+  linterm_t t = theory->create_linterm (arg,tc->varnum);
+  lincons_t l = theory->create_cons (t, 0, c);
+  tdd_node *d = to_tdd (tdd, l);
+  Cudd_Ref (d);
+  return d;
+}
 
-  tdd_node *d1, *d2, *d3, *d4, *d5, *d6, *d7;
-
+void test(testcase_t *tc)
+{
   printf ("Creating the world...\n");
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  t = tvpi_create_int_theory (3);
-  tdd = tdd_init (cudd, t);
-
-
-  /* variable ordering:
-   * 0:x, 1:y, 2:z */
-
+  theory = tvpi_create_int_theory (tc->varnum);
+  tdd = tdd_init (cudd, theory);
+  vars = (bool*)malloc(tc->varnum * sizeof(bool));
   
-  /* constants */
-  i5 = t->create_int_cst (5);
-  i10 = t->create_int_cst (10);
-  i15 = t->create_int_cst (15);
-
-  /*
-    x-y <= 5 
-   */
-  t1 = t->create_linterm (cf1, 3);
-  l1 = t->create_cons (t1, 0, i5);
-  d1 = to_tdd (tdd, l1);
-  Cudd_Ref (d1);
-
-  printf ("d1 is:\n");
-  Cudd_PrintMinterm (cudd, d1);
-  
-  /* 
-     y-z <= 10
-   */
-  t2 = t->create_linterm (cf2, 3);
-  l2 = t->create_cons (t2, 0, i10);
-  d2 = to_tdd (tdd, l2);
-  Cudd_Ref (d2);
-  printf ("d2 is:\n");
-  Cudd_PrintMinterm (cudd, d2);
-
-  /* 
-     x-z <= 15
-   */
-  t3 = t->create_linterm (cf3, 3);
-  l3 = t->create_cons (t3, 0, i15);
-  d3 = to_tdd (tdd, l3);
-  Cudd_Ref (d3);
-  printf ("d3 is:\n");
-  Cudd_PrintMinterm (cudd, d3);
-  
-  
-  d4 = tdd_and (tdd, d1, d2);
-  Cudd_Ref (d4);
-  printf ("d4 is:\n");
-  Cudd_PrintMinterm (cudd, d4);
-
-  d5 = tdd_or (tdd, d1, d2);
-  Cudd_Ref (d5);
-  printf ("d5 is:\n");
-  Cudd_PrintMinterm (cudd, d5);
-  
-  /*
-    x -y <=5 && y - z <= 10 => x-z <= 15
-   */
-
-  d6 = tdd_or (tdd, tdd_not (d4), d3);
-  Cudd_Ref (d6);
-  printf ("d6 is:\n");
-  Cudd_PrintMinterm (cudd, d6);
-  
-  {
-    bool vars[3] = {1, 1, 1};
-    d7 = tdd_exist_abstract (tdd, d6, vars);
-    printf ("d7 is:\n");
-    Cudd_PrintMinterm (cudd, d7);
+  //create antecedent
+  tdd_node *ante = NULL;
+  int i;
+  for(i = 0;i < tc->consnum;++i) {
+    tdd_node *d = create_cons(tc,tc->ante[i]);
+    ante = (ante == NULL) ? d : tdd_and(tdd,ante,d);
   }
-      
 
+  //create consequent
+  tdd_node *cons = create_cons(tc,tc->cons);
+
+  //create negation implication
+  tdd_node *impl = tdd_not(tdd_or (tdd, tdd_not (ante), cons));
+
+  //existential abstraction
+  for(i = 0;i < tc->varnum;++i) vars[i] = 1;  
+  tdd_node *abs = tdd_not(tdd_exist_abstract (tdd, impl, vars));
+
+  //check for validity
+  assert(abs == Cudd_ReadOne(cudd));
+
+  //cleanup
   printf ("Destroying the world...\n");
+  free(vars);
   tdd_quit (tdd);
-  tvpi_destroy_theory (t);
+  tvpi_destroy_theory (theory);
   Cudd_Quit (cudd);
-  
+}
+
+int main(void)
+{
+  testcase_t tc1;
+  tc1.varnum = 3;
+  tc1.consnum = 2;
+  tc1.ante = (int**)malloc(2 * sizeof(int*));
+  int a11[] = {1,-1,0,5};
+  int a12[] = {0,1,-1,10};
+  tc1.ante[0] = a11;
+  tc1.ante[1] = a12;
+  int c1[] = {1,0,-1,15};
+  tc1.cons = c1;
+  test(&tc1);
   return 0;
 }
