@@ -22,10 +22,9 @@
  *********************************************************************/
 
 /**********************************************************************
- * the types of TVPI theories -- currently, we support integer,
- * rational and double
+ * the types of TVPI theories -- we support rational and double
  *********************************************************************/
-typedef enum tvpi_type { TVPI_INT, TVPI_RAT, TVPI_DBL } tvpi_type_t;
+typedef enum tvpi_type { TVPI_RAT, TVPI_DBL } tvpi_type_t;
 
 /**********************************************************************
  * a generic structure used to represent integer, rational, and double
@@ -39,7 +38,6 @@ typedef struct tvpi_cst
   /* the value of the constant */
   union 
   {
-    int int_val;
     mpq_t rat_val;
     double dbl_val;
   };
@@ -129,6 +127,9 @@ bool tvpi_term_has_var (linterm_t t,bool *vars);
 size_t tvpi_num_of_vars(theory_t* self);
 linterm_t _tvpi_create_linterm(mpq_t cf11,mpq_t cf12,int v1,
                                mpq_t cf21,mpq_t cf22,int v2);
+void tvpi_print_cst(tvpi_cst_t *c);
+void tvpi_print_term(tvpi_term_t *t);
+void tvpi_print_cons(tvpi_cons_t *l);
 tvpi_resolve_t _tvpi_terms_have_resolvent(tvpi_term_t *x1,tvpi_term_t *x2, int x);
 int tvpi_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 void tvpi_negate_term_inplace(tvpi_term_t *t);

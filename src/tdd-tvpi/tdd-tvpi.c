@@ -9,10 +9,7 @@
  *********************************************************************/
 constant_t tvpi_create_int_cst(int v)
 {
-  tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
-  res->type = TVPI_INT;
-  res->int_val = v;
-  return (constant_t)res;
+  return tvpi_create_rat_cst(v,1);
 }
 
 /**********************************************************************
@@ -47,17 +44,12 @@ void tvpi_negate_cst_inplace (tvpi_cst_t *c)
 {
   switch(c->type)
     {
-    case TVPI_INT:
-      if(c->int_val == INT_MAX) c->int_val = INT_MIN;
-      else if(c->int_val == INT_MIN) c->int_val = INT_MAX;
-      else c->int_val = -(c->int_val);
-      break;
     case TVPI_RAT:
       if(mpz_get_si(mpq_numref(c->rat_val)) == INT_MAX) {
         mpz_set_si(mpq_numref(c->rat_val),INT_MIN);
       } else if(mpz_get_si(mpq_numref(c->rat_val)) == INT_MIN) {
         mpz_set_si(mpq_numref(c->rat_val),INT_MAX);
-      } else mpz_neg(mpq_numref(c->rat_val),mpq_numref(c->rat_val));
+      } else mpq_neg(c->rat_val,c->rat_val);
       break;
     case TVPI_DBL:
       if(c->dbl_val == DBL_MAX) c->dbl_val = DBL_MIN;
@@ -93,8 +85,6 @@ bool tvpi_cst_eq (constant_t c1,constant_t c2)
 
   switch(x1->type)
     {
-    case TVPI_INT:
-      return (x1->int_val == x2->int_val);
     case TVPI_RAT:
       if(tvpi_is_pinf_cst(c1)) return tvpi_is_pinf_cst(c2);
       if(tvpi_is_ninf_cst(c1)) return tvpi_is_ninf_cst(c2);
@@ -122,8 +112,6 @@ bool tvpi_cst_lt (constant_t c1,constant_t c2)
 
   switch(x1->type)
     {
-    case TVPI_INT:
-      return (x1->int_val < x2->int_val);
     case TVPI_RAT:
       if(tvpi_is_pinf_cst(c1)) return 0;
       if(tvpi_is_pinf_cst(c2)) return !tvpi_is_pinf_cst(c1);
@@ -151,8 +139,6 @@ bool tvpi_cst_le (constant_t c1,constant_t c2)
 
   switch(x1->type)
     {
-    case TVPI_INT:
-      return (x1->int_val <= x2->int_val);
     case TVPI_RAT:
       if(tvpi_is_pinf_cst(c1)) return tvpi_is_pinf_cst(c2);
       if(tvpi_is_pinf_cst(c2)) return 1;
@@ -178,8 +164,6 @@ constant_t tvpi_cst_add(constant_t c1,constant_t c2)
 
   switch(x1->type)
     {
-    case TVPI_INT:
-      return tvpi_create_int_cst(x1->int_val + x2->int_val);
     case TVPI_RAT:
       {
         tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
@@ -196,7 +180,7 @@ constant_t tvpi_cst_add(constant_t c1,constant_t c2)
 }
 
 /**********************************************************************
- * add a constant by a rational
+ * multiply c1 by the absolute value of c2
  *********************************************************************/
 constant_t tvpi_cst_mul(constant_t c1,mpq_t c2)
 {
@@ -204,26 +188,17 @@ constant_t tvpi_cst_mul(constant_t c1,mpq_t c2)
 
   switch(x1->type)
     {
-    case TVPI_INT:
-      {
-        tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
-        res->type = TVPI_RAT;
-        mpq_init(res->rat_val);
-        mpq_set_si(res->rat_val,x1->int_val,1);
-        mpq_mul(res->rat_val,res->rat_val,c2);
-        return (constant_t)res;
-      }
-      return tvpi_create_int_cst(x1->int_val);
     case TVPI_RAT:
       {
         tvpi_cst_t *res = (tvpi_cst_t*)malloc(sizeof(tvpi_cst_t));
         res->type = TVPI_RAT;
         mpq_init(res->rat_val);
         mpq_mul(res->rat_val,x1->rat_val,c2);
+        if(mpq_sgn(c2) < 0) mpq_neg(res->rat_val,res->rat_val);
         return (constant_t)res;
       }
     case TVPI_DBL:
-      return tvpi_create_double_cst(x1->dbl_val + mpq_get_d(c2));
+      return tvpi_create_double_cst(x1->dbl_val * mpq_get_d(c2) * mpq_sgn(c2));
     default:
       return 0;
     }
@@ -237,8 +212,6 @@ bool tvpi_is_pinf_cst(constant_t c)
   tvpi_cst_t *x = (tvpi_cst_t*)c;
   switch(x->type)
     {
-    case TVPI_INT:
-      return x->int_val == INT_MAX;
     case TVPI_RAT:
       return (mpz_get_si(mpq_numref(x->rat_val)) == INT_MAX);
     case TVPI_DBL:
@@ -256,8 +229,6 @@ bool tvpi_is_ninf_cst(constant_t c)
   tvpi_cst_t *x = (tvpi_cst_t*)c;
   switch(x->type)
     {
-    case TVPI_INT:
-      return x->int_val == INT_MIN;
     case TVPI_RAT:
       return (mpz_get_si(mpq_numref(x->rat_val)) == INT_MIN);
     case TVPI_DBL:
@@ -338,8 +309,8 @@ size_t tvpi_num_of_vars(theory_t* self)
 /**********************************************************************
  * Create a term given its two variables and their coefficients. Each
  * coefficient is provided as a pair of rational numbers X and Y. The
- * actual coefficient is obtained by multiplying X and Y. This is a
- * private function.
+ * actual coefficient is obtained by multiplying X and the absolute
+ * value of Y. This is a private function.
  *********************************************************************/
 linterm_t _tvpi_create_linterm(mpq_t cf11,mpq_t cf12,int v1,
                                mpq_t cf21,mpq_t cf22,int v2)
@@ -350,16 +321,58 @@ linterm_t _tvpi_create_linterm(mpq_t cf11,mpq_t cf12,int v1,
   //ensure canonical form, i.e., v1 < v2
   if(v1 < v2) {
     mpq_mul(res->coeffs[0],cf11,cf12);
+    if(mpq_sgn(cf12) < 0) mpq_neg(res->coeffs[0],res->coeffs[0]);
     res->vars[0] = v1;
     mpq_mul(res->coeffs[1],cf21,cf22);
+    if(mpq_sgn(cf22) < 0) mpq_neg(res->coeffs[1],res->coeffs[1]);
     res->vars[1] = v2;
   } else {
     mpq_mul(res->coeffs[0],cf21,cf22);
+    if(mpq_sgn(cf22) < 0) mpq_neg(res->coeffs[0],res->coeffs[0]);
     res->vars[0] = v2;
     mpq_mul(res->coeffs[1],cf11,cf12);
+    if(mpq_sgn(cf12) < 0) mpq_neg(res->coeffs[1],res->coeffs[1]);
     res->vars[1] = v1;
   }
   return (linterm_t)res;
+}
+
+/**********************************************************************
+ * print a constant
+ *********************************************************************/
+void tvpi_print_cst(tvpi_cst_t *c)
+{
+  switch(c->type) {
+  case TVPI_RAT:
+    mpq_out_str(NULL,10,c->rat_val);
+    break;
+  case TVPI_DBL:
+    printf("%lf",c->dbl_val);
+    break;
+  default:
+    break;
+  }
+}
+
+/**********************************************************************
+ * print a term
+ *********************************************************************/
+void tvpi_print_term(tvpi_term_t *t)
+{
+  mpq_out_str(NULL,10,t->coeffs[0]);
+  printf(" * %d + ",t->vars[0]);
+  mpq_out_str(NULL,10,t->coeffs[1]);
+  printf(" * %d",t->vars[1]);
+}
+
+/**********************************************************************
+ * print a constraint
+ *********************************************************************/
+void tvpi_print_cons(tvpi_cons_t *l)
+{
+  tvpi_print_term(l->term);
+  printf(" %s ",l->strict ? "<" : "<=");
+  tvpi_print_cst(l->cst);
 }
 
 /**********************************************************************
@@ -496,11 +509,7 @@ void _tvpi_canonicalize_cons(tvpi_cons_t *l)
   mpq_div(l->term->coeffs[1],l->term->coeffs[1],abs);
   if(l->cst->type != TVPI_RAT) {
     mpq_init(l->cst->rat_val);
-    if(l->cst->type == TVPI_INT) {
-      mpq_set_si(l->cst->rat_val,l->cst->int_val,1);
-    } else {
-      mpq_set_d(l->cst->rat_val,l->cst->dbl_val);
-    }
+    mpq_set_d(l->cst->rat_val,l->cst->dbl_val);
     l->cst->type = TVPI_RAT;
   }
   mpq_div(l->cst->rat_val,l->cst->rat_val,abs);
@@ -512,19 +521,7 @@ void _tvpi_canonicalize_cons(tvpi_cons_t *l)
  *********************************************************************/
 lincons_t tvpi_create_int_cons(linterm_t t, bool s, constant_t k)
 {
-  tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
-  res->term = tvpi_dup_term((tvpi_term_t*)t);
-  res->cst = tvpi_dup_cst((tvpi_cst_t*)k);
-
-  /* convert '<' inequalities to '<=' */
-  if (s && !tvpi_is_pinf_cst(&(res->cst)) && !tvpi_is_ninf_cst(&(res->cst)))
-    res->cst->int_val--;
-
-  /* all integer constraints are non-strict */
-  res->strict = 0;
-
-  _tvpi_canonicalize_cons(res);
-  return (lincons_t)res;
+  return tvpi_create_rat_cons(t,s,k);
 }
 
 /**********************************************************************
@@ -603,11 +600,7 @@ constant_t tvpi_get_constant(lincons_t l)
  *********************************************************************/
 lincons_t tvpi_negate_int_cons(lincons_t l)
 {
-  lincons_t res = tvpi_create_int_cons(tvpi_get_term(l),!tvpi_is_strict(l),
-                                       tvpi_get_constant(l));
-  tvpi_negate_term_inplace(tvpi_get_term(res));
-  tvpi_negate_cst_inplace(tvpi_get_constant(res));
-  return res;
+  return tvpi_negate_rat_cons(l);
 }
 
 lincons_t tvpi_negate_rat_cons(lincons_t l)
@@ -671,35 +664,7 @@ bool tvpi_is_stronger_cons(lincons_t l1, lincons_t l2)
  *********************************************************************/
 lincons_t tvpi_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
 {
-  //get the constants
-  constant_t c1 = tvpi_get_constant(l1);
-  constant_t c2 = tvpi_get_constant(l2);
-
-  //if any of the constants is infinity, there is no resolvant
-  if(tvpi_is_pinf_cst(c1) || tvpi_is_ninf_cst(c1) ||
-     tvpi_is_pinf_cst(c2) || tvpi_is_ninf_cst(c2)) return NULL;
-
-  //get the terms
-  linterm_t t1 = tvpi_get_term(l1);
-  tvpi_term_t *x1 = (tvpi_term_t*)t1;
-  linterm_t t2 = tvpi_get_term(l2);
-  tvpi_term_t *x2 = (tvpi_term_t*)t2;
-
-  //if there is no resolvent between t1 and t2
-  tvpi_resolve_t resolve = _tvpi_terms_have_resolvent(x1,x2,x);
-  if(!resolve.term) return NULL; 
-
-  /*  X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2 */
-  constant_t c12 = tvpi_cst_mul(c1,x2->coeffs[resolve.cst1]);
-  constant_t c21 = tvpi_cst_mul(c2,x1->coeffs[resolve.cst2]);
-  constant_t c3 = tvpi_cst_add(c12,c21);
-  tvpi_destroy_cst(c12);      
-  tvpi_destroy_cst(c21);      
-
-  lincons_t res = tvpi_create_int_cons(resolve.term,0,c3);
-  tvpi_destroy_term(resolve.term);
-  tvpi_destroy_cst(c3);      
-  return res;
+  return tvpi_resolve_rat_cons(l1,l2,x);
 }
 
 /**********************************************************************
@@ -801,10 +766,10 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
   }
 
   //if i found a matching element, return it
-  if(tvpi_term_equals(&(curr->cons.term),&(c->term)) &&
+  if(tvpi_term_equals(curr->cons.term,c->term) &&
      ((tvpi_is_strict(&(curr->cons)) && tvpi_is_strict(c)) ||
       (!tvpi_is_strict(&(curr->cons)) && !tvpi_is_strict(c))) &&
-     tvpi_cst_eq(&(curr->cons.cst),&(c->cst))) return curr->node;
+     tvpi_cst_eq(curr->cons.cst,c->cst)) return curr->node;
 
   //if the c implies curr, then add c just before curr
   if(m->theory->is_stronger_cons(c,&(curr->cons))) {
@@ -907,12 +872,7 @@ tvpi_theory_t *tvpi_create_theory_common(size_t vn)
  *********************************************************************/
 theory_t *tvpi_create_int_theory(size_t vn)
 {
-  tvpi_theory_t *res = tvpi_create_theory_common(vn);
-  res->base.create_cons = tvpi_create_int_cons;
-  res->base.negate_cons = tvpi_negate_int_cons;
-  res->base.resolve_cons = tvpi_resolve_int_cons;
-  res->type = TVPI_INT;
-  return (theory_t*)res;
+  return tvpi_create_rat_theory(vn);
 }
 
 /**********************************************************************
