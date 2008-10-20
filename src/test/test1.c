@@ -13,6 +13,8 @@ int main(void)
   tdd_manager* tdd;
   theory_t * t;
   
+
+
   constant_t i5, i10, i15;
   int cf1[3] = {1, -1, 0};
   int cf2[3] = {0, 1, -1};
@@ -38,6 +40,7 @@ int main(void)
   i5 = t->create_int_cst (5);
   i10 = t->create_int_cst (10);
   i15 = t->create_int_cst (15);
+
 
   /*
     x-y <= 5 
