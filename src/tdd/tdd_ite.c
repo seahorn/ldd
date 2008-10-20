@@ -175,7 +175,6 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
   unsigned int topf, topg, toph, v;
   int		 index;
   int		 comple;
-  DdManager *dd;
   
   lincons_t vCons;
   
@@ -238,7 +237,7 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
   }
 
   /* Check cache. */
-  r = cuddCacheLookup(dd, DD_TDD_ITE_TAG, f, g, h);
+  r = cuddCacheLookup(CUDD, DD_TDD_ITE_TAG, f, g, h);
   if (r != NULL) {
     return(Cudd_NotCond(r,comple));
   }

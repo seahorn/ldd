@@ -131,7 +131,10 @@ tdd_node *tdd_exist_abstract_v2 (tdd_manager * tdd,
 }
 
 
-
+/**
+   resolves f with cons on var and eliminates all constraints with
+   term 't'
+ */
 tdd_node * tdd_resolve_elim_inter (tdd_manager * tdd, tdd_node * f, 
 				   linterm_t t, lincons_t cons, int var)
 {
@@ -268,7 +271,20 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   Cudd_IterDerefBdd (manager, fnv);
   fnv = NULL;
 
-  if (!fElimRoot)
+  if (fElimRoot)
+    {
+      /* do an OR */
+      res = tdd_and_recur (tdd, Cudd_Not (T), Cudd_Not (E));
+      if (res == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, T);
+	  Cudd_IterDerefBdd (manager, E);
+	  return NULL;
+	}
+      res = Cudd_Not (res);
+      cuddRef (res);
+    }
+  else
     {
       root = Cudd_bddIthVar (manager, v);
       if (root == NULL)
@@ -291,18 +307,9 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
       Cudd_IterDerefBdd (manager, root);
       root = NULL;
     }
-  else
-    {
-      res = tdd_and_recur (tdd, Cudd_Not (T), Cudd_Not (E));
-      if (res == NULL)
-	{
-	  Cudd_IterDerefBdd (manager, T);
-	  Cudd_IterDerefBdd (manager, E);
-	  return NULL;
-	}
-      res = Cudd_Not (res);
-      cuddRef (res);
-    }
+
+
+
   Cudd_IterDerefBdd (manager, T);
   T = NULL;
   Cudd_IterDerefBdd (manager, E);
