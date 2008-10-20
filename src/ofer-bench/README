@@ -1,0 +1,9 @@
+A bench mark from Ofer.
+
+To make: 
+    make parser
+
+To run
+    parser < ofer1.txt
+
+See main method in parser.y for more details.
