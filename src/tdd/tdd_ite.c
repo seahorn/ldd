@@ -109,7 +109,7 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
 
   /*** 
    *** TDD Simplification
-   ***  (v -> t, (e->x, y)) == e if  v is_stronger_cons than e and t == x     
+   ***  (v -> t, (e->t, y)) == (e->t,y)  if  v is_stronger_cons e 
    ***                          
    ***/
   if (!Cudd_IsConstant (e))
@@ -124,7 +124,7 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
 	  
 	  /* take THEN cofactor of e */
 	  E = Cudd_Regular (e);
-	  x = Cudd_NotCond (cuddE (E), e != E);
+	  x = Cudd_NotCond (cuddT (E), e != E);
 
 	  if (t == x) 
 	    {
