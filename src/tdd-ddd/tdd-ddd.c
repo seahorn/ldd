@@ -633,6 +633,14 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
       (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
     cn->cons = *c;
     cn->node = tdd_new_var(m,(lincons_t)c);
+
+    if (cn->node == NULL)
+      {
+	free (cn);
+	return NULL;
+      }
+    cuddRef (cn->node);
+
     //if not at the start of the list
     if(prev) {
       cn->next = prev->next;
@@ -644,6 +652,7 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
       cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
       theory->cons_node_map[c->term.var1][c->term.var2] = cn;
     }
+    if (cn->node == NULL) printf ("NULL at 1\n");
     return cn->node;
   }
 
@@ -651,27 +660,40 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
   if(ddd_term_equals(&(curr->cons.term),&(c->term)) &&
      ((ddd_is_strict(&(curr->cons)) && ddd_is_strict(c)) ||
       (!ddd_is_strict(&(curr->cons)) && !ddd_is_strict(c))) &&
-     ddd_cst_eq(&(curr->cons.cst),&(c->cst))) return curr->node;
+     ddd_cst_eq(&(curr->cons.cst),&(c->cst))) 
+    return curr->node;
+
 
   //if the c implies curr, then add c just before curr
-  if(m->theory->is_stronger_cons(c,&(curr->cons))) {
-    ddd_cons_node_t *cn = 
-      (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
-    cn->cons = *c;
-    cn->node = tdd_new_var_before(m,curr->node,(lincons_t)c);
-    //if not at the start of the list
-    if(prev) {
-      cn->next = prev->next;
-      prev->next = cn;
+  if(m->theory->is_stronger_cons(c,&(curr->cons))) 
+    {
+      ddd_cons_node_t *cn = 
+	(ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
+      cn->cons = *c;
+      cn->node = tdd_new_var_before(m,curr->node,(lincons_t)c);
+
+      if (cn->node == NULL)
+	{
+	  free (cn);
+	  return NULL;
+	}
+      /* grab a reference so that the node will not disapear */
+      cuddRef (cn->node);
+      
+      //if not at the start of the list
+      if(prev) {
+	cn->next = prev->next;
+	prev->next = cn;
+      }
+      //if at the start of the list
+      else {
+	ddd_theory_t *theory = (ddd_theory_t*)m->theory;
+	cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
+	theory->cons_node_map[c->term.var1][c->term.var2] = cn;
+      }
+      return cn->node;
     }
-    //if at the start of the list
-    else {
-      ddd_theory_t *theory = (ddd_theory_t*)m->theory;
-      cn->next = theory->cons_node_map[c->term.var1][c->term.var2];
-      theory->cons_node_map[c->term.var1][c->term.var2] = cn;
-    }
-    return cn->node;
-  }
+  
 
   //try recursively with the next element
   return ddd_get_node(m,curr->next,curr,c);
@@ -695,15 +717,35 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
   tdd_node *res = 
     ddd_get_node(m,theory->cons_node_map[c->term.var1][c->term.var2],NULL,c);
 
+
   //cleanup
-  if(neg) {
-    res = tdd_not(res);
+  if(neg) 
     ddd_destroy_lincons(l);
-  }
-  
+
   //all done
-  return res;
+  return neg && res != NULL ? tdd_not (res) : res;
 }
+
+
+void ddd_print_lincons (FILE* f, lincons_t l)
+{
+  ddd_cons_t *c = (ddd_cons_t*) l;
+  
+  fprintf (f, "x%d-x%d<=", c->term.var1, c->term.var2);
+  switch (c->cst.type)
+    {
+    case DDD_INT:
+      fprintf (f, "%d", c->cst.int_val);
+      break;
+    case DDD_DBL:
+      fprintf (f, "%f", c->cst.dbl_val);
+      break;
+    case DDD_RAT:
+      fprintf (f, "RATIONAL");
+      break;
+    }
+}
+
 
 /**********************************************************************
  * common steps when creating any theory - argument is the number of
@@ -736,6 +778,7 @@ ddd_theory_t *ddd_create_theory_common(size_t vn)
   res->base.destroy_lincons = ddd_destroy_lincons;
   res->base.dup_lincons = ddd_dup_lincons;
   res->base.to_tdd = ddd_to_tdd;
+  res->base.print_lincons = ddd_print_lincons;
   res->var_num = vn;
   //create maps from constraints to DD nodes -- one per variable pair
   res->cons_node_map = (ddd_cons_node_t ***)malloc(vn * sizeof(ddd_cons_node_t **));
