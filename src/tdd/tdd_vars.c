@@ -42,6 +42,8 @@ tdd_node * tdd_assoc_node (tdd_manager * tdd, tdd_node *n, lincons_t l)
       
       for (i = 0; i < tdd->varsSize; i++)
 	newDdVars [i] = tdd->ddVars [i];
+      for (i = tdd->varsSize; i < CUDD->maxSize; i++)
+	newDdVars [i] = NULL;
       
       FREE (tdd->ddVars);
       tdd->varsSize = CUDD->maxSize;
