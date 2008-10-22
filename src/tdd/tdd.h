@@ -61,14 +61,20 @@ struct theory
   /** Returns true if t1 is the same term as t2 */
   bool (*term_equals)(linterm_t t1, linterm_t t2);
 
+  /** 
+   * Returns truee iff variable 'var' appears with a non-zero
+   * coefficient in the term 't'.
+   */
+  bool (*term_has_var) (linterm_t t, int var);
+
   /**
    * Returns true if there exists a variable v in the set var whose
    * coefficient in t is non-zero.
 
-   * t is a term, var is represented as an array of booleans, and n is
-   * the size of var.
+   * t is a term, var is represented as an array of booleans, 
    */
-  bool (*term_has_var) (linterm_t t, bool* vars);
+  bool (*term_has_vars) (linterm_t t, bool* vars);
+
 
   /* Returns the number of variables of the theory */
   size_t (*num_of_vars)(theory_t* self);
@@ -205,8 +211,8 @@ tdd_node* tdd_or (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_xor (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_ite (tdd_manager* m, tdd_node* n1, tdd_node* n2, tdd_node* n3);
 
-tdd_node* tdd_exist_abstract (tdd_manager*, tdd_node*, bool*);
-tdd_node* tdd_univ_abstract (tdd_manager*, tdd_node*, bool*);
+tdd_node* tdd_exist_abstract (tdd_manager*, tdd_node*, int);
+tdd_node* tdd_univ_abstract (tdd_manager*, tdd_node*, int);
 tdd_node* tdd_resolve_elim (tdd_manager*, tdd_node*, linterm_t, 
 			    lincons_t, int);
 tdd_node* tdd_resolve (tdd_manager*, tdd_node*, 

@@ -39,7 +39,7 @@ tdd_node* tdd_unique_inter (tdd_manager *m, unsigned int idx,
 tdd_node* tdd_and_recur (tdd_manager*, tdd_node*, tdd_node*);
 tdd_node* tdd_xor_recur (tdd_manager*, tdd_node*, tdd_node*);
 tdd_node* tdd_ite_recur (tdd_manager*, tdd_node*, tdd_node*, tdd_node*);
-tdd_node* tdd_exist_abstract_recur (tdd_manager*, tdd_node*, bool*, 
+tdd_node* tdd_exist_abstract_recur (tdd_manager*, tdd_node*, int, 
 				    DdHashTable*);
 tdd_node * tdd_resolve_elim_inter (tdd_manager * tdd, tdd_node * f, 
 				   linterm_t t, lincons_t cons, int var);

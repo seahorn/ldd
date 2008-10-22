@@ -5,7 +5,7 @@
 
 tdd_node *tdd_exist_abstract (tdd_manager * tdd,
 			      tdd_node * f,
-			      bool * vars)
+			      int var)
 {
   tdd_node *res;
   DdHashTable *table;
@@ -16,7 +16,7 @@ tdd_node *tdd_exist_abstract (tdd_manager * tdd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = tdd_exist_abstract_recur (tdd, f, vars, table);
+      res = tdd_exist_abstract_recur (tdd, f, var, table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -29,7 +29,7 @@ tdd_node *tdd_exist_abstract (tdd_manager * tdd,
 
 tdd_node * tdd_univ_abstract (tdd_manager * tdd,
 			      tdd_node * f,
-			      bool * vars)
+			      int var)
 {
   tdd_node *res;
   DdHashTable *table;
@@ -39,7 +39,7 @@ tdd_node * tdd_univ_abstract (tdd_manager * tdd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = tdd_exist_abstract_recur (tdd, Cudd_Not (f), vars, table);
+      res = tdd_exist_abstract_recur (tdd, Cudd_Not (f), var, table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -159,7 +159,7 @@ tdd_node * tdd_resolve_elim_inter (tdd_manager * tdd, tdd_node * f,
 
 tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd, 
 				     tdd_node * f, 
-				     bool * vars, 
+				     int var, 
 				     DdHashTable * table)
 {
   DdNode *F, *T, *E;
@@ -178,9 +178,7 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   /* true if root constraint has to be eliminated, false otherwise */
   int fElimRoot;
 
-  /* variable from vars that is being eliminated at this iteration */
-  int elimVar;
-  
+ 
   manager = CUDD;
   F = Cudd_Regular (f);
   
@@ -204,12 +202,11 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   fnv = Cudd_NotCond (fnv, f != F);
 
 
-  /* pick a variable in the intersection of varsOf (vTerm) and vars
-     that is eliminated at this iteration. Now, the choice is left to
-     the theory. In general, this is an important heuristic choice. */
-  elimVar = THEORY->pick_var (vTerm, vars);
-  
-  if (elimVar < 0)
+  /* if variables of vTerm do not contain var, we just recurse.
+     otherwise, top constraint is removed and propagated to children
+     before recursing to children
+  */
+  if (!THEORY->term_has_var (vTerm, var))
     {
       /* keep the root constraint */
       fElimRoot = 0;
@@ -226,7 +223,7 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
       fElimRoot = 1;
       
       /* resolve root constraint with THEN branch */
-      tmp = tdd_resolve_elim_inter (tdd, fv, vTerm, vCons, elimVar);
+      tmp = tdd_resolve_elim_inter (tdd, fv, vTerm, vCons, var);
       if (tmp == NULL)
 	return NULL;
       
@@ -235,7 +232,7 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
       
       /* resolve negation of the root constraint with ELSE branch */
       nvCons = THEORY->negate_cons (vCons);
-      tmp = tdd_resolve_elim_inter (tdd, fnv, vTerm, nvCons, elimVar);
+      tmp = tdd_resolve_elim_inter (tdd, fnv, vTerm, nvCons, var);
       THEORY->destroy_lincons (nvCons);
       
       if (tmp == NULL)
@@ -249,7 +246,7 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   
 
   /* recurse to THEN and ELSE branches*/
-  T = tdd_exist_abstract_recur (tdd, fv, vars, table);
+  T = tdd_exist_abstract_recur (tdd, fv, var, table);
   if (T == NULL)
     {
       Cudd_IterDerefBdd (manager, fv);
@@ -260,7 +257,7 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   Cudd_IterDerefBdd (manager, fv);
   fv = NULL;
   
-  E = tdd_exist_abstract_recur (tdd, fnv, vars, table);
+  E = tdd_exist_abstract_recur (tdd, fnv, var, table);
   if (E == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -776,7 +773,7 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
    */
 
 
-  fElimRoot = THEORY->term_has_var (vTerm, vars);
+  fElimRoot = THEORY->term_has_vars (vTerm, vars);
 
 
   /* recurse on the THEN branch*/
