@@ -9,7 +9,7 @@
 
   #define YYERROR_VERBOSE
 
-  #define BENCH_MAX  50
+  
 
   void yyerror (char *s);
   int yylex (void);
@@ -19,6 +19,8 @@
   theory_t *t;
 
   tdd_node *bench;
+
+  int bench_max = 0;
 
 %}
 
@@ -65,7 +67,7 @@ prefix: VARS_TOK COL_TOK NUMERAL_TOK
 
 
 cnf: 
-      clause cnf
+      cnf clause
       {
 	$$ = tdd_and (tdd, $1, $2);
 	Cudd_Ref ($$);
@@ -76,7 +78,7 @@ cnf:
     ;
 
 clause:
-         constraint clause 
+         constraint clause
          {
            $$ = tdd_or (tdd, $1, $2);
 	   Cudd_Ref ($$);
@@ -123,7 +125,7 @@ constant:
           NUMERAL_TOK 
 	  |    LBRACKET_TOK MAX_TOK MINUS_TOK NUMERAL_TOK RBRACKET_TOK
 {
-  $$ = BENCH_MAX - $4;
+  $$ = bench_max - $4;
 }
 
      ;
@@ -136,39 +138,53 @@ void yyerror (char *s)
 }
 
 
-int main (void)
+int main (int argc, char** argv)
 {
   bool *vars;
   size_t size;
   int i;
   tdd_node* res;
+
+  if (argc != 2)
+    bench_max = 50;
+  else
+    bench_max = atoi (argv [1]);
   
+  printf ("Benchmark with max_bench=%d\n", bench_max);
+
   //  yydebug = 1;
   yyparse ();
   printf ("Parsing ended with %p, of size %d\n", 
 	  bench, Cudd_DagSize (bench));
+
+  //tdd_manager_debug_dump (tdd);
   
 
   size = t->num_of_vars (t);
+
+  printf ("Allocating %d bytes\n", size);
   vars = (bool*) malloc (sizeof (bool) * size);
+
   
   for (i = 0; i < size; i++)
     vars [i] = 0;
-  
+
+  printf ("Starting existential quantification\n");
   res = bench;
-  for (i = 0; i < size; i++)
+  //for (i = size - 1 ; i >= 0; i--)
+  for (i = 0; i < size ; i++)
     {
       vars [i] = 1;
-      res = tdd_univ_abstract (tdd, res, vars);
+      res = tdd_exist_abstract (tdd, res, vars);
       Cudd_Ref (res);
       printf ("After quantifying x%d the size is %d\n", 
 	      i, Cudd_DagSize (res));
       vars [i] = 0;
     }
   
-  printf ("The result of universal quantification of everything is:\n");
+  printf ("The result of existential quantification of everything is:\n");
   Cudd_PrintMinterm (cudd, res); 
-
+  
 
 
   /*
@@ -177,9 +193,13 @@ int main (void)
 
 
   res = tdd_exist_abstract (tdd, bench, vars);
+  tdd_manager_debug_dump (tdd);
+  
   printf ("The result of existential quantification of everything together is:\n");
-  Cudd_PrintMinterm (cudd, res); 
+  Cudd_PrintMinterm (cudd, res);
+  */
 
+  /*
   
    
   res = tdd_univ_abstract (tdd, bench, vars);
