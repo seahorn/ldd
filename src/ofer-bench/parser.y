@@ -140,7 +140,6 @@ void yyerror (char *s)
 
 int main (int argc, char** argv)
 {
-  bool *vars;
   size_t size;
   int i;
   tdd_node* res;
@@ -161,51 +160,34 @@ int main (int argc, char** argv)
   
 
   size = t->num_of_vars (t);
+  printf ("Using %d DD variables\n", size);
 
-  printf ("Allocating %d bytes\n", size);
-  vars = (bool*) malloc (sizeof (bool) * size);
-
-  
-  for (i = 0; i < size; i++)
-    vars [i] = 0;
 
   printf ("Starting existential quantification\n");
   res = bench;
+
   //for (i = size - 1 ; i >= 0; i--)
   for (i = 0; i < size ; i++)
     {
-      vars [i] = 1;
-      res = tdd_exist_abstract (tdd, res, vars);
+      /* Only run quantification when needed */
+      if (Cudd_IsConstant (res)) break;
+
+      res = tdd_exist_abstract (tdd, res, i);
       Cudd_Ref (res);
       printf ("After quantifying x%d the size is %d\n", 
 	      i, Cudd_DagSize (res));
-      vars [i] = 0;
     }
   
-  printf ("The result of existential quantification of everything is:\n");
-  Cudd_PrintMinterm (cudd, res); 
-  
-
-
-  /*
-  for (i = 0; i < size; i++)
-    vars [i] = 1;
-
-
-  res = tdd_exist_abstract (tdd, bench, vars);
-  tdd_manager_debug_dump (tdd);
-  
-  printf ("The result of existential quantification of everything together is:\n");
-  Cudd_PrintMinterm (cudd, res);
-  */
-
-  /*
-  
-   
-  res = tdd_univ_abstract (tdd, bench, vars);
-  printf ("The result of universal quantification of everything is:\n");
-  Cudd_PrintMinterm (cudd, res);
-  */
+  printf ("The result of existential quantification is: ");
+  if (Cudd_ReadOne (cudd) == res)
+    printf ("true\n");
+  else if (Cudd_ReadLogicZero (cudd) == res)
+    printf ("false\n");
+  else
+    {
+      printf ("\n");
+      Cudd_PrintMinterm (cudd, res); 
+    }
   
   return 0;
 }
