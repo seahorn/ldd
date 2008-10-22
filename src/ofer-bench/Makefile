@@ -10,14 +10,10 @@ LIB = libtdd.a
 LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp \
 	  -L../tdd -L../tdd-ddd -L../tdd-oct 
 LDLIBS = -lcudd -ltdd-ddd -ltdd-oct -ltdd -lst -lutil -lmtr -lepd -ldddmp -lm -lfl
+BINS = parser jobshop 
 
-all : $(LIB)
+all : $(BINS)
 
-$(LIB) : $(OBJS)
-	$(AR) $@ $(OBJS)
-
-test: smt_parser_test
-	./smt_parser_test < queen3-1.smt
 
 parser: $(OBJS) 
 	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
@@ -37,4 +33,4 @@ parser.tab.c: parser.y
 -include $(DEPS)
 
 clean :
-	rm -f $(LIB) $(OBJS) $(DEPS) lexer.yy.c parser.tab.[ch] *~ 
+	rm -f $(LIB) $(OBJS) $(DEPS) lexer.yy.c parser.tab.[ch] *~ parser jobshop
