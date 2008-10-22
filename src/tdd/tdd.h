@@ -1,6 +1,7 @@
 #ifndef _TDD_H_
 #define _TDD_H_
 
+#include <stdio.h>
 #include "cudd.h"
 
 
@@ -167,6 +168,9 @@ struct theory
   */
   tdd_node* (*to_tdd)(tdd_manager* m, lincons_t l);
 
+  
+  void (*print_lincons) (FILE* f, lincons_t l);
+
   /** Incremental Quantifier elimination */
   /* XXX want to change the interface to be as in the comment of 
      XXX term_has_var
@@ -208,6 +212,8 @@ tdd_node* tdd_resolve_elim (tdd_manager*, tdd_node*, linterm_t,
 tdd_node* tdd_resolve (tdd_manager*, tdd_node*, 
 		       linterm_t, lincons_t, lincons_t, int);
 tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, bool*);
+
+void tdd_manager_debug_dump (tdd_manager*);
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
