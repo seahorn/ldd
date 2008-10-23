@@ -784,9 +784,30 @@ void ddd_print_lincons(FILE *f,lincons_t l)
 /**********************************************************************
  * functions for incremental quantifier elimination
  *********************************************************************/
+void ddd_qelim_destroy_stack_elem(ddd_qelim_stack_elem_t *x)
+{
+  if(x == NULL) return;
+  ddd_qelim_destroy_stack_elem(x->next);
+  free(x);
+}
+
+void ddd_qelim_destroy_stack(ddd_qelim_stack_t *x)
+{
+  if(x == NULL) return;
+  ddd_qelim_destroy_stack_elem(x->elem);
+  ddd_qelim_destroy_stack(x->next);
+  free(x);
+}
+
 qelim_context_t* ddd_qelim_init(int *vars, size_t n)
 {
-  return NULL;
+  ddd_qelim_context_t *res = (ddd_qelim_context_t*)malloc(sizeof(ddd_qelim_context_t));
+  res->vars = (int*)malloc(n * sizeof(int));
+  size_t i = 0;
+  for(;i < n;++i) res->vars[i] = vars[i];
+  res->var_num = n;
+  res->stack = NULL;
+  return (qelim_context_t*)res;
 }
 
 void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
@@ -805,6 +826,10 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 
 void ddd_qelim_destroy_context(qelim_context_t* ctx)
 {
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+  free(x->vars);
+  ddd_qelim_destroy_stack(x->stack);
+  free(x);
 }
 
 /**********************************************************************
