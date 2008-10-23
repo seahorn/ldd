@@ -277,7 +277,6 @@ bool ddd_term_has_var (linterm_t t, int var)
   return x->var1 == var || x->var2 == var;
 }
 
-
 /**********************************************************************
  * Returns true if there exists a variable v in the set var whose
  * coefficient in t is non-zero.
@@ -308,6 +307,52 @@ linterm_t _ddd_create_linterm(int v1,int v2)
   res->var1 = v1;
   res->var2 = v2;
   return (linterm_t)res;
+}
+
+/**********************************************************************
+ * print a constant
+ *********************************************************************/
+void ddd_print_cst(FILE *f,ddd_cst_t *c)
+{
+  switch(c->type) {
+  case DDD_INT:
+    fprintf(f,"%d",c->int_val);
+    break;
+  case DDD_RAT:
+    fprintf(f,"%d/%d",c->rat_val.quot,c->rat_val.rem);
+    break;
+  case DDD_DBL:
+    fprintf(f,"%lf",c->dbl_val);
+    break;
+  default:
+    break;
+  }
+}
+
+/**********************************************************************
+ * print a term
+ *********************************************************************/
+void ddd_print_term(FILE *f,ddd_term_t *t)
+{
+  fprintf(f,"%d-%d",t->var1,t->var2);
+}
+
+/**********************************************************************
+ * print a constraint - this one takes a ddd_cons_t* as input
+ *********************************************************************/
+void ddd_print_cons(FILE *f,ddd_cons_t *l)
+{
+  ddd_print_term(f,&(l->term));
+  fprintf(f," %s ",l->strict ? "<" : "<=");
+  ddd_print_cst(f,&(l->cst));
+}
+
+/**********************************************************************
+ * print a constraint - this one takes a linconst_t as input
+ *********************************************************************/
+void ddd_print_lincons(FILE *f,lincons_t l)
+{
+  ddd_print_cons(f,(ddd_cons_t*)l);
 }
 
 /**********************************************************************
@@ -735,27 +780,6 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
   //all done
   return neg && res != NULL ? tdd_not (res) : res;
 }
-
-
-void ddd_print_lincons (FILE* f, lincons_t l)
-{
-  ddd_cons_t *c = (ddd_cons_t*) l;
-  
-  fprintf (f, "x%d-x%d<=", c->term.var1, c->term.var2);
-  switch (c->cst.type)
-    {
-    case DDD_INT:
-      fprintf (f, "%d", c->cst.int_val);
-      break;
-    case DDD_DBL:
-      fprintf (f, "%f", c->cst.dbl_val);
-      break;
-    case DDD_RAT:
-      fprintf (f, "RATIONAL");
-      break;
-    }
-}
-
 
 /**********************************************************************
  * common steps when creating any theory - argument is the number of
