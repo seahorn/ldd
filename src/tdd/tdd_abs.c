@@ -1,7 +1,6 @@
 #include "util.h"
 #include "tddInt.h"
 
-#define FIXME 0
 
 tdd_node *tdd_exist_abstract (tdd_manager * tdd,
 			      tdd_node * f,
@@ -106,7 +105,7 @@ tdd_node *tdd_exist_abstract_v2 (tdd_manager * tdd,
     {
       CUDD->reordered = 0;
 
-      qelimCtx = THEORY->qelim_init (vars, FIXME);
+      qelimCtx = THEORY->qelim_init (THEORY, vars);
       if (qelimCtx == NULL)
 	return NULL;
       

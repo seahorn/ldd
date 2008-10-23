@@ -178,10 +178,7 @@ struct theory
   void (*print_lincons) (FILE* f, lincons_t l);
 
   /** Incremental Quantifier elimination */
-  /* XXX want to change the interface to be as in the comment of 
-     XXX term_has_var
-  */
-  qelim_context_t* (*qelim_init)(int *vars, size_t n);
+  qelim_context_t* (*qelim_init)(theory_t *t, bool* vars);
   void (*qelim_push)(qelim_context_t* ctx, lincons_t l);
   lincons_t (*qelim_pop)(qelim_context_t* ctx);
   tdd_node* (*qelim_solve)(qelim_context_t* ctx);
