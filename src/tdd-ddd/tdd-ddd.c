@@ -784,39 +784,80 @@ void ddd_print_lincons(FILE *f,lincons_t l)
 /**********************************************************************
  * functions for incremental quantifier elimination
  *********************************************************************/
-void ddd_qelim_destroy_stack_elem(ddd_qelim_stack_elem_t *x)
-{
-  if(x == NULL) return;
-  ddd_qelim_destroy_stack_elem(x->next);
-  free(x);
-}
-
 void ddd_qelim_destroy_stack(ddd_qelim_stack_t *x)
 {
-  if(x == NULL) return;
-  ddd_qelim_destroy_stack_elem(x->elem);
-  ddd_qelim_destroy_stack(x->next);
-  free(x);
+  while(x) {
+    ddd_qelim_stack_t *next = x->next;
+    while(x->elem) {
+      ddd_qelim_stack_elem_t *next_elem = x->elem->next;
+      free(x->elem);
+      x->elem = next_elem;
+    }
+    free(x);
+    x = next;
+  }
 }
 
-qelim_context_t* ddd_qelim_init(int *vars, size_t n)
+qelim_context_t* ddd_qelim_init(theory_t *t,bool *vars)
 {
   ddd_qelim_context_t *res = (ddd_qelim_context_t*)malloc(sizeof(ddd_qelim_context_t));
-  res->vars = (int*)malloc(n * sizeof(int));
+  res->t = t;
+  size_t var_num = t->num_of_vars(t); 
+  res->vars = (bool*)malloc(var_num * sizeof(bool));
   size_t i = 0;
-  for(;i < n;++i) res->vars[i] = vars[i];
-  res->var_num = n;
+  for(;i < var_num;++i) res->vars[i] = vars[i];
   res->stack = NULL;
   return (qelim_context_t*)res;
 }
 
 void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
 {
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+  theory_t *t = x->t;
+  ddd_qelim_stack_t *new_stack = (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
+  new_stack->cons = *((ddd_cons_t*)l);
+
+  linterm_t term = t->get_term(l);
+  
+  //if the term has a variable to be quantified
+  if(t->term_has_vars(term,x->vars)) {
+
+
+  }
+  //otherwise the term does not have a variable to be quantified
+  else {
+    new_stack->elem = (ddd_qelim_stack_elem_t*)malloc(sizeof(ddd_qelim_stack_elem_t));
+    new_stack->elem->cons = *((ddd_cons_t*)l);
+    new_stack->elem->next = NULL;
+  }
+
+  //update the stack
+  new_stack->next = x->stack;
+  x->stack = new_stack;
 }
 
 lincons_t ddd_qelim_pop(qelim_context_t* ctx)
 {
-  return NULL;
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+
+  //check for stack emptiness
+  if(x->stack == NULL) return NULL;
+
+  //get the constraint for the top element
+  lincons_t res = ddd_dup_lincons(&(x->stack->cons));
+
+  //free the top element
+  ddd_qelim_stack_t *next = x->stack->next;
+  while(x->stack->elem) {
+    ddd_qelim_stack_elem_t *next_elem = x->stack->elem->next;
+    free(x->stack->elem);
+    x->stack->elem = next_elem;
+  }
+  free(x->stack);
+  x->stack = next;
+
+  //all done
+  return res;
 }
 
 tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
