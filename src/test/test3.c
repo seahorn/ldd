@@ -19,7 +19,6 @@ typedef struct testcase {
 DdManager *cudd = NULL;
 tdd_manager* tdd = NULL;
 theory_t * theory = NULL;
-bool *vars = NULL;
 
 tdd_node *create_cons(testcase_t *tc,int *arg)
 {
@@ -37,7 +36,6 @@ void test(testcase_t *tc)
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
   theory = tvpi_create_int_theory (tc->varnum);
   tdd = tdd_init (cudd, theory);
-  vars = (bool*)malloc(tc->varnum * sizeof(bool));
   
   //create antecedent
   tdd_node *ante = NULL;
@@ -54,15 +52,17 @@ void test(testcase_t *tc)
   tdd_node *impl = tdd_not(tdd_or (tdd, tdd_not (ante), cons));
 
   //existential abstraction
-  for(i = 0;i < tc->varnum;++i) vars[i] = 1;  
-  tdd_node *abs = tdd_not(tdd_exist_abstract (tdd, impl, vars));
+  tdd_node *abs = impl;
+  for(i = 0;i < tc->varnum;++i) {
+    abs = tdd_exist_abstract (tdd, abs, i);
+  }
+  abs = tdd_not(abs);
 
   //check for validity
   assert(abs == Cudd_ReadOne(cudd));
 
   //cleanup
   printf ("Destroying the world...\n");
-  free(vars);
   tdd_quit (tdd);
   tvpi_destroy_theory (theory);
   Cudd_Quit (cudd);

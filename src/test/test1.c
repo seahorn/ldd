@@ -94,12 +94,15 @@ int main(void)
   Cudd_PrintMinterm (cudd, d6);
   
   {
-    bool vars[3] = {1, 1, 1};
-    d7 = tdd_univ_abstract (tdd, d6, vars);
+    d7 = tdd_univ_abstract (tdd, d6, 0);
+    d7 = tdd_univ_abstract (tdd, d7, 1);
+    d7 = tdd_univ_abstract (tdd, d7, 2);
     printf ("univ d7 is:\n");
     Cudd_PrintMinterm (cudd, d7);
 
-    d7 = tdd_exist_abstract (tdd, d6, vars);
+    d7 = tdd_exist_abstract (tdd, d6, 0);
+    d7 = tdd_exist_abstract (tdd, d7, 1);
+    d7 = tdd_exist_abstract (tdd, d7, 2);
     printf ("exist d7 is:\n");
     Cudd_PrintMinterm (cudd, d7);
   }
