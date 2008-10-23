@@ -286,13 +286,22 @@ bool tvpi_term_equals(linterm_t t1, linterm_t t2)
 }
 
 /**********************************************************************
+ * Returns true if term t has variable v
+ *********************************************************************/
+bool tvpi_term_has_var (linterm_t t,int var)
+{
+  tvpi_term_t *x = (tvpi_term_t*)t;
+  return (x->vars[0] == var) || (x->vars[1] == var);
+}
+
+/**********************************************************************
  * Returns true if there exists a variable v in the set var whose
  * coefficient in t is non-zero.
 
  * t is a term, var is represented as an array of booleans, and n is
  * the size of var.
  *********************************************************************/
-bool tvpi_term_has_var (linterm_t t,bool *vars)
+bool tvpi_term_has_vars (linterm_t t,bool *vars)
 {
   tvpi_term_t *x = (tvpi_term_t*)t;
   return vars[x->vars[0]] || vars[x->vars[1]];
@@ -340,14 +349,14 @@ linterm_t _tvpi_create_linterm(mpq_t cf11,mpq_t cf12,int v1,
 /**********************************************************************
  * print a constant
  *********************************************************************/
-void tvpi_print_cst(tvpi_cst_t *c)
+void tvpi_print_cst(FILE *f,tvpi_cst_t *c)
 {
   switch(c->type) {
   case TVPI_RAT:
-    mpq_out_str(NULL,10,c->rat_val);
+    mpq_out_str(f,10,c->rat_val);
     break;
   case TVPI_DBL:
-    printf("%lf",c->dbl_val);
+    fprintf(f,"%lf",c->dbl_val);
     break;
   default:
     break;
@@ -357,22 +366,30 @@ void tvpi_print_cst(tvpi_cst_t *c)
 /**********************************************************************
  * print a term
  *********************************************************************/
-void tvpi_print_term(tvpi_term_t *t)
+void tvpi_print_term(FILE *f,tvpi_term_t *t)
 {
-  mpq_out_str(NULL,10,t->coeffs[0]);
-  printf(" * %d + ",t->vars[0]);
-  mpq_out_str(NULL,10,t->coeffs[1]);
-  printf(" * %d",t->vars[1]);
+  mpq_out_str(f,10,t->coeffs[0]);
+  fprintf(f," * %d + ",t->vars[0]);
+  mpq_out_str(f,10,t->coeffs[1]);
+  fprintf(f," * %d",t->vars[1]);
 }
 
 /**********************************************************************
- * print a constraint
+ * print a constraint - this one takes a tvpi_cons_t* as input
  *********************************************************************/
-void tvpi_print_cons(tvpi_cons_t *l)
+void tvpi_print_cons(FILE *f,tvpi_cons_t *l)
 {
-  tvpi_print_term(l->term);
-  printf(" %s ",l->strict ? "<" : "<=");
-  tvpi_print_cst(l->cst);
+  tvpi_print_term(f,l->term);
+  fprintf(f," %s ",l->strict ? "<" : "<=");
+  tvpi_print_cst(f,l->cst);
+}
+
+/**********************************************************************
+ * print a constraint - this one takes a linconst_t as input
+ *********************************************************************/
+void tvpi_print_lincons(FILE *f,lincons_t l)
+{
+  tvpi_print_cons(f,(tvpi_cons_t*)l);
 }
 
 /**********************************************************************
@@ -841,6 +858,7 @@ tvpi_theory_t *tvpi_create_theory_common(size_t vn)
   res->base.create_linterm = tvpi_create_linterm;
   res->base.term_equals = tvpi_term_equals;
   res->base.term_has_var = tvpi_term_has_var;
+  res->base.term_has_vars = tvpi_term_has_vars;
   res->base.num_of_vars = tvpi_num_of_vars;
   res->base.terms_have_resolvent = tvpi_terms_have_resolvent;
   res->base.negate_term = tvpi_negate_term;
@@ -854,6 +872,7 @@ tvpi_theory_t *tvpi_create_theory_common(size_t vn)
   res->base.destroy_lincons = tvpi_destroy_lincons;
   res->base.dup_lincons = tvpi_dup_lincons;
   res->base.to_tdd = tvpi_to_tdd;
+  res->base.print_lincons = tvpi_print_lincons;  
   res->var_num = vn;
   //create maps from constraints to DD nodes -- one per variable pair
   res->cons_node_map = (tvpi_cons_node_t ***)malloc(vn * sizeof(tvpi_cons_node_t **));
