@@ -782,6 +782,32 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
 }
 
 /**********************************************************************
+ * functions for incremental quantifier elimination
+ *********************************************************************/
+qelim_context_t* ddd_qelim_init(int *vars, size_t n)
+{
+  return NULL;
+}
+
+void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
+{
+}
+
+lincons_t ddd_qelim_pop(qelim_context_t* ctx)
+{
+  return NULL;
+}
+
+tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
+{
+  return NULL;
+}
+
+void ddd_qelim_destroy_context(qelim_context_t* ctx)
+{
+}
+
+/**********************************************************************
  * common steps when creating any theory - argument is the number of
  * variables
  *********************************************************************/
@@ -813,7 +839,12 @@ ddd_theory_t *ddd_create_theory_common(size_t vn)
   res->base.destroy_lincons = ddd_destroy_lincons;
   res->base.dup_lincons = ddd_dup_lincons;
   res->base.to_tdd = ddd_to_tdd;
-  res->base.print_lincons = ddd_print_lincons;
+  res->base.print_lincons = ddd_print_lincons;  
+  res->base.qelim_init = ddd_qelim_init;
+  res->base.qelim_push = ddd_qelim_push;
+  res->base.qelim_pop = ddd_qelim_pop;
+  res->base.qelim_solve = ddd_qelim_solve;
+  res->base.qelim_destroy_context = ddd_qelim_destroy_context;
   res->var_num = vn;
   //create maps from constraints to DD nodes -- one per variable pair
   res->cons_node_map = (ddd_cons_node_t ***)malloc(vn * sizeof(ddd_cons_node_t **));

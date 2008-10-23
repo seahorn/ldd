@@ -73,6 +73,29 @@ typedef struct ddd_cons_node
 } ddd_cons_node_t;
 
 /**********************************************************************
+ * data structures for incremental quantifier elimination
+ *********************************************************************/
+typedef struct ddd_qelim_stack_elem
+{
+  ddd_cons_t cons;
+  struct ddd_qelim_stack_elem *next;
+} ddd_qelim_stack_elem_t;
+
+typedef struct ddd_qelim_stack
+{
+  ddd_cons_t cons;
+  ddd_qelim_stack_elem_t *elem;
+  struct ddd_qelim_stack *next;
+} ddd_qelim_stack_t;
+
+typedef struct ddd_qelim_context
+{
+  bool *vars;
+  size_t var_num;
+  ddd_qelim_stack_t *stack;
+} ddd_qelim_context_t;
+
+/**********************************************************************
  * the DDD theory struct "extends" the theory struct
  *********************************************************************/
 typedef struct ddd_theory
@@ -134,8 +157,13 @@ lincons_t ddd_dup_lincons(lincons_t l);
 tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
                        ddd_cons_node_t *prev,ddd_cons_t *c);
 tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l);
+qelim_context_t* ddd_qelim_init(int *vars, size_t n);
+void ddd_qelim_push(qelim_context_t* ctx, lincons_t l);
+lincons_t ddd_qelim_pop(qelim_context_t* ctx);
+tdd_node* ddd_qelim_solve(qelim_context_t* ctx);
+void ddd_qelim_destroy_context(qelim_context_t* ctx);
 ddd_theory_t *ddd_create_theory_common(size_t vn);
-
+  
 #endif //__TDD_DDD_INT_H__
 
 /**********************************************************************
