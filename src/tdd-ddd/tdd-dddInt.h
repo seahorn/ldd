@@ -132,7 +132,6 @@ linterm_t _ddd_create_linterm(int v1,int v2);
 void ddd_print_cst(FILE *f,ddd_cst_t *c);
 void ddd_print_term(FILE *f,ddd_term_t *t);
 void ddd_print_cons(FILE *f,ddd_cons_t *l);
-void ddd_print_lincons(FILE *f,lincons_t l);
 linterm_t _ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 int ddd_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 void ddd_negate_term_inplace(ddd_term_t *t);
@@ -157,6 +156,7 @@ lincons_t ddd_dup_lincons(lincons_t l);
 tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
                        ddd_cons_node_t *prev,ddd_cons_t *c);
 tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l);
+void ddd_print_lincons(FILE *f,lincons_t l);
 qelim_context_t* ddd_qelim_init(int *vars, size_t n);
 void ddd_qelim_push(qelim_context_t* ctx, lincons_t l);
 lincons_t ddd_qelim_pop(qelim_context_t* ctx);

@@ -131,7 +131,6 @@ linterm_t _tvpi_create_linterm(mpq_t cf11,mpq_t cf12,int v1,
 void tvpi_print_cst(FILE *f,tvpi_cst_t *c);
 void tvpi_print_term(FILE *f,tvpi_term_t *t);
 void tvpi_print_cons(FILE *f,tvpi_cons_t *l);
-void tvpi_print_lincons(FILE *f,lincons_t l);
 tvpi_resolve_t _tvpi_terms_have_resolvent(tvpi_term_t *x1,tvpi_term_t *x2, int x);
 int tvpi_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 void tvpi_negate_term_inplace(tvpi_term_t *t);
@@ -157,6 +156,7 @@ lincons_t tvpi_dup_lincons(lincons_t l);
 tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
                        tvpi_cons_node_t *prev,tvpi_cons_t *c);
 tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l);
+void tvpi_print_lincons(FILE *f,lincons_t l);
 tvpi_theory_t *tvpi_create_theory_common(size_t vn);
 
 #endif //__TDD_TVPI_INT_H__

@@ -368,14 +368,6 @@ void oct_print_cons(FILE *f,oct_cons_t *l)
 }
 
 /**********************************************************************
- * print a constraint - this one takes a linconst_t as input
- *********************************************************************/
-void oct_print_lincons(FILE *f,lincons_t l)
-{
-  oct_print_cons(f,(oct_cons_t*)l);
-}
-
-/**********************************************************************
  * Return the result of resolving t1 and t2. If the resolvant does not
  * exist, return NULL.
  *********************************************************************/
@@ -800,6 +792,14 @@ tdd_node* oct_to_tdd(tdd_manager* m, lincons_t l)
   
   //all done
   return res;
+}
+
+/**********************************************************************
+ * print a constraint - this one takes a linconst_t as input
+ *********************************************************************/
+void oct_print_lincons(FILE *f,lincons_t l)
+{
+  oct_print_cons(f,(oct_cons_t*)l);
 }
 
 /**********************************************************************

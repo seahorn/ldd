@@ -348,14 +348,6 @@ void ddd_print_cons(FILE *f,ddd_cons_t *l)
 }
 
 /**********************************************************************
- * print a constraint - this one takes a linconst_t as input
- *********************************************************************/
-void ddd_print_lincons(FILE *f,lincons_t l)
-{
-  ddd_print_cons(f,(ddd_cons_t*)l);
-}
-
-/**********************************************************************
  * Return the result of resolving t1 and t2. If the resolvant does not
  * exist, return NULL.
  *********************************************************************/
@@ -779,6 +771,14 @@ tdd_node* ddd_to_tdd(tdd_manager* m, lincons_t l)
 
   //all done
   return neg && res != NULL ? tdd_not (res) : res;
+}
+
+/**********************************************************************
+ * print a constraint - this one takes a linconst_t as input
+ *********************************************************************/
+void ddd_print_lincons(FILE *f,lincons_t l)
+{
+  ddd_print_cons(f,(ddd_cons_t*)l);
 }
 
 /**********************************************************************

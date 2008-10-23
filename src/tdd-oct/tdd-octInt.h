@@ -110,7 +110,6 @@ linterm_t _oct_create_linterm(int cf1,int v1,int cf2,int v2);
 void oct_print_cst(FILE *f,oct_cst_t *c);
 void oct_print_term(FILE *f,oct_term_t *t);
 void oct_print_cons(FILE *f,oct_cons_t *l);
-void oct_print_lincons(FILE *f,lincons_t l);
 linterm_t _oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 int oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x);
 void oct_negate_term_inplace(oct_term_t *t);
@@ -135,6 +134,7 @@ lincons_t oct_dup_lincons(lincons_t l);
 tdd_node *oct_get_node(tdd_manager* m,oct_cons_node_t *curr,
                        oct_cons_node_t *prev,oct_cons_t *c);
 tdd_node* oct_to_tdd(tdd_manager* m, lincons_t l);
+void oct_print_lincons(FILE *f,lincons_t l);
 oct_theory_t *oct_create_theory_common(size_t vn);
 
 #endif //__TDD_OCT_INT_H__

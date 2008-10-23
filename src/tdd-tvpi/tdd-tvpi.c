@@ -385,14 +385,6 @@ void tvpi_print_cons(FILE *f,tvpi_cons_t *l)
 }
 
 /**********************************************************************
- * print a constraint - this one takes a linconst_t as input
- *********************************************************************/
-void tvpi_print_lincons(FILE *f,lincons_t l)
-{
-  tvpi_print_cons(f,(tvpi_cons_t*)l);
-}
-
-/**********************************************************************
  * Return the result of resolving t1 and t2. If the resolvant does not
  * exist, return NULL.
  *********************************************************************/
@@ -838,6 +830,14 @@ tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l)
   
   //all done
   return res;
+}
+
+/**********************************************************************
+ * print a constraint - this one takes a linconst_t as input
+ *********************************************************************/
+void tvpi_print_lincons(FILE *f,lincons_t l)
+{
+  tvpi_print_cons(f,(tvpi_cons_t*)l);
 }
 
 /**********************************************************************
