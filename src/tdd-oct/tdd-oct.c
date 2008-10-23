@@ -278,13 +278,22 @@ bool oct_term_equals(linterm_t t1, linterm_t t2)
 }
 
 /**********************************************************************
+ * Returns true if term t has variable var
+ *********************************************************************/
+bool oct_term_has_var (linterm_t t,int var)
+{
+  oct_term_t *x = (oct_term_t*)t;
+  return (x->var1 == var) || (x->var2 == var);
+}
+
+/**********************************************************************
  * Returns true if there exists a variable v in the set var whose
  * coefficient in t is non-zero.
 
  * t is a term, var is represented as an array of booleans, and n is
  * the size of var.
  *********************************************************************/
-bool oct_term_has_var (linterm_t t,bool *vars)
+bool oct_term_has_vars (linterm_t t,bool *vars)
 {
   oct_term_t *x = (oct_term_t*)t;
   return vars[x->var1] || vars[x->var2];
@@ -317,6 +326,53 @@ linterm_t _oct_create_linterm(int cf1,int v1,int cf2,int v2)
     res->var2 = v1;
   }
   return (linterm_t)res;
+}
+
+/**********************************************************************
+ * print a constant
+ *********************************************************************/
+void oct_print_cst(FILE *f,oct_cst_t *c)
+{
+  switch(c->type) {
+  case OCT_INT:
+    fprintf(f,"%d",c->int_val);
+    break;
+  case OCT_RAT:
+    fprintf(f,"%d/%d",c->rat_val.quot,c->rat_val.rem);
+    break;
+  case OCT_DBL:
+    fprintf(f,"%lf",c->dbl_val);
+    break;
+  default:
+    break;
+  }
+}
+
+/**********************************************************************
+ * print a term
+ *********************************************************************/
+void oct_print_term(FILE *f,oct_term_t *t)
+{
+  fprintf(f,"%s%d%s%d",t->coeff1 < 0 ? "-" : "+",t->var1,
+          t->coeff2 < 0 ? "-" : "+",t->var2);
+}
+
+/**********************************************************************
+ * print a constraint - this one takes a oct_cons_t* as input
+ *********************************************************************/
+void oct_print_cons(FILE *f,oct_cons_t *l)
+{
+  oct_print_term(f,&(l->term));
+  fprintf(f," %s ",l->strict ? "<" : "<=");
+  oct_print_cst(f,&(l->cst));
+}
+
+/**********************************************************************
+ * print a constraint - this one takes a linconst_t as input
+ *********************************************************************/
+void oct_print_lincons(FILE *f,lincons_t l)
+{
+  oct_print_cons(f,(oct_cons_t*)l);
 }
 
 /**********************************************************************
@@ -764,6 +820,7 @@ oct_theory_t *oct_create_theory_common(size_t vn)
   res->base.create_linterm = oct_create_linterm;
   res->base.term_equals = oct_term_equals;
   res->base.term_has_var = oct_term_has_var;
+  res->base.term_has_vars = oct_term_has_vars;
   res->base.num_of_vars = oct_num_of_vars;
   res->base.terms_have_resolvent = oct_terms_have_resolvent;
   res->base.negate_term = oct_negate_term;
@@ -777,6 +834,7 @@ oct_theory_t *oct_create_theory_common(size_t vn)
   res->base.destroy_lincons = oct_destroy_lincons;
   res->base.dup_lincons = oct_dup_lincons;
   res->base.to_tdd = oct_to_tdd;
+  res->base.print_lincons = oct_print_lincons;
   res->var_num = vn;
   //create maps from constraints to DD nodes -- one per variable pair
   res->cons_node_map = (oct_cons_node_t ***)malloc(vn * sizeof(oct_cons_node_t **));
