@@ -334,7 +334,7 @@ void ddd_print_cst(FILE *f,ddd_cst_t *c)
  *********************************************************************/
 void ddd_print_term(FILE *f,ddd_term_t *t)
 {
-  fprintf(f,"%d-%d",t->var1,t->var2);
+  fprintf(f,"x%d-x%d",t->var1,t->var2);
 }
 
 /**********************************************************************
