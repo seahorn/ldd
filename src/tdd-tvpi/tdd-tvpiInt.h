@@ -72,7 +72,7 @@ typedef struct tvpi_cons
  *********************************************************************/
 typedef struct tvpi_cons_node
 {
-  tvpi_cons_t cons;
+  tvpi_cons_t *cons;
   tdd_node *node;
   struct tvpi_cons_node *next;
 } tvpi_cons_node_t;

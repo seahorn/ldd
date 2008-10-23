@@ -766,7 +766,7 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
   if(curr == NULL) {
     tvpi_cons_node_t *cn = 
       (tvpi_cons_node_t*)malloc(sizeof(tvpi_cons_node_t));
-    cn->cons = *c;
+    cn->cons = tvpi_dup_lincons(c);
     cn->node = tdd_new_var(m,(lincons_t)c);
     //if not at the start of the list
     if(prev) {
@@ -783,16 +783,16 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
   }
 
   //if i found a matching element, return it
-  if(tvpi_term_equals(curr->cons.term,c->term) &&
-     ((tvpi_is_strict(&(curr->cons)) && tvpi_is_strict(c)) ||
-      (!tvpi_is_strict(&(curr->cons)) && !tvpi_is_strict(c))) &&
-     tvpi_cst_eq(curr->cons.cst,c->cst)) return curr->node;
+  if(tvpi_term_equals(curr->cons->term,c->term) &&
+     ((tvpi_is_strict(curr->cons) && tvpi_is_strict(c)) ||
+      (!tvpi_is_strict(curr->cons) && !tvpi_is_strict(c))) &&
+     tvpi_cst_eq(curr->cons->cst,c->cst)) return curr->node;
 
   //if the c implies curr, then add c just before curr
-  if(m->theory->is_stronger_cons(c,&(curr->cons))) {
+  if(m->theory->is_stronger_cons(c,curr->cons)) {
     tvpi_cons_node_t *cn = 
       (tvpi_cons_node_t*)malloc(sizeof(tvpi_cons_node_t));
-    cn->cons = *c;
+    cn->cons = tvpi_dup_lincons(c);
     cn->node = tdd_new_var_before(m,curr->node,(lincons_t)c);
     //if not at the start of the list
     if(prev) {
@@ -923,6 +923,7 @@ void tvpi_destroy_theory(theory_t *t)
       tvpi_cons_node_t *curr = cnm[i][j];
       while(curr) {
         tvpi_cons_node_t *next = curr->next;
+        tvpi_destroy_lincons(curr->cons);
         free(curr);
         curr = next;
       }
