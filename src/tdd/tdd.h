@@ -176,6 +176,7 @@ struct theory
 
   
   void (*print_lincons) (FILE* f, lincons_t l);
+  void (*theory_debug_dump) (theory_t * t);
 
   /** Incremental Quantifier elimination */
   qelim_context_t* (*qelim_init)(theory_t *t, bool* vars);
@@ -202,6 +203,9 @@ tdd_node* to_tdd(tdd_manager* m, lincons_t l);
 
 tdd_node* tdd_new_var(tdd_manager* m, lincons_t l);
 tdd_node* tdd_new_var_before (tdd_manager* m, tdd_node* v, lincons_t l);
+
+tdd_node *tdd_get_true (tdd_manager *m);
+tdd_node *tdd_get_false (tdd_manager *m);
 
 tdd_node* tdd_and (tdd_manager* m, tdd_node* n1, tdd_node* n2);
 tdd_node* tdd_or (tdd_manager* m, tdd_node* n1, tdd_node* n2);

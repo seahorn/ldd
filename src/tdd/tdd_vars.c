@@ -3,6 +3,18 @@
 
 static tdd_node * tdd_assoc_node (tdd_manager *, tdd_node *, lincons_t);
 
+tdd_node *tdd_get_true (tdd_manager *tdd)
+{
+  return DD_ONE (CUDD);
+}
+
+tdd_node *tdd_get_false (tdd_manager *tdd)
+{
+  return tdd_not (DD_ONE (CUDD));
+}
+
+
+
 tdd_node* tdd_new_var (tdd_manager * tdd, lincons_t l)
 {
   tdd_node * n = Cudd_bddNewVar (CUDD);
