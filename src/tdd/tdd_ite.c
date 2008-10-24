@@ -173,7 +173,7 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
   DdNode	 *one, *zero, *res;
   DdNode	 *r, *Fv, *Fnv, *Gv, *Gnv, *H, *Hv, *Hnv, *t, *e;
   unsigned int topf, topg, toph, v;
-  int		 index;
+  int		 index = 0;
   int		 comple;
   
   lincons_t vCons;
@@ -500,7 +500,7 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
 			  tdd_node *g)
 {
   DdManager * manager;
-  DdNode *F, *fv, *fnv, *G, *gv, *gnv;
+  DdNode *fv, *fnv, *G, *gv, *gnv;
   DdNode *one, *zero, *r, *t, *e;
   unsigned int topf, topg, index;
   
@@ -541,6 +541,10 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
   /* Here we can skip the use of cuddI, because the operands are known
   ** to be non-constant.
   */
+  /**
+   * We can skip the use of Cudd_Regular for f because we know it is
+   * not complemented.
+   */
   topf = manager->perm[f->index];
   G = Cudd_Regular (g);
   topg = manager->perm[G->index];
@@ -549,8 +553,8 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
   /* Compute cofactors. */
   if (topf <= topg) {
     index = f->index;
-    fv = cuddT(F);
-    fnv = cuddE(F);
+    fv = cuddT(f);
+    fnv = cuddE(f);
   } else {
     index = G->index;
     fv = fnv = f;
@@ -647,7 +651,7 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
   }
   cuddDeref(e);
   cuddDeref(t);
-  if (F->ref != 1 || G->ref != 1)
+  if (f->ref != 1 || G->ref != 1)
     cuddCacheInsert2(manager, (DD_CTFP)tdd_xor, f, g, r);
   return(r);
 }

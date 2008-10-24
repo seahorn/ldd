@@ -105,7 +105,7 @@ tdd_node *tdd_exist_abstract_v2 (tdd_manager * tdd,
     {
       CUDD->reordered = 0;
 
-      qelimCtx = THEORY->qelim_init (THEORY, vars);
+      qelimCtx = THEORY->qelim_init (tdd, vars);
       if (qelimCtx == NULL)
 	return NULL;
       
@@ -212,6 +212,11 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
       /* grab extra references to simplify dereferencing later */
       cuddRef (fv);
       cuddRef (fnv);
+
+      fprintf (stderr, "exist_abstract: skipping constraint: ");
+      THEORY->print_lincons (stderr, vCons);
+      fprintf (stderr, "\n");
+
     }
   else
     {
@@ -220,13 +225,20 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
 
       /* root constraint is eliminated */
       fElimRoot = 1;
-      
+
+      fprintf (stderr, "exist_abstract: eliminating constraint: ");
+      THEORY->print_lincons (stderr, vCons);
+      fprintf (stderr, "\n");
+
       /* resolve root constraint with THEN branch */
       tmp = tdd_resolve_elim_inter (tdd, fv, vTerm, vCons, var);
       if (tmp == NULL)
 	return NULL;
-      
       cuddRef (tmp);
+
+      if (Cudd_DagSize (fv) + 200 <= Cudd_DagSize (tmp))
+	fprintf (stderr, "fv:Before resolve_elim %d, after %d\n", 
+		 Cudd_DagSize (fv), Cudd_DagSize (tmp));
       fv = tmp;
       
       /* resolve negation of the root constraint with ELSE branch */
@@ -240,6 +252,10 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
 	  return NULL;
 	}
       cuddRef (tmp);
+
+      if (Cudd_DagSize (fnv) + 200 <= Cudd_DagSize (tmp))
+      fprintf (stderr, "fnv:Before resolve_elim %d, after %d\n", 
+	       Cudd_DagSize (fnv), Cudd_DagSize (tmp));
       fnv = tmp;
     }
   
@@ -323,6 +339,12 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
     }
   
   cuddDeref (res);
+
+  fprintf (stderr, "\t exist_abstract: DONE with: ");
+  THEORY->print_lincons (stderr, vCons);
+  fprintf (stderr, "\n");
+
+
   return res;
   
 }
@@ -786,12 +808,12 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
   
   if (T == NULL)
     {
-      Cudd_IterDerefBdd (manager, fv);
-      Cudd_IterDerefBdd (manager, fnv);
+/*       Cudd_IterDerefBdd (manager, fv); */
+/*       Cudd_IterDerefBdd (manager, fnv); */
       return NULL;
     }
   cuddRef (T);
-  Cudd_IterDerefBdd (manager, fv);
+/*   Cudd_IterDerefBdd (manager, fv); */
   fv = NULL;
 
 
@@ -811,11 +833,11 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
   if (E == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
-      Cudd_IterDerefBdd (manager, fnv);
+/*       Cudd_IterDerefBdd (manager, fnv); */
       return NULL;
     }
   cuddRef (E);
-  Cudd_IterDerefBdd (manager, fnv);
+/*   Cudd_IterDerefBdd (manager, fnv); */
   fnv = NULL;
 
   if (!fElimRoot)
@@ -858,16 +880,16 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
   Cudd_IterDerefBdd (manager, E);
   E = NULL;
 
-  if (F->ref != 1)
-    {
-      ptrint fanout = (ptrint) F->ref;
-      cuddSatDec (fanout);
-      if (!cuddHashTableInsert1 (table, f, res, fanout))
-	{
-	  Cudd_IterDerefBdd (CUDD, res);
-	  return NULL;
-	}
-    }
+/*   if (F->ref != 1) */
+/*     { */
+/*       ptrint fanout = (ptrint) F->ref; */
+/*       cuddSatDec (fanout); */
+/*       if (!cuddHashTableInsert1 (table, f, res, fanout)) */
+/* 	{ */
+/* 	  Cudd_IterDerefBdd (CUDD, res); */
+/* 	  return NULL; */
+/* 	} */
+/*     } */
   
   cuddDeref (res);
   return res;
