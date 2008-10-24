@@ -179,7 +179,7 @@ struct theory
   void (*theory_debug_dump) (theory_t * t);
 
   /** Incremental Quantifier elimination */
-  qelim_context_t* (*qelim_init)(theory_t *t, bool* vars);
+  qelim_context_t* (*qelim_init)(tdd_manager *m, bool* vars);
   void (*qelim_push)(qelim_context_t* ctx, lincons_t l);
   lincons_t (*qelim_pop)(qelim_context_t* ctx);
   tdd_node* (*qelim_solve)(qelim_context_t* ctx);

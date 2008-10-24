@@ -788,21 +788,16 @@ void ddd_qelim_destroy_stack(ddd_qelim_stack_t *x)
 {
   while(x) {
     ddd_qelim_stack_t *next = x->next;
-    while(x->elem) {
-      ddd_qelim_stack_elem_t *next_elem = x->elem->next;
-      free(x->elem);
-      x->elem = next_elem;
-    }
     free(x);
     x = next;
   }
 }
 
-qelim_context_t* ddd_qelim_init(theory_t *t,bool *vars)
+qelim_context_t* ddd_qelim_init(tdd_manager *m,bool *vars)
 {
   ddd_qelim_context_t *res = (ddd_qelim_context_t*)malloc(sizeof(ddd_qelim_context_t));
-  res->t = t;
-  size_t var_num = t->num_of_vars(t); 
+  res->tdd = m;
+  size_t var_num = res->tdd->theory->num_of_vars(res->tdd->theory); 
   res->vars = (bool*)malloc(var_num * sizeof(bool));
   size_t i = 0;
   for(;i < var_num;++i) res->vars[i] = vars[i];
@@ -813,25 +808,8 @@ qelim_context_t* ddd_qelim_init(theory_t *t,bool *vars)
 void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
 {
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
-  theory_t *t = x->t;
   ddd_qelim_stack_t *new_stack = (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
   new_stack->cons = *((ddd_cons_t*)l);
-
-  linterm_t term = t->get_term(l);
-  
-  //if the term has a variable to be quantified
-  if(t->term_has_vars(term,x->vars)) {
-
-
-  }
-  //otherwise the term does not have a variable to be quantified
-  else {
-    new_stack->elem = (ddd_qelim_stack_elem_t*)malloc(sizeof(ddd_qelim_stack_elem_t));
-    new_stack->elem->cons = *((ddd_cons_t*)l);
-    new_stack->elem->next = NULL;
-  }
-
-  //update the stack
   new_stack->next = x->stack;
   x->stack = new_stack;
 }
@@ -848,11 +826,6 @@ lincons_t ddd_qelim_pop(qelim_context_t* ctx)
 
   //free the top element
   ddd_qelim_stack_t *next = x->stack->next;
-  while(x->stack->elem) {
-    ddd_qelim_stack_elem_t *next_elem = x->stack->elem->next;
-    free(x->stack->elem);
-    x->stack->elem = next_elem;
-  }
   free(x->stack);
   x->stack = next;
 
@@ -862,7 +835,73 @@ lincons_t ddd_qelim_pop(qelim_context_t* ctx)
 
 tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 {
-  return NULL;
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+  theory_t *t = x->tdd->theory;
+  size_t vn = t->num_of_vars(t);
+
+  //create and initialize the DBM
+  int *dbm = (int*)malloc(vn * vn * sizeof(int));
+  int i = 0,j = 0,k=0;
+  for(i = 0;i < vn;++i) {
+    for(j = 0;j < vn;++j) {
+      dbm[i*vn + j] = INT_MAX;
+    }
+  }
+  ddd_qelim_stack_t *stack = x->stack;
+  while(stack) {
+    int v1 = stack->cons.term.var1;
+    int v2 = stack->cons.term.var2;
+    dbm[v1*vn + v2] = stack->cons.cst.int_val;
+    stack = stack->next;
+  }
+
+  //the result
+  tdd_node *res = NULL;
+
+  //use floyd-warshall to update the DBM
+  for(k = 0;k < vn;++k) {
+    for(i = 0;i < vn;++i) {
+      for(j = 0;j < vn;++j) {
+        //get current weights and sum
+        int cik = dbm[i*vn + k];
+        if(cik == INT_MAX) continue;
+        int ckj = dbm[k*vn + j];
+        if(ckj == INT_MAX) continue;
+        int cikkj = cik + ckj;
+        int cij = dbm[i*vn + j]; 
+
+        //update weight
+        dbm[i*vn + j] = cij < cikkj ? cij : cikkj;
+
+        //check for negative cycles
+        if(i == j && dbm[i*vn + j] < 0) {
+          res = tdd_get_false(x->tdd);
+          goto DONE;
+        }
+      }
+    }
+  }
+
+  //no-negative cycles, create tdd
+  res = tdd_get_true(x->tdd);
+  for(i = 0;i < vn;++i) {
+    for(j = 0;j < vn;++j) {
+      int cij = dbm[i*vn + j]; 
+      if(cij == INT_MAX) continue;
+      ddd_cons_t cons;
+      cons.term.var1 = i;
+      cons.term.var2 = j;
+      cons.cst.type = DDD_INT;
+      cons.cst.int_val = cij;
+      cons.strict = 0;
+      res = tdd_and(x->tdd,res,x->tdd->theory->to_tdd(x->tdd,(lincons_t)(&cons)));
+    }
+  }  
+
+ DONE:
+  //cleanup and return
+  free(dbm);
+  return res;
 }
 
 void ddd_qelim_destroy_context(qelim_context_t* ctx)
