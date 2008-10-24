@@ -833,11 +833,14 @@ lincons_t ddd_qelim_pop(qelim_context_t* ctx)
   return res;
 }
 
+#define MIN(X,Y) (X)<(Y)?(X):(Y)
+
 tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 {
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
   theory_t *t = x->tdd->theory;
   size_t vn = t->num_of_vars(t);
+
 
   //create and initialize the DBM
   int *dbm = (int*)malloc(vn * vn * sizeof(int));
@@ -848,10 +851,15 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
     }
   }
   ddd_qelim_stack_t *stack = x->stack;
+
+
+  /* build the matrix from current stack*/
   while(stack) {
     int v1 = stack->cons.term.var1;
     int v2 = stack->cons.term.var2;
-    dbm[v1*vn + v2] = stack->cons.cst.int_val;
+
+    
+    dbm[v1*vn + v2] = MIN (dbm[v1*vn + v2],stack->cons.cst.int_val);
     stack = stack->next;
   }
 
@@ -885,7 +893,10 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
   //no-negative cycles, create tdd
   res = tdd_get_true(x->tdd);
   for(i = 0;i < vn;++i) {
+    if (x->vars[i]) continue;
     for(j = 0;j < vn;++j) {
+      if (x->vars [j]) continue;
+      
       int cij = dbm[i*vn + j]; 
       if(cij == INT_MAX) continue;
       ddd_cons_t cons;
@@ -901,8 +912,10 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
  DONE:
   //cleanup and return
   free(dbm);
+
   return res;
 }
+#undef MIN
 
 void ddd_qelim_destroy_context(qelim_context_t* ctx)
 {
@@ -911,6 +924,34 @@ void ddd_qelim_destroy_context(qelim_context_t* ctx)
   ddd_qelim_destroy_stack(x->stack);
   free(x);
 }
+
+
+void ddd_debug_dump (theory_t * t)
+{
+  int i, j;
+  ddd_theory_t* th = (ddd_theory_t*) t;
+  
+  for (i = 0; i < th->var_num; i++)
+    for (j = i+1; j < th->var_num; j++)
+      {
+	if (th->cons_node_map [i][j] == NULL) continue;
+	
+	fprintf (stderr, "x%d-x%d: ", i, j);
+	{
+	  ddd_cons_node_t * node;
+	  for (node = th->cons_node_map[i][j]; 
+	       node != NULL; node = node->next)
+	    {
+	      ddd_print_cst (stderr, &(node->cons.cst));
+	      if (node->cons.strict)
+		fprintf (stderr, ")");
+	      fprintf (stderr, " ");
+	    }
+	}
+	fprintf (stderr, "\n");
+      }
+}
+
 
 /**********************************************************************
  * common steps when creating any theory - argument is the number of
@@ -945,6 +986,7 @@ ddd_theory_t *ddd_create_theory_common(size_t vn)
   res->base.dup_lincons = ddd_dup_lincons;
   res->base.to_tdd = ddd_to_tdd;
   res->base.print_lincons = ddd_print_lincons;  
+  res->base.theory_debug_dump = ddd_debug_dump;
   res->base.qelim_init = ddd_qelim_init;
   res->base.qelim_push = ddd_qelim_push;
   res->base.qelim_pop = ddd_qelim_pop;
