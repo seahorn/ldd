@@ -841,7 +841,6 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
   theory_t *t = x->tdd->theory;
   size_t vn = t->num_of_vars(t);
 
-
   //create and initialize the DBM
   int *dbm = (int*)malloc(vn * vn * sizeof(int));
   int i = 0,j = 0,k=0;
@@ -852,13 +851,11 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
   }
   ddd_qelim_stack_t *stack = x->stack;
 
-
   /* build the matrix from current stack*/
   while(stack) {
     int v1 = stack->cons.term.var1;
     int v2 = stack->cons.term.var2;
 
-    
     dbm[v1*vn + v2] = MIN (dbm[v1*vn + v2],stack->cons.cst.int_val);
     stack = stack->next;
   }
@@ -879,7 +876,7 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
         int cij = dbm[i*vn + j]; 
 
         //update weight
-        dbm[i*vn + j] = cij < cikkj ? cij : cikkj;
+        dbm[i*vn + j] = MIN(cij,cikkj);
 
         //check for negative cycles
         if(i == j && dbm[i*vn + j] < 0) {
