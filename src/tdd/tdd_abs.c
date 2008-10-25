@@ -804,7 +804,7 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
   T = tdd_exist_abstract_v2_recur (tdd, fv, vars, qelimCtx, table);
 
   if (fElimRoot) 
-    THEORY->qelim_pop (qelimCtx);
+    THEORY->destroy_lincons(THEORY->qelim_pop (qelimCtx));
   
   if (T == NULL)
     {
