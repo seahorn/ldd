@@ -821,7 +821,7 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
   //create new stack element
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
   ddd_qelim_stack_t *new_stack = (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
-  new_stack->cons = *((ddd_cons_t*)l);
+  new_stack->cons = (ddd_cons_t*)l;
 
   //if already unsat
   if(x->stack && x->stack->unsat) {
@@ -847,9 +847,9 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
   }
 
   //get variables and constant of term being pushed
-  int v1 = new_stack->cons.term.var1;
-  int v2 = new_stack->cons.term.var2;
-  int cst = new_stack->cons.cst.int_val;
+  int v1 = new_stack->cons->term.var1;
+  int v2 = new_stack->cons->term.var2;
+  int cst = new_stack->cons->cst.int_val;
 
   //if the dbm does not need to be updated
   if(new_stack->dbm[v1 * vn + v2] < cst) {
@@ -902,7 +902,7 @@ lincons_t ddd_qelim_pop(qelim_context_t* ctx)
   if(x->stack == NULL) return NULL;
 
   //get the constraint for the top element
-  lincons_t res = ddd_dup_lincons(&(x->stack->cons));
+  lincons_t res = (lincons_t)(x->stack->cons);
 
   //free the top element
   ddd_qelim_stack_t *next = x->stack->next;
@@ -980,7 +980,7 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
 {
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
   ddd_qelim_stack_t *new_stack = (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
-  new_stack->cons = *((ddd_cons_t*)l);
+  new_stack->cons = (ddd_cons_t*)l;
   new_stack->next = x->stack;
   x->stack = new_stack;
 }
@@ -993,7 +993,7 @@ lincons_t ddd_qelim_pop(qelim_context_t* ctx)
   if(x->stack == NULL) return NULL;
 
   //get the constraint for the top element
-  lincons_t res = ddd_dup_lincons(&(x->stack->cons));
+  lincons_t res = (lincons_t)(x->stack->cons);
 
   //free the top element
   ddd_qelim_stack_t *next = x->stack->next;
@@ -1022,10 +1022,10 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 
   /* build the matrix from current stack*/
   while(stack) {
-    int v1 = stack->cons.term.var1;
-    int v2 = stack->cons.term.var2;
+    int v1 = stack->cons->term.var1;
+    int v2 = stack->cons->term.var2;
 
-    dbm[v1*vn + v2] = MIN (dbm[v1*vn + v2],stack->cons.cst.int_val);
+    dbm[v1*vn + v2] = MIN (dbm[v1*vn + v2],stack->cons->cst.int_val);
     stack = stack->next;
   }
 
