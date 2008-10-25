@@ -6,7 +6,7 @@ CFLAGS = -pg -Wall -I$(CUDD)/include -I../include  -g  -mtune=pentium4 -malign-d
 AR = ar -rcs
 OBJS = lexer.yy.o parser.tab.o qelim1.o qelim2.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
-LIB = libtdd.a
+LIBS = $(wildcard ../tdd*/*.a)
 LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp \
 	  -L../tdd -L../tdd-ddd -L../tdd-oct -pg
 LDLIBS = -lcudd -ltdd-ddd -ltdd-oct -ltdd -lst -lutil -lmtr -lepd -ldddmp -lm -lfl
@@ -14,11 +14,10 @@ BINS = jobshop qelim1 qelim2
 
 all : $(BINS)
 
-
-qelim2: qelim2.o parser.tab.o lexer.yy.o
+qelim2: qelim2.o parser.tab.o lexer.yy.o $(LIBS)
 	$(CC) $(LDFLAGS) -o $@  $^ $(LDLIBS)
 
-qelim1: qelim1.o parser.tab.o lexer.yy.o
+qelim1: qelim1.o parser.tab.o lexer.yy.o $(LIBS)
 	$(CC) $(LDFLAGS) -o $@  $^ $(LDLIBS)
 
 lexer.yy.c: lexer.lex 
@@ -36,4 +35,4 @@ parser.tab.c: parser.y
 -include $(DEPS)
 
 clean :
-	rm -f $(LIB) $(OBJS) $(DEPS) lexer.yy.c parser.tab.[ch] *~ $(BINS)
+	rm -f $(OBJS) $(DEPS) lexer.yy.c parser.tab.[ch] *~ $(BINS)
