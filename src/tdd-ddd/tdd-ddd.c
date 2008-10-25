@@ -838,7 +838,13 @@ lincons_t ddd_qelim_pop(qelim_context_t* ctx)
   return res;
 }
 
-#ifdef DDD_QELIM_INC
+void ddd_qelim_destroy_context(qelim_context_t* ctx)
+{
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+  free(x->vars);
+  ddd_qelim_destroy_stack(x->stack);
+  free(x);
+}
 
 void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
 {
@@ -846,6 +852,8 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
   ddd_qelim_stack_t *new_stack = (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
   new_stack->cons = (ddd_cons_t*)l;
+
+#ifdef DDD_QELIM_INC
 
   //if already unsat
   if(x->stack && x->stack->unsat) {
@@ -912,6 +920,8 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
     }
   }
 
+#endif //DDD_QELIM_INC
+
   //push new element into stack
   new_stack->next = x->stack;
   x->stack = new_stack;
@@ -920,6 +930,9 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
 tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 {
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+
+#ifdef DDD_QELIM_INC
+
   ddd_qelim_stack_t *stack = x->stack;
   
   //check for UNSAT
@@ -946,34 +959,11 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
     }
   }  
   return res;
-}
-
-void ddd_qelim_destroy_context(qelim_context_t* ctx)
-{
-  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
-  free(x->vars);
-  ddd_qelim_destroy_stack(x->stack);
-  free(x);
-}
 
 #else //DDD_QELIM_INC
 
-void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
-{
-  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
-  ddd_qelim_stack_t *new_stack = (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
-  new_stack->cons = (ddd_cons_t*)l;
-  new_stack->next = x->stack;
-  x->stack = new_stack;
-}
-
-tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
-{
-  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
-  theory_t *t = x->tdd->theory;
-  size_t vn = t->num_of_vars(t);
-
   //create and initialize the DBM
+  size_t vn = x->tdd->theory->num_of_vars(x->tdd->theory);
   int *dbm = (int*)malloc(vn * vn * sizeof(int));
   int i = 0,j = 0,k=0;
   for(i = 0;i < vn;++i) {
@@ -983,7 +973,7 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
   }
   ddd_qelim_stack_t *stack = x->stack;
 
-  /* build the matrix from current stack*/
+  /* build the matrix from current stack */
   while(stack) {
     int v1 = stack->cons->term.var1;
     int v2 = stack->cons->term.var2;
@@ -1038,17 +1028,9 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
   //cleanup and return
   free(dbm);
   return res;
-}
-
-void ddd_qelim_destroy_context(qelim_context_t* ctx)
-{
-  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
-  free(x->vars);
-  ddd_qelim_destroy_stack(x->stack);
-  free(x);
-}
 
 #endif //DDD_QELIM_INC
+}
 
 #undef MIN
 #undef MAX
