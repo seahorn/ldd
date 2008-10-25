@@ -2,6 +2,10 @@
  * The main file that provides the DDD theory.
  *********************************************************************/
 
+//uncomment the following to enable incremental QELIM. this may
+//require more memory but may be faster.
+#define DDD_QELIM_INC
+
 #include "tdd-dddInt.h"
 
 /**********************************************************************
@@ -784,6 +788,173 @@ void ddd_print_lincons(FILE *f,lincons_t l)
 /**********************************************************************
  * functions for incremental quantifier elimination
  *********************************************************************/
+
+#define MIN(X,Y) ((X)<(Y)?(X):(Y))
+#define MAX(X,Y) ((X)>(Y)?(X):(Y))
+
+#ifdef DDD_QELIM_INC
+
+void ddd_qelim_destroy_stack(ddd_qelim_stack_t *x)
+{
+  while(x) {
+    ddd_qelim_stack_t *next = x->next;
+    if(x->dbm) free(x->dbm);
+    free(x);
+    x = next;
+  }
+}
+
+qelim_context_t* ddd_qelim_init(tdd_manager *m,bool *vars)
+{
+  ddd_qelim_context_t *res = (ddd_qelim_context_t*)malloc(sizeof(ddd_qelim_context_t));
+  res->tdd = m;
+  int vn = res->tdd->theory->num_of_vars(res->tdd->theory); 
+  res->vars = (bool*)malloc(vn * sizeof(bool));
+  int i = 0;
+  for(;i < vn;++i) res->vars[i] = vars[i];
+  res->stack = NULL;
+  return (qelim_context_t*)res;
+}
+
+void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
+{
+  //create new stack element
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+  ddd_qelim_stack_t *new_stack = (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
+  new_stack->cons = *((ddd_cons_t*)l);
+
+  //if already unsat
+  if(x->stack && x->stack->unsat) {
+    new_stack->unsat = 1;
+    new_stack->dbm = NULL;
+    new_stack->next = x->stack;
+    x->stack = new_stack;
+    return;
+  }
+
+  new_stack->unsat = 0;
+
+  //allocate dbm
+  int vn = x->tdd->theory->num_of_vars(x->tdd->theory); 
+  new_stack->dbm = (int*)malloc(vn * vn * sizeof(int));
+
+  //initialize dbm
+  int i,j,k;
+  for(i = 0;i < vn;++i) {
+    for(j = 0;j < vn;++j) {
+      new_stack->dbm[i * vn + j] = x->stack ? x->stack->dbm[i * vn + j] : INT_MAX;
+    }
+  }
+
+  //get variables and constant of term being pushed
+  int v1 = new_stack->cons.term.var1;
+  int v2 = new_stack->cons.term.var2;
+  int cst = new_stack->cons.cst.int_val;
+
+  //if the dbm does not need to be updated
+  if(new_stack->dbm[v1 * vn + v2] < cst) {
+    new_stack->next = x->stack;
+    x->stack = new_stack;
+    return;
+  }
+
+  //update minvar and maxvar
+  new_stack->minvar = x->stack ? MIN(x->stack->minvar,MIN(v1,v2)) : MIN(v1,v2);
+  new_stack->maxvar = x->stack ? MAX(x->stack->maxvar,MAX(v1,v2)) : MAX(v1,v2);
+
+  //update dbm using floyd warshall
+  new_stack->dbm[v1 *vn + v2] = cst;
+
+  //use floyd-warshall to update the DBM
+  for(k = 0;k < vn && !new_stack->unsat;++k) {
+    for(i = 0;i < vn && !new_stack->unsat;++i) {
+      for(j = 0;j < vn;++j) {
+        //get current weights and sum
+        int cik = new_stack->dbm[i*vn + k];
+        if(cik == INT_MAX) continue;
+        int ckj = new_stack->dbm[k*vn + j];
+        if(ckj == INT_MAX) continue;
+        int cikkj = cik + ckj;
+        int cij = new_stack->dbm[i*vn + j]; 
+
+        //update weight
+        new_stack->dbm[i*vn + j] = MIN(cij,cikkj);
+
+        //check for negative cycles
+        if(i == j && new_stack->dbm[i*vn + j] < 0) {
+          new_stack->unsat = 1;
+          break;
+        }
+      }
+    }
+  }
+
+  //push new element into stack
+  new_stack->next = x->stack;
+  x->stack = new_stack;
+}
+
+lincons_t ddd_qelim_pop(qelim_context_t* ctx)
+{
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+
+  //check for stack emptiness
+  if(x->stack == NULL) return NULL;
+
+  //get the constraint for the top element
+  lincons_t res = ddd_dup_lincons(&(x->stack->cons));
+
+  //free the top element
+  ddd_qelim_stack_t *next = x->stack->next;
+  if(x->stack->dbm) free(x->stack->dbm);
+  free(x->stack);
+  x->stack = next;
+
+  //all done
+  return res;
+}
+
+tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
+{
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+  ddd_qelim_stack_t *stack = x->stack;
+  
+  //check for UNSAT
+  if(stack->unsat) return tdd_get_false(x->tdd);
+
+  //SAT, create tdd from dbm
+  int vn = x->tdd->theory->num_of_vars(x->tdd->theory); 
+  tdd_node *res = tdd_get_true(x->tdd);
+  int i,j;
+  for(i = 0;i < vn;++i) {
+    if (x->vars[i]) continue;
+    for(j = 0;j < vn;++j) {
+      if (x->vars [j]) continue;
+      
+      int cij = stack->dbm[i*vn + j]; 
+      if(cij == INT_MAX) continue;
+      ddd_cons_t cons;
+      cons.term.var1 = i;
+      cons.term.var2 = j;
+      cons.cst.type = DDD_INT;
+      cons.cst.int_val = cij;
+      cons.strict = 0;
+      res = tdd_and(x->tdd,res,x->tdd->theory->to_tdd(x->tdd,(lincons_t)(&cons)));
+    }
+  }  
+  return res;
+}
+
+void ddd_qelim_destroy_context(qelim_context_t* ctx)
+{
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+  free(x->vars);
+  ddd_qelim_destroy_stack(x->stack);
+  free(x);
+}
+
+#else //DDD_QELIM_INC
+
 void ddd_qelim_destroy_stack(ddd_qelim_stack_t *x)
 {
   while(x) {
@@ -832,8 +1003,6 @@ lincons_t ddd_qelim_pop(qelim_context_t* ctx)
   //all done
   return res;
 }
-
-#define MIN(X,Y) (X)<(Y)?(X):(Y)
 
 tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 {
@@ -912,7 +1081,6 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 
   return res;
 }
-#undef MIN
 
 void ddd_qelim_destroy_context(qelim_context_t* ctx)
 {
@@ -922,6 +1090,10 @@ void ddd_qelim_destroy_context(qelim_context_t* ctx)
   free(x);
 }
 
+#endif //DDD_QELIM_INC
+
+#undef MIN
+#undef MAX
 
 void ddd_debug_dump (theory_t * t)
 {
