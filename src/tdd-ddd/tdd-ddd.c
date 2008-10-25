@@ -866,7 +866,7 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
   new_stack->dbm[v1 *vn + v2] = cst;
 
   //use floyd-warshall to update the DBM
-  for(k = 0;k < vn && !new_stack->unsat;++k) {
+  for(k = 0;k <= new_stack->maxvar && !new_stack->unsat;++k) {
     for(i = 0;i < vn && !new_stack->unsat;++i) {
       for(j = 0;j < vn;++j) {
         //get current weights and sum
