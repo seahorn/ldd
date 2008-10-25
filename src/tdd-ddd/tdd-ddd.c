@@ -792,13 +792,13 @@ void ddd_print_lincons(FILE *f,lincons_t l)
 #define MIN(X,Y) ((X)<(Y)?(X):(Y))
 #define MAX(X,Y) ((X)>(Y)?(X):(Y))
 
-#ifdef DDD_QELIM_INC
-
 void ddd_qelim_destroy_stack(ddd_qelim_stack_t *x)
 {
   while(x) {
     ddd_qelim_stack_t *next = x->next;
+#ifdef DDD_QELIM_INC
     if(x->dbm) free(x->dbm);
+#endif
     free(x);
     x = next;
   }
@@ -815,6 +815,30 @@ qelim_context_t* ddd_qelim_init(tdd_manager *m,bool *vars)
   res->stack = NULL;
   return (qelim_context_t*)res;
 }
+
+lincons_t ddd_qelim_pop(qelim_context_t* ctx)
+{
+  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
+
+  //check for stack emptiness
+  if(x->stack == NULL) return NULL;
+
+  //get the constraint for the top element
+  lincons_t res = (lincons_t)(x->stack->cons);
+
+  //free the top element
+  ddd_qelim_stack_t *next = x->stack->next;
+#ifdef DDD_QELIM_INC
+  if(x->stack->dbm) free(x->stack->dbm);
+#endif
+  free(x->stack);
+  x->stack = next;
+
+  //all done
+  return res;
+}
+
+#ifdef DDD_QELIM_INC
 
 void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
 {
@@ -894,26 +918,6 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
   x->stack = new_stack;
 }
 
-lincons_t ddd_qelim_pop(qelim_context_t* ctx)
-{
-  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
-
-  //check for stack emptiness
-  if(x->stack == NULL) return NULL;
-
-  //get the constraint for the top element
-  lincons_t res = (lincons_t)(x->stack->cons);
-
-  //free the top element
-  ddd_qelim_stack_t *next = x->stack->next;
-  if(x->stack->dbm) free(x->stack->dbm);
-  free(x->stack);
-  x->stack = next;
-
-  //all done
-  return res;
-}
-
 tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 {
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
@@ -955,27 +959,6 @@ void ddd_qelim_destroy_context(qelim_context_t* ctx)
 
 #else //DDD_QELIM_INC
 
-void ddd_qelim_destroy_stack(ddd_qelim_stack_t *x)
-{
-  while(x) {
-    ddd_qelim_stack_t *next = x->next;
-    free(x);
-    x = next;
-  }
-}
-
-qelim_context_t* ddd_qelim_init(tdd_manager *m,bool *vars)
-{
-  ddd_qelim_context_t *res = (ddd_qelim_context_t*)malloc(sizeof(ddd_qelim_context_t));
-  res->tdd = m;
-  size_t var_num = res->tdd->theory->num_of_vars(res->tdd->theory); 
-  res->vars = (bool*)malloc(var_num * sizeof(bool));
-  size_t i = 0;
-  for(;i < var_num;++i) res->vars[i] = vars[i];
-  res->stack = NULL;
-  return (qelim_context_t*)res;
-}
-
 void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
 {
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
@@ -983,25 +966,6 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
   new_stack->cons = (ddd_cons_t*)l;
   new_stack->next = x->stack;
   x->stack = new_stack;
-}
-
-lincons_t ddd_qelim_pop(qelim_context_t* ctx)
-{
-  ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
-
-  //check for stack emptiness
-  if(x->stack == NULL) return NULL;
-
-  //get the constraint for the top element
-  lincons_t res = (lincons_t)(x->stack->cons);
-
-  //free the top element
-  ddd_qelim_stack_t *next = x->stack->next;
-  free(x->stack);
-  x->stack = next;
-
-  //all done
-  return res;
 }
 
 tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
@@ -1029,9 +993,6 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
     stack = stack->next;
   }
 
-  //the result
-  tdd_node *res = NULL;
-
   //use floyd-warshall to update the DBM
   for(k = 0;k < vn;++k) {
     for(i = 0;i < vn;++i) {
@@ -1049,15 +1010,15 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 
         //check for negative cycles
         if(i == j && dbm[i*vn + j] < 0) {
-          res = tdd_get_false(x->tdd);
-          goto DONE;
+          free(dbm);          
+          return tdd_get_false(x->tdd);
         }
       }
     }
   }
 
   //no-negative cycles, create tdd
-  res = tdd_get_true(x->tdd);
+  tdd_node *res = tdd_get_true(x->tdd);
   for(i = 0;i < vn;++i) {
     if (x->vars[i]) continue;
     for(j = 0;j < vn;++j) {
@@ -1075,10 +1036,8 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
     }
   }  
 
- DONE:
   //cleanup and return
   free(dbm);
-
   return res;
 }
 
