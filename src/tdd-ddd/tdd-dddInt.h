@@ -79,7 +79,7 @@ typedef struct ddd_qelim_stack
 {
   ddd_cons_t *cons;
 #ifdef DDD_QELIM_INC
-  int *dbm,minvar,maxvar;
+  int *dbm,maxvar;
   bool unsat;
 #endif
   struct ddd_qelim_stack *next;

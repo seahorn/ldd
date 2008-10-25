@@ -882,8 +882,7 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
     return;
   }
 
-  //update minvar and maxvar
-  new_stack->minvar = x->stack ? MIN(x->stack->minvar,MIN(v1,v2)) : MIN(v1,v2);
+  //update maxvar
   new_stack->maxvar = x->stack ? MAX(x->stack->maxvar,MAX(v1,v2)) : MAX(v1,v2);
 
   //update dbm using floyd warshall
