@@ -40,6 +40,19 @@ tdd_node * tdd_new_var_before (tdd_manager * tdd, tdd_node * v, lincons_t l)
   
 }
 
+tdd_node * tdd_new_var_after (tdd_manager * tdd, tdd_node *v, lincons_t l)
+{
+  
+  tdd_node * n = Cudd_bddNewVarAtLevel (CUDD, 1 + cuddI (CUDD, v->index));
+  if (n == NULL) return NULL;
+
+
+  n = tdd_assoc_node (tdd, n, l);
+  return n;
+  
+}
+
+
 tdd_node * tdd_assoc_node (tdd_manager * tdd, tdd_node *n, lincons_t l)
 {
   int idx;

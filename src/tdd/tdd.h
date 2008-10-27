@@ -203,6 +203,7 @@ tdd_node* to_tdd(tdd_manager* m, lincons_t l);
 
 tdd_node* tdd_new_var(tdd_manager* m, lincons_t l);
 tdd_node* tdd_new_var_before (tdd_manager* m, tdd_node* v, lincons_t l);
+tdd_node* tdd_new_var_after (tdd_manager* m, tdd_node* v, lincons_t l);
 
 tdd_node *tdd_get_true (tdd_manager *m);
 tdd_node *tdd_get_false (tdd_manager *m);
