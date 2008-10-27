@@ -11,6 +11,8 @@
   void yyerror (char*);
 %}
 
+%option nounput
+
 %%
 "variables" { return VARS_TOK; }
 ":"     {return COL_TOK;}
