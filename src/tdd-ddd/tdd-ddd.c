@@ -683,7 +683,13 @@ tdd_node *ddd_get_node(tdd_manager* m,ddd_cons_node_t *curr,
     ddd_cons_node_t *cn = 
       (ddd_cons_node_t*)malloc(sizeof(ddd_cons_node_t));
     cn->cons = *c;
-    cn->node = tdd_new_var(m,(lincons_t)c);
+
+    if (prev)
+      /* last constraint in the list, need a node right after prev */
+      cn->node = tdd_new_var_after (m, prev->node, (lincons_t) c);
+    else
+      /* first constraint in the list*/
+      cn->node = tdd_new_var(m,(lincons_t)c);
 
     if (cn->node == NULL)
       {
