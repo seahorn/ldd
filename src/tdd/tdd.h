@@ -221,6 +221,7 @@ tdd_node* tdd_resolve (tdd_manager*, tdd_node*,
 tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, bool*);
 
 void tdd_manager_debug_dump (tdd_manager*);
+int tdd_path_size (tdd_manager*, tdd_node*);
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
