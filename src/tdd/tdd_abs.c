@@ -212,10 +212,11 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
       /* grab extra references to simplify dereferencing later */
       cuddRef (fv);
       cuddRef (fnv);
-
+#ifdef DEBUG_FINE
       fprintf (stderr, "exist_abstract: skipping constraint: ");
       THEORY->print_lincons (stderr, vCons);
       fprintf (stderr, "\n");
+#endif
 
     }
   else
@@ -226,9 +227,11 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
       /* root constraint is eliminated */
       fElimRoot = 1;
 
+#ifdef DEBUG_FINE
       fprintf (stderr, "exist_abstract: eliminating constraint: ");
       THEORY->print_lincons (stderr, vCons);
       fprintf (stderr, "\n");
+#endif
 
       /* resolve root constraint with THEN branch */
       tmp = tdd_resolve_elim_inter (tdd, fv, vTerm, vCons, var);
@@ -236,9 +239,11 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
 	return NULL;
       cuddRef (tmp);
 
+#ifdef DEBUG
       if (Cudd_DagSize (fv) + 200 <= Cudd_DagSize (tmp))
 	fprintf (stderr, "fv:Before resolve_elim %d, after %d\n", 
 		 Cudd_DagSize (fv), Cudd_DagSize (tmp));
+#endif
       fv = tmp;
       
       /* resolve negation of the root constraint with ELSE branch */
@@ -253,9 +258,11 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
 	}
       cuddRef (tmp);
 
+#ifdef DEBUG
       if (Cudd_DagSize (fnv) + 200 <= Cudd_DagSize (tmp))
       fprintf (stderr, "fnv:Before resolve_elim %d, after %d\n", 
 	       Cudd_DagSize (fnv), Cudd_DagSize (tmp));
+#endif
       fnv = tmp;
     }
   
@@ -340,10 +347,11 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   
   cuddDeref (res);
 
+#ifdef DEBUG_FINE
   fprintf (stderr, "\t exist_abstract: DONE with: ");
   THEORY->print_lincons (stderr, vCons);
   fprintf (stderr, "\n");
-
+#endif
 
   return res;
   
