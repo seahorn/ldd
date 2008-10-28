@@ -19,10 +19,10 @@ int main(void)
   int cf2[3] = {-1, 1, 0};
   
   
-  linterm_t t1, t2, t3;
-  lincons_t l1, l2, l3;
+  linterm_t t1, t2;
+  lincons_t l1, l2;
 
-  tdd_node *d1, *d2, *d3, *d4, *d5, *d6, *d7;
+  tdd_node *d1, *d2, *d3;
 
   printf ("Creating the world...\n");
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
