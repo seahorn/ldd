@@ -209,6 +209,8 @@ Cudd_MakeTreeNode(
     MtrNode *tree;
     unsigned int level;
 
+    unsigned int newSize;
+
     /* If the variable does not exist yet, the position is assumed to be
     ** the same as the index. Therefore, applications that rely on
     ** Cudd_bddNewVarAtLevel or Cudd_addNewVarAtLevel to create new
@@ -231,7 +233,28 @@ Cudd_MakeTreeNode(
     /* Extend the upper bound of the tree if necessary. This allows the
     ** application to create groups even before the variables are created.
     */
-    tree->size = ddMax(tree->size, ddMax(level + size, (unsigned) dd->size));
+    newSize = ddMax(tree->size, ddMax(level + size, (unsigned) dd->size));
+
+    /* if tree is extended and it had no children before, 
+       create a child capturing the current state as a leaf
+    */
+    if (newSize > tree->size && tree->child == NULL)
+      {
+	unsigned int oldSize;
+
+	oldSize = tree->size;
+	tree->size = newSize;
+	/* top level tree is always in DEFAULT state */
+	tree->flags = MTR_DEFAULT;
+
+	group = Mtr_MakeGroup (tree, tree->low, oldSize, tree->flags);
+	if (group == NULL) 
+	  return NULL;
+	group->index = tree->index;
+      }
+    else
+      tree->size = newSize;
+
 
     /* Create the group. */
     group = Mtr_MakeGroup(tree, level, size, type);

@@ -2660,6 +2660,32 @@ ddResizeTable(
     }
     unique->autoDyn = reorderSave;
 
+    /* AG: update tree size to the larger of its value and the new
+       size of the unique table */
+    if (unique->tree != NULL) 
+      {
+	unsigned int oldTreeSize = unique->tree->size;
+	
+	unique->tree->size = ddMax (unique->tree->size, unique->size);
+
+	/** 
+	 *resizing the tree may require creation of a new group that
+	 * used to be represented by the old root node
+	 */
+	if (unique->tree->child == NULL && oldTreeSize < unique->tree->size)
+	  {
+	    MtrNode* group;
+	    group = Mtr_MakeGroup (unique->tree, unique->tree->low,
+				   oldTreeSize, unique->tree->flags);
+	    if (group == NULL) 
+	      return (0);
+
+	    group->index = unique->tree->index;
+	    unique->tree->flags = MTR_DEFAULT;
+	  }
+	
+      }
+    
     return(1);
 
 } /* end of ddResizeTable */
