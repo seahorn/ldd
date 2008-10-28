@@ -4,6 +4,14 @@
 #include <stdio.h>
 #include "cudd.h"
 
+#ifndef __cplusplus
+typedef int bool;
+#endif
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /***********************************************************************
  * SIMPLE TYPES
@@ -11,7 +19,6 @@
 typedef void* constant_t;
 typedef void* linterm_t;
 typedef void* lincons_t;
-typedef int bool;
 
 typedef void* qelim_context_t;
 
@@ -44,9 +51,9 @@ struct theory
   constant_t (*negate_cst) (constant_t c);
 
   /** Returns true if c is positive infinity */
-  bool (*is_pinf_cst)(constant_t c);
+  int (*is_pinf_cst)(constant_t c);
   /** Returns true if c is negative infinity */
-  bool (*is_ninf_cst)(constant_t c);
+  int (*is_ninf_cst)(constant_t c);
 
   /** Destroy a constant */
   void (*destroy_cst) (constant_t c);
@@ -59,13 +66,13 @@ struct theory
   linterm_t (*create_linterm)(int* coeffs, size_t n);
 
   /** Returns true if t1 is the same term as t2 */
-  bool (*term_equals)(linterm_t t1, linterm_t t2);
+  int (*term_equals)(linterm_t t1, linterm_t t2);
 
   /** 
    * Returns truee iff variable 'var' appears with a non-zero
    * coefficient in the term 't'.
    */
-  bool (*term_has_var) (linterm_t t, int var);
+  int (*term_has_var) (linterm_t t, int var);
 
   /**
    * Returns true if there exists a variable v in the set var whose
@@ -73,7 +80,7 @@ struct theory
 
    * t is a term, var is represented as an array of booleans, 
    */
-  bool (*term_has_vars) (linterm_t t, bool* vars);
+  int (*term_has_vars) (linterm_t t, int* vars);
 
 
   /* Returns the number of variables of the theory */
@@ -91,7 +98,7 @@ struct theory
 
   /** Returns a variable in vars that has a non-zero coefficient in t.
    *  Returns <0 if no such variable exists */
-  int (*pick_var) (linterm_t t, bool* vars);
+  int (*pick_var) (linterm_t t, int* vars);
   
   /** Reclaims resources allocated by t*/
   void (*destroy_term) (linterm_t t);
@@ -100,12 +107,12 @@ struct theory
   /**
    * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
    */
-  lincons_t (*create_cons)(linterm_t t, bool s, constant_t k);
+  lincons_t (*create_cons)(linterm_t t, int s, constant_t k);
   
   /**
    * Returns true if l is a strict constraint 
    */
-  bool (*is_strict)(lincons_t l);
+  int (*is_strict)(lincons_t l);
 
   /**
    * get the term corresponding to the argument constraint
@@ -127,10 +134,10 @@ struct theory
    * Returns true if l is a negative constraint (i.e., the smallest
    * non-zero dimension has a negative coefficient.)
    */
-  bool (*is_negative_cons)(lincons_t l);
+  int (*is_negative_cons)(lincons_t l);
 
   /** used to be implies. If is_stronger_cons(l1, l2) then l1 implies l2 */
-  bool (*is_stronger_cons)(lincons_t l1, lincons_t l2);
+  int (*is_stronger_cons)(lincons_t l1, lincons_t l2);
 
 
   /**
@@ -179,7 +186,7 @@ struct theory
   void (*theory_debug_dump) (theory_t * t);
 
   /** Incremental Quantifier elimination */
-  qelim_context_t* (*qelim_init)(tdd_manager *m, bool* vars);
+  qelim_context_t* (*qelim_init)(tdd_manager *m, int* vars);
   void (*qelim_push)(qelim_context_t* ctx, lincons_t l);
   lincons_t (*qelim_pop)(qelim_context_t* ctx);
   tdd_node* (*qelim_solve)(qelim_context_t* ctx);
@@ -219,12 +226,16 @@ tdd_node* tdd_resolve_elim (tdd_manager*, tdd_node*, linterm_t,
 			    lincons_t, int);
 tdd_node* tdd_resolve (tdd_manager*, tdd_node*, 
 		       linterm_t, lincons_t, lincons_t, int);
-tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, bool*);
+tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, int*);
 
 void tdd_manager_debug_dump (tdd_manager*);
 int tdd_path_size (tdd_manager*, tdd_node*);
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
+
+#ifdef __cplusplus
+}
+#endif
 
 
 
