@@ -16,6 +16,10 @@
 #include "tdd-ddd.h"
 #include "tddInt.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**********************************************************************
  * private data structures
  *********************************************************************/
@@ -161,7 +165,11 @@ lincons_t ddd_qelim_pop(qelim_context_t* ctx);
 tdd_node* ddd_qelim_solve(qelim_context_t* ctx);
 void ddd_qelim_destroy_context(qelim_context_t* ctx);
 ddd_theory_t *ddd_create_theory_common(size_t vn);
-  
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif //__TDD_DDD_INT_H__
 
 /**********************************************************************
