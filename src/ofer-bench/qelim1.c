@@ -42,6 +42,10 @@ int main (int argc, char** argv)
   printf ("Using %d DD variables\n", size);
 
 
+/*   fprintf (stdout, "Enabling dynamic reordering\n"); */
+/*   /\* default method is CUDD_REORDER_SIFT *\/ */
+/*   Cudd_AutodynEnable (cudd, CUDD_REORDER_SAME); */
+
   printf ("Starting existential quantification\n");
   res = bench;
 
@@ -59,6 +63,12 @@ int main (int argc, char** argv)
       printf ("After quantifying x%d the size is %d\n",
 	      i, Cudd_DagSize (res));
       //tdd_manager_debug_dump (tdd);
+
+      /* 10 = whatever */
+      Cudd_ReduceHeap (cudd, CUDD_REORDER_SIFT, 10);
+      printf ("After reducing heap the size is %d\n",
+	      Cudd_DagSize (res));
+
 
       t->theory_debug_dump (t);
 
