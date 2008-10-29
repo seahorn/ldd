@@ -70,7 +70,7 @@ int main (int argc, char** argv)
 	      Cudd_DagSize (res));
 
 
-      t->theory_debug_dump (t);
+      t->theory_debug_dump (tdd);
 
     }
 
