@@ -106,6 +106,40 @@ tdd_node *ConsToTdd(int x,int y,int k)
 }
 
 /*********************************************************************/
+//quantify out all variables from min to max-1 from node and return
+//the result. deref node.
+/*********************************************************************/
+tdd_node *Qelim(tdd_node *node,int min,int max)
+{
+  int *vars = new int [2 * depth];
+  memset(vars,0,2*depth);
+
+  //now quantify out elements if using qelim1, or set the elements of
+  //vars to 1 if using qelim2
+  for(int i = min;i < max;++i) {
+    if(qelim2) vars[i] = 1;
+    else {
+      tdd_node *tmp = tdd_exist_abstract (tdd, node, i);
+      Cudd_Ref (tmp);
+      Cudd_RecursiveDeref (cudd, node);
+      node = tmp;
+    }
+  }
+
+  //quantify, if using qelim2
+  if(qelim2) {
+    tdd_node *tmp = tdd_exist_abstract_v2 (tdd, node, vars);
+    Cudd_Ref (tmp);
+    Cudd_RecursiveDeref (cudd, node);
+    node = tmp;
+  }
+
+  //cleanup and return
+  delete [] vars;
+  return node;
+}
+
+/*********************************************************************/
 //generate all the constraints and then quantify out all but the last
 //two fresh variables
 /*********************************************************************/
@@ -208,27 +242,8 @@ void GenAndSolve()
 #endif
   }
 
-  int *vars = new int [2 * depth];
-
-  //now quantify out all elements
-  for(int i = 0;i < 2 * depth;++i) {
-    if(qelim2) vars[i] = 1;
-    else {
-      tdd_node *tmp = tdd_exist_abstract (tdd, node, i);
-      Cudd_Ref (tmp);
-      Cudd_RecursiveDeref (cudd, node);
-      node = tmp;
-    }
-  }
-
-  if(qelim2) {
-    tdd_node *tmp = tdd_exist_abstract_v2 (tdd, node, vars);
-    Cudd_Ref (tmp);
-    Cudd_RecursiveDeref (cudd, node);
-    node = tmp;
-  }
-
-  delete [] vars;
+  //quantify
+  node = Qelim(node,0,2 * depth);
 
   //check if the result is correct
   if(unsat) {
@@ -253,6 +268,5 @@ int main(int argc,char *argv[])
   ProcessInputs(argc,argv);
   CreateManagers();
   GenAndSolve();
-
   return 0;
 }
