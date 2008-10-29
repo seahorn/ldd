@@ -29,6 +29,7 @@
 int depth = 0;
 int branch = 0;
 bool unsat = false;
+bool qelim2 = false;
 
 //other data structures
 DdManager *cudd;
@@ -62,6 +63,7 @@ void ProcessInputs(int argc,char *argv[])
       branch = atoi(argv[i+1]);
     }
     if(!strcmp(argv[i],"--unsat")) unsat = true;
+    if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
   }
   printf("\n");
   printf("depth = %d branch = %d unsat = %s\n",
@@ -111,7 +113,7 @@ void GenAndSolve1()
 {
   //the constant bound K for invariants. the invariant at the join
   //points after each diamond is X - Y >= K
-  int bound = rand();
+  int bound = Rand(0,3);
 
   tdd_node *node = tdd_get_true(tdd);
   Cudd_Ref(node);
@@ -153,7 +155,7 @@ void GenAndSolve1()
     //create branches
     for(int i = 0;i < bfac;++i) {
       //create a random positive slippage
-      int slip = rand();
+      int slip = Rand(0,3);
       slip = (slip < 0) ? -slip : slip;
       //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
       //slip. together with the previous invariant pv1 - pv2 <= bound,
@@ -207,13 +209,27 @@ void GenAndSolve1()
 #endif
   }
 
+  int *vars = new int [2 * depth];
+
   //now quantify out all elements
   for(int i = 0;i < 2 * depth;++i) {
-    tdd_node *tmp = tdd_exist_abstract (tdd, node, i);
+    if(qelim2) vars[i] = 1;
+    else {
+      tdd_node *tmp = tdd_exist_abstract (tdd, node, i);
+      Cudd_Ref (tmp);
+      Cudd_RecursiveDeref (cudd, node);
+      node = tmp;
+    }
+  }
+
+  if(qelim2) {
+    tdd_node *tmp = tdd_exist_abstract_v2 (tdd, node, vars);
     Cudd_Ref (tmp);
     Cudd_RecursiveDeref (cudd, node);
     node = tmp;
   }
+
+  delete [] vars;
 
   //check if the result is correct
   if(unsat) {
