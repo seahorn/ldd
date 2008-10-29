@@ -183,7 +183,11 @@ struct theory
 
   
   void (*print_lincons) (FILE* f, lincons_t l);
-  void (*theory_debug_dump) (theory_t * t);
+
+  /**
+   * Prints debug information from the theory embedded in the manager.
+   */
+  void (*theory_debug_dump) (tdd_manager * tdd);
 
   /** Incremental Quantifier elimination */
   qelim_context_t* (*qelim_init)(tdd_manager *m, int* vars);

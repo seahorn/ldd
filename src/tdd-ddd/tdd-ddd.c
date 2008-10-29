@@ -1061,10 +1061,10 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 #undef MIN
 #undef MAX
 
-void ddd_debug_dump (theory_t * t)
+void ddd_debug_dump (tdd_manager * tdd)
 {
   int i, j;
-  ddd_theory_t* th = (ddd_theory_t*) t;
+  ddd_theory_t* th = (ddd_theory_t*) tdd->theory;
   
   for (i = 0; i < th->var_num; i++)
     for (j = i+1; j < th->var_num; j++)
