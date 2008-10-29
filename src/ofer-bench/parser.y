@@ -110,6 +110,8 @@ constraint: var var constant
 
   $$ = to_tdd (tdd, cons);
   Cudd_Ref ($$);
+
+  free (cf);
 }
 
 ;
