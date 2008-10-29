@@ -87,6 +87,7 @@ void CreateManagers()
 /*********************************************************************/
 tdd_node *ConsToTdd(int x,int y,int k)
 {
+  printf("adding x%d - x%d <= %d\n",x,y,k);
   constant_t cst = theory->create_int_cst(k);
   int *cf = (int*)malloc(2 * depth * sizeof(int));
   memset(cf,0,2 * depth * sizeof(int));
@@ -134,7 +135,7 @@ void GenAndSolve1()
     }
 
     //get the branching factor
-    int bfac = Rand(0,branch + 1);
+    int bfac = Rand(1,branch + 1);
     printf("level = %d\tbranching = %d\n",d,bfac);
     //get the previous variables
     int pv1 = 2 * (d - 1),pv2 = 2 * d - 1;
