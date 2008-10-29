@@ -111,7 +111,7 @@ void GenAndSolve1()
 {
   //the constant bound K for invariants. the invariant at the join
   //points after each diamond is X - Y >= K
-  int bound = Rand(0,3);
+  int bound = rand();
 
   tdd_node *node = tdd_get_true(tdd);
   Cudd_Ref(node);
@@ -153,7 +153,7 @@ void GenAndSolve1()
     //create branches
     for(int i = 0;i < bfac;++i) {
       //create a random positive slippage
-      int slip = Rand(0,3);
+      int slip = rand();
       slip = (slip < 0) ? -slip : slip;
       //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
       //slip. together with the previous invariant pv1 - pv2 <= bound,
