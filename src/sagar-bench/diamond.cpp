@@ -109,7 +109,7 @@ tdd_node *ConsToTdd(int x,int y,int k)
 //generate all the constraints and then quantify out all but the last
 //two fresh variables
 /*********************************************************************/
-void GenAndSolve1()
+void GenAndSolve()
 {
   //the constant bound K for invariants. the invariant at the join
   //points after each diamond is X - Y >= K
@@ -252,7 +252,7 @@ int main(int argc,char *argv[])
   srand(time(NULL));
   ProcessInputs(argc,argv);
   CreateManagers();
-  GenAndSolve1();
+  GenAndSolve();
 
   return 0;
 }
