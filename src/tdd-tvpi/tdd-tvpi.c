@@ -526,17 +526,31 @@ void _tvpi_canonicalize_cons(tvpi_cons_t *l)
 }
 
 /**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one does not free t and k.
  *********************************************************************/
-lincons_t tvpi_create_int_cons(linterm_t t, bool s, constant_t k)
+lincons_t _tvpi_create_int_cons(linterm_t t, bool s, constant_t k)
 {
-  return tvpi_create_rat_cons(t,s,k);
+  return _tvpi_create_rat_cons(t,s,k);
 }
 
 /**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one frees t and k.
  *********************************************************************/
-lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
+lincons_t tvpi_create_int_cons(linterm_t t, bool s, constant_t k)
+{
+  lincons_t res = _tvpi_create_int_cons(t,s,k);
+  tvpi_destroy_term(t);
+  tvpi_destroy_cst(k);
+  return res;
+}
+
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one does not free t and k.
+ *********************************************************************/
+lincons_t _tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
 {
   tvpi_cons_t *res = (tvpi_cons_t*)malloc(sizeof(tvpi_cons_t));
   res->term = tvpi_dup_term((tvpi_term_t*)t);
@@ -544,6 +558,18 @@ lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
   res->strict = s;
   _tvpi_canonicalize_cons(res);
   return (lincons_t)res;
+}
+
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one frees t and k.
+ *********************************************************************/
+lincons_t tvpi_create_rat_cons(linterm_t t, bool s, constant_t k)
+{
+  lincons_t res = _tvpi_create_rat_cons(t,s,k);
+  tvpi_destroy_term(t);
+  tvpi_destroy_cst(k);
+  return res;
 }
 
 /**********************************************************************
@@ -614,8 +640,8 @@ lincons_t tvpi_negate_int_cons(lincons_t l)
 
 lincons_t tvpi_negate_rat_cons(lincons_t l)
 {
-  lincons_t res = tvpi_create_rat_cons(tvpi_get_term(l),!tvpi_is_strict(l),
-                                       tvpi_get_constant(l));
+  lincons_t res = _tvpi_create_rat_cons(tvpi_get_term(l),!tvpi_is_strict(l),
+                                        tvpi_get_constant(l));
   tvpi_negate_term_inplace(tvpi_get_term(res));
   tvpi_negate_cst_inplace(tvpi_get_constant(res));
   return res;
@@ -710,15 +736,11 @@ lincons_t tvpi_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
   //X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2
   if(!tvpi_is_strict(l1) && !tvpi_is_strict(l2)) {
     lincons_t res = tvpi_create_rat_cons(resolve.term,0,c3);
-    tvpi_destroy_term(resolve.term);
-    tvpi_destroy_cst(c3);
     return res;
   }
 
   //for all other cases, X-Z < C1+C2
   lincons_t res = tvpi_create_rat_cons(resolve.term,1,c3);
-  tvpi_destroy_term(resolve.term);
-  tvpi_destroy_cst(c3);
   return res;
 }
   
