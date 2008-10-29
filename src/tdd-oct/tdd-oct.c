@@ -471,9 +471,10 @@ void oct_destroy_term(linterm_t t)
 }
 
 /**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one does not free t and k.
  *********************************************************************/
-lincons_t oct_create_int_cons(linterm_t t, bool s, constant_t k)
+lincons_t _oct_create_int_cons(linterm_t t, bool s, constant_t k)
 {
   oct_cons_t *res = (oct_cons_t*)malloc(sizeof(oct_cons_t));
   res->term = *((oct_term_t*)t);
@@ -491,15 +492,40 @@ lincons_t oct_create_int_cons(linterm_t t, bool s, constant_t k)
 }
 
 /**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one frees t and k.
  *********************************************************************/
-lincons_t oct_create_rat_cons(linterm_t t, bool s, constant_t k)
+lincons_t oct_create_int_cons(linterm_t t, bool s, constant_t k)
+{
+  lincons_t res = _oct_create_int_cons(t,s,k);
+  oct_destroy_term(t);
+  oct_destroy_cst(k);
+  return res;
+}
+
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one does not free t and k.
+ *********************************************************************/
+lincons_t _oct_create_rat_cons(linterm_t t, bool s, constant_t k)
 {
   oct_cons_t *res = (oct_cons_t*)malloc(sizeof(oct_cons_t));
   res->term = *((oct_term_t*)t);
   res->cst = *((oct_cst_t*)k);
   res->strict = s;
   return (lincons_t)res;
+}
+
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one frees t and k.
+ *********************************************************************/
+lincons_t oct_create_rat_cons(linterm_t t, bool s, constant_t k)
+{
+  lincons_t res = _oct_create_rat_cons(t,s,k);
+  oct_destroy_term(t);
+  oct_destroy_cst(k);
+  return res;
 }
 
 /**********************************************************************
@@ -560,7 +586,7 @@ lincons_t oct_negate_int_cons(lincons_t l)
   oct_negate_term_inplace(&t);
   oct_cst_t c = *((oct_cst_t*)oct_get_constant(l));
   oct_negate_cst_inplace(&c);
-  lincons_t res = oct_create_int_cons(&t,!oct_is_strict(l),&c);
+  lincons_t res = _oct_create_int_cons(&t,!oct_is_strict(l),&c);
   return res;
 }
 
@@ -570,7 +596,7 @@ lincons_t oct_negate_rat_cons(lincons_t l)
   oct_negate_term_inplace(&t);
   oct_cst_t c = *((oct_cst_t*)oct_get_constant(l));
   oct_negate_cst_inplace(&c);
-  lincons_t res = oct_create_rat_cons(&t,!oct_is_strict(l),&c);
+  lincons_t res = _oct_create_rat_cons(&t,!oct_is_strict(l),&c);
   return res;
 }
 
@@ -645,8 +671,6 @@ lincons_t oct_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
   /*  X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2 */
   constant_t c3 = oct_cst_add(c1,c2);
   lincons_t res = oct_create_int_cons(t3,0,c3);
-  oct_destroy_term(t3);
-  oct_destroy_cst(c3);      
   return res;
 }
 
@@ -676,16 +700,12 @@ lincons_t oct_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
   if(!oct_is_strict(l1) && !oct_is_strict(l2)) {
     constant_t c3 = oct_cst_add(c1,c2);
     lincons_t res = oct_create_rat_cons(t3,0,c3);
-    oct_destroy_term(t3);
-    oct_destroy_cst(c3);
     return res;
   }
 
   //for all other cases, X-Z < C1+C2
   constant_t c3 = oct_cst_add(c1,c2);
   lincons_t res = oct_create_rat_cons(t3,1,c3);
-  oct_destroy_term(t3);
-  oct_destroy_cst(c3);
   return res;
 }
   
