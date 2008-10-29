@@ -8,6 +8,8 @@
 
 #include "tdd-dddInt.h"
 
+static void check_theory_level_consistency (tdd_manager*);
+
 /**********************************************************************
  * create an integer constant
  *********************************************************************/
@@ -1065,7 +1067,10 @@ void ddd_debug_dump (tdd_manager * tdd)
 {
   int i, j;
   ddd_theory_t* th = (ddd_theory_t*) tdd->theory;
+
   
+  check_theory_level_consistency (tdd);
+
   for (i = 0; i < th->var_num; i++)
     for (j = i+1; j < th->var_num; j++)
       {
@@ -1085,6 +1090,52 @@ void ddd_debug_dump (tdd_manager * tdd)
 	}
 	fprintf (stderr, "\n");
       }
+}
+
+
+void check_theory_level_consistency (tdd_manager* tdd)
+{
+  int i, j;
+  
+  ddd_theory_t* t;
+  DdManager *cudd;
+
+  t = (ddd_theory_t*) (tdd->theory);
+  cudd = tdd->cudd;
+  
+  fprintf (stderr, "CHECK_THEORY_LEVEL_CONSITENCY START\n");
+  
+  for (i = 0; i < t->var_num; i++)
+    for (j = i + 1 ; j < t->var_num; j++)
+      {
+	/* expected level */
+	unsigned int eLevel; 
+	ddd_cons_node_t * n;
+
+	if (t->cons_node_map [i][j] == NULL) continue;
+	
+	n = t->cons_node_map[i][j];
+	eLevel = cuddI(cudd,(n->node->index)) + 1;
+	
+	while (n->next != NULL)
+	  {
+	    int nLevel;
+	    n = n->next;
+	    nLevel = cuddI (cudd, n->node->index);
+	
+	    assert (nLevel == eLevel);
+	    
+	    if (nLevel != eLevel)
+	      {
+		fprintf (stderr, "Ordering problem. Constraint: ");
+		ddd_print_cons (stderr, &n->cons);
+		fprintf (stderr, " expected level %d, actual level %d\n",
+			 eLevel, nLevel);
+	      }
+	    eLevel = nLevel + 1;
+	  }
+      }
+  fprintf (stderr, "CHECK_THEORY_LEVEL_CONSITENCY END\n");
 }
 
 
