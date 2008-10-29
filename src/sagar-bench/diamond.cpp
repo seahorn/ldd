@@ -111,7 +111,7 @@ void GenAndSolve1()
 {
   //the constant bound K for invariants. the invariant at the join
   //points after each diamond is X - Y >= K
-  int bound = rand();
+  int bound = Rand(0,3);
 
   tdd_node *node = tdd_get_true(tdd);
   Cudd_Ref(node);
@@ -144,14 +144,15 @@ void GenAndSolve1()
     Cudd_Ref(choice);
     //create branches
     for(int i = 0;i < bfac;++i) {
-      //create a random slippage
-      int slip = rand();
-      //create two constraints pv1 <= v1 - slip and pv2 >= v2 +
-      //slip. together with the previous invariant v1 - v2 <= bound,
-      //this ensures the new invariant pv1 - pv2 <= bound.
-      tdd_node *node1 = ConsToTdd(pv1,v1,-slip);
+      //create a random positive slippage
+      int slip = Rand(0,3);
+      slip = (slip < 0) ? -slip : slip;
+      //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
+      //slip. together with the previous invariant pv1 - pv2 <= bound,
+      //this ensures the new invariant v1 - v2 <= bound.
+      tdd_node *node1 = ConsToTdd(v1,pv1,-slip);
       Cudd_Ref(node1);
-      tdd_node *node2 = ConsToTdd(v2,pv2,-slip);
+      tdd_node *node2 = ConsToTdd(pv2,v2,-slip);
       Cudd_Ref(node2);
       tdd_node *node3 = tdd_and(tdd,node1,node2);
       Cudd_Ref(node3);
@@ -169,6 +170,17 @@ void GenAndSolve1()
     Cudd_Ref(node1);
     Cudd_RecursiveDeref(cudd,node);
     Cudd_RecursiveDeref(cudd,choice);
+    node = node1;
+  }
+
+  //generate a constraint that makes the whole system unsatisfiable,
+  //if needed
+  if(unsat) {
+    int target = Rand(0,depth);
+    int v1 = 2 * target,v2 = 2 * target + 1;
+    tdd_node *node1 = ConsToTdd(v2,v1,-bound-1);
+    Cudd_Ref(node1);
+    Cudd_RecursiveDeref(cudd,node);
     node = node1;
   }
 
