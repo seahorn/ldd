@@ -28,6 +28,7 @@
 //command line options
 int depth = 0;
 int branch = 0;
+int qelimInt = -1;
 bool unsat = false;
 bool qelim2 = false;
 
@@ -62,10 +63,14 @@ void ProcessInputs(int argc,char *argv[])
     if(!strcmp(argv[i],"--branch") && i < argc-1) {
       branch = atoi(argv[i+1]);
     }
+    if(!strcmp(argv[i],"--qelimInt") && i < argc-1) {
+      qelimInt = atoi(argv[i+1]);
+    }
     if(!strcmp(argv[i],"--unsat")) unsat = true;
     if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
   }
   printf("\n");
+  if(qelimInt < 0) qelimInt = depth;
   printf("depth = %d branch = %d unsat = %s\n",
          depth,branch,unsat ? "true" : "false");
   if(depth <= 0) {
@@ -149,6 +154,13 @@ void GenAndSolve()
   //points after each diamond is X - Y >= K
   int bound = Rand(-1000,1000);
 
+  //the depth at which we are going to generate the UNSAT clause, if
+  //any
+  int target = Rand(0,depth);
+
+  //the minimum variable from which to start qelim
+  int minVar = 0;
+
   tdd_node *node = tdd_get_true(tdd);
   Cudd_Ref(node);
 
@@ -222,28 +234,32 @@ void GenAndSolve()
     printf ("node is:\n");
     Cudd_PrintMinterm (cudd, node);
 #endif
-  }
 
-  //generate a constraint that makes the whole system unsatisfiable,
-  //if needed
-  if(unsat) {
-    int target = Rand(0,depth);
-    int v1 = 2 * target,v2 = 2 * target + 1;
-    tdd_node *node1 = ConsToTdd(v2,v1,-bound-1);
-    Cudd_Ref(node1);
-    tdd_node *node2 = tdd_and(tdd,node,node1);
-    Cudd_Ref(node2);
-    Cudd_RecursiveDeref(cudd,node);
-    Cudd_RecursiveDeref(cudd,node1);
-    node = node2;
+    //generate a constraint that makes the whole system unsatisfiable,
+    //if needed
+    if(unsat && d == target) {
+      tdd_node *node1 = ConsToTdd(v2,v1,-bound-1);
+      Cudd_Ref(node1);
+      tdd_node *node2 = tdd_and(tdd,node,node1);
+      Cudd_Ref(node2);
+      Cudd_RecursiveDeref(cudd,node);
+      Cudd_RecursiveDeref(cudd,node1);
+      node = node2;
 #ifdef DEBUG
-    printf ("node is:\n");
-    Cudd_PrintMinterm (cudd, node);
+      printf ("node is:\n");
+      Cudd_PrintMinterm (cudd, node);
 #endif
+    }
+
+    //quantify if we have completed the next interval
+    if(d > 0 && (d % qelimInt) == 0) {
+      node = Qelim(node,minVar,v1);
+      minVar = v1;
+    }
   }
 
   //quantify
-  node = Qelim(node,0,2 * depth);
+  node = Qelim(node,minVar,2 * depth);
 
   //check if the result is correct
   if(unsat) {
