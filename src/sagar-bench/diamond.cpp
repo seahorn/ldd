@@ -87,7 +87,9 @@ void CreateManagers()
 /*********************************************************************/
 tdd_node *ConsToTdd(int x,int y,int k)
 {
+#ifdef DEBUG
   printf("adding x%d - x%d <= %d\n",x,y,k);
+#endif
   constant_t cst = theory->create_int_cst(k);
   int *cf = (int*)malloc(2 * depth * sizeof(int));
   memset(cf,0,2 * depth * sizeof(int));
@@ -120,7 +122,9 @@ void GenAndSolve1()
 
     //if at the start of the program
     if(d == 0) {
+#ifdef DEBUG
       printf("level = 0\n");
+#endif
       //create constraint v1 - v2 <= bound
       tdd_node *node1 = ConsToTdd(v1,v2,bound);
       Cudd_Ref(node1);
@@ -129,12 +133,18 @@ void GenAndSolve1()
       Cudd_RecursiveDeref(cudd,node);
       Cudd_RecursiveDeref(cudd,node1);
       node = node2;
+#ifdef DEBUG
+      printf ("node is:\n");
+      Cudd_PrintMinterm (cudd, node);
+#endif
       continue;
     }
 
     //get the branching factor
     int bfac = Rand(1,branch + 1);
+#ifdef DEBUG
     printf("level = %d\tbranching = %d\n",d,bfac);
+#endif
     //get the previous variables
     int pv1 = 2 * (d - 1),pv2 = 2 * d - 1;
     //disjunctive choices at the start of this diamond
@@ -164,11 +174,19 @@ void GenAndSolve1()
     }
     
     //add the choice
+#ifdef DEBUG
+    printf ("choice is:\n");
+    Cudd_PrintMinterm (cudd, choice);
+#endif
     tdd_node *node1 = tdd_and(tdd,node,choice);
     Cudd_Ref(node1);
     Cudd_RecursiveDeref(cudd,node);
     Cudd_RecursiveDeref(cudd,choice);
     node = node1;
+#ifdef DEBUG
+    printf ("node is:\n");
+    Cudd_PrintMinterm (cudd, node);
+#endif
   }
 
   //generate a constraint that makes the whole system unsatisfiable,
@@ -178,8 +196,15 @@ void GenAndSolve1()
     int v1 = 2 * target,v2 = 2 * target + 1;
     tdd_node *node1 = ConsToTdd(v2,v1,-bound-1);
     Cudd_Ref(node1);
+    tdd_node *node2 = tdd_and(tdd,node,node1);
+    Cudd_Ref(node2);
     Cudd_RecursiveDeref(cudd,node);
-    node = node1;
+    Cudd_RecursiveDeref(cudd,node1);
+    node = node2;
+#ifdef DEBUG
+    printf ("node is:\n");
+    Cudd_PrintMinterm (cudd, node);
+#endif
   }
 
   //now quantify out all elements
