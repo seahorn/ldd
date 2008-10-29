@@ -433,9 +433,10 @@ void ddd_destroy_term(linterm_t t)
 }
 
 /**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one does not free t and k.
  *********************************************************************/
-lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
+lincons_t _ddd_create_int_cons(linterm_t t, bool s, constant_t k)
 {
   ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
   res->term = *((ddd_term_t*)t);
@@ -453,15 +454,40 @@ lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
 }
 
 /**********************************************************************
- * Creates a linear contraint t < k (if s is true) t<=k (if s is false)
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one frees t and k.
  *********************************************************************/
-lincons_t ddd_create_rat_cons(linterm_t t, bool s, constant_t k)
+lincons_t ddd_create_int_cons(linterm_t t, bool s, constant_t k)
+{
+  lincons_t res = _ddd_create_int_cons(t,s,k);
+  ddd_destroy_term(t);
+  ddd_destroy_cst(k);
+  return res;
+}
+
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one does not free t and k.
+ *********************************************************************/
+lincons_t _ddd_create_rat_cons(linterm_t t, bool s, constant_t k)
 {
   ddd_cons_t *res = (ddd_cons_t*)malloc(sizeof(ddd_cons_t));
   res->term = *((ddd_term_t*)t);
   res->cst = *((ddd_cst_t*)k);
   res->strict = s;
   return (lincons_t)res;
+}
+
+/**********************************************************************
+ * Creates a linear contraint t < k (if s is true) t<=k (if s is
+ * false). this one frees t and k.
+ *********************************************************************/
+lincons_t ddd_create_rat_cons(linterm_t t, bool s, constant_t k)
+{
+  lincons_t res = _ddd_create_rat_cons(t,s,k);
+  ddd_destroy_term(t);
+  ddd_destroy_cst(k);
+  return res;
 }
 
 /**********************************************************************
@@ -522,7 +548,7 @@ lincons_t ddd_negate_int_cons(lincons_t l)
   ddd_negate_term_inplace(&t);
   ddd_cst_t c = *((ddd_cst_t*)ddd_get_constant(l));
   ddd_negate_cst_inplace(&c);
-  lincons_t res = ddd_create_int_cons(&t,!ddd_is_strict(l),&c);
+  lincons_t res = _ddd_create_int_cons(&t,!ddd_is_strict(l),&c);
   return res;
 }
 
@@ -532,7 +558,7 @@ lincons_t ddd_negate_rat_cons(lincons_t l)
   ddd_negate_term_inplace(&t);
   ddd_cst_t c = *((ddd_cst_t*)ddd_get_constant(l));
   ddd_negate_cst_inplace(&c);
-  lincons_t res = ddd_create_rat_cons(&t,!ddd_is_strict(l),&c);
+  lincons_t res = _ddd_create_rat_cons(&t,!ddd_is_strict(l),&c);
   return res;
 }
 
@@ -607,8 +633,6 @@ lincons_t ddd_resolve_int_cons(lincons_t l1, lincons_t l2, int x)
   /*  X-Y <= C1 and Y-Z <= C2 ===> X-Z <= C1+C2 */
   constant_t c3 = ddd_cst_add(c1,c2);
   lincons_t res = ddd_create_int_cons(t3,0,c3);
-  ddd_destroy_term(t3);
-  ddd_destroy_cst(c3);      
   return res;
 }
 
@@ -638,16 +662,12 @@ lincons_t ddd_resolve_rat_cons(lincons_t l1, lincons_t l2, int x)
   if(!ddd_is_strict(l1) && !ddd_is_strict(l2)) {
     constant_t c3 = ddd_cst_add(c1,c2);
     lincons_t res = ddd_create_rat_cons(t3,0,c3);
-    ddd_destroy_term(t3);
-    ddd_destroy_cst(c3);
     return res;
   }
 
   //for all other cases, X-Z < C1+C2
   constant_t c3 = ddd_cst_add(c1,c2);
   lincons_t res = ddd_create_rat_cons(t3,1,c3);
-  ddd_destroy_term(t3);
-  ddd_destroy_cst(c3);
   return res;
 }
   

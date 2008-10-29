@@ -96,8 +96,6 @@ tdd_node *ConsToTdd(int x,int y,int k)
   linterm_t term = theory->create_linterm(cf,2 * depth);
   free(cf);
   lincons_t cons = theory->create_cons(term,0,cst);
-  theory->destroy_cst(cst);
-  theory->destroy_term(term);
   tdd_node *res = to_tdd(tdd,cons);
   theory->destroy_lincons(cons);
   return res;
