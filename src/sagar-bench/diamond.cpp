@@ -61,7 +61,7 @@ void Usage(char *cmd)
   printf("\t--depth [number of diamonds]\n");
   printf("\t--branching <K> : K = maximum branching factor\n");
   printf("\t--qelimInt <K> : do QELIM after every K diamonds\n");
-  printf("\t--repeat <K> : repeat experiment K times\n");
+  printf("\t--repeat <K> : repeat experiment K (<= 1000) times\n");
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
 }
@@ -110,7 +110,14 @@ void ProcessInputs(int argc,char *argv[])
   }
 
   //sanity check on various option values
-  if(qelimInt < 0) qelimInt = depth;
+  if(repeat > 1000) {
+    printf("ERROR: can only repeat at most 1000 times!\n");
+    exit(1);
+  }
+  if(qelimInt < 1) {
+    printf("qelimInt must be at least 1!\n");
+    exit(0);
+  }
   if(depth <= 0) {
     printf("ERROR: depth must be greater than zero!\n");
     exit(0);
