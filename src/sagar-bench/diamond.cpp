@@ -60,7 +60,7 @@ void Usage(char *cmd)
   printf("Options:\n");
   printf("\t--help|-h : display usage and exit\n");
   printf("\t--depth [number of diamonds]\n");
-  printf("\t--branching <K> : K = maximum branching factor\n");
+  printf("\t--branch <K> : K = maximum branching factor\n");
   printf("\t--qelimInt <K> : do QELIM after every K diamonds\n");
   printf("\t--repeat <K> : repeat experiment K (<= 1000) times\n");
   printf("\t--disj <K> : ensure that invariants have K disjuncts\n");
