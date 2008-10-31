@@ -226,6 +226,9 @@ void GenAndSolve()
   //the depth at which we are going to generate the UNSAT clause, if
   //any
   int target = Rand(0,depth);
+#ifdef DEBUG
+  printf("target = %d\n",target);
+#endif
 
   //the minimum variable from which to start qelim
   int minVar = 0;
@@ -236,6 +239,24 @@ void GenAndSolve()
   for(int d = 0;d < depth;++d) {
     //fresh variables
     int v1 = 2 * d,v2 = 2 * d + 1;
+
+    //generate a constraint that makes the whole system unsatisfiable,
+    //if needed
+    if(unsat && d == target) {
+      for(size_t i = 0;i < disj;++i) {
+        tdd_node *node1 = ConsToTdd(v2,v1,-bounds[i]-1);
+        Cudd_Ref(node1);
+        tdd_node *node2 = tdd_and(tdd,node,node1);
+        Cudd_Ref(node2);
+        Cudd_RecursiveDeref(cudd,node);
+        Cudd_RecursiveDeref(cudd,node1);
+        node = node2;
+      }
+#ifdef DEBUG
+      printf ("node is:\n");
+      Cudd_PrintMinterm (cudd, node);
+#endif
+    }
 
     //if at the start of the program
     if(d == 0) {
@@ -313,24 +334,6 @@ void GenAndSolve()
     printf ("node is:\n");
     Cudd_PrintMinterm (cudd, node);
 #endif
-
-    //generate a constraint that makes the whole system unsatisfiable,
-    //if needed
-    if(unsat && d == target) {
-      for(size_t i = 0;i < disj;++i) {
-        tdd_node *node1 = ConsToTdd(v2,v1,-bounds[i]-1);
-        Cudd_Ref(node1);
-        tdd_node *node2 = tdd_and(tdd,node,node1);
-        Cudd_Ref(node2);
-        Cudd_RecursiveDeref(cudd,node);
-        Cudd_RecursiveDeref(cudd,node1);
-        node = node2;
-      }
-#ifdef DEBUG
-      printf ("node is:\n");
-      Cudd_PrintMinterm (cudd, node);
-#endif
-    }
 
     //quantify if we have completed the next interval
     if(d > 0 && (d % qelimInt) == 0) {
