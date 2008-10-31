@@ -31,6 +31,7 @@ int branch = 0;
 int qelimInt = -1;
 bool unsat = false;
 bool qelim2 = false;
+size_t repeat = 1;
 
 //other data structures
 DdManager *cudd;
@@ -50,26 +51,65 @@ int Rand(int min,int max)
 }
 
 /*********************************************************************/
+//display usage
+/*********************************************************************/
+void Usage(char *cmd)
+{
+  printf("Usage : %s <options>\n",cmd);
+  printf("Options:\n");
+  printf("\t--help|-h : display usage and exit\n");
+  printf("\t--depth [number of diamonds]\n");
+  printf("\t--branching <K> : K = maximum branching factor\n");
+  printf("\t--qelimInit <K> : do QELIM after every K diamonds\n");
+  printf("\t--repeat <K> : repeat experiment K times\n");
+  printf("\t--unsat : generate unsatisfiable constraints\n");
+  printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
+}
+
+/*********************************************************************/
 //process inputs -- also print inputs for later reference
 /*********************************************************************/
 void ProcessInputs(int argc,char *argv[])
 {
+  //display command line
   printf("Command Line:");
   for(int i = 0;i < argc;++i) {
     printf(" %s",argv[i]);
-    if(!strcmp(argv[i],"--depth") && i < argc-1) {
-      depth = atoi(argv[i+1]);
-    }
-    if(!strcmp(argv[i],"--branch") && i < argc-1) {
-      branch = atoi(argv[i+1]);
-    }
-    if(!strcmp(argv[i],"--qelimInt") && i < argc-1) {
-      qelimInt = atoi(argv[i+1]);
-    }
-    if(!strcmp(argv[i],"--unsat")) unsat = true;
-    if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
   }
   printf("\n");
+
+  //check for empty command line
+  if(argc == 1) {
+    Usage(argv[0]);
+    exit(1);
+  }
+
+  //process command line arguments
+  for(int i = 1;i < argc;++i) {
+    if(!strcmp(argv[i],"--help") || !strcmp(argv[1],"-h")) {
+      Usage(argv[0]);
+      exit(0);
+    } else if(!strcmp(argv[i],"--depth") && i < argc-1) {
+      depth = atoi(argv[++i]);
+    }
+    else if(!strcmp(argv[i],"--branch") && i < argc-1) {
+      branch = atoi(argv[++i]);
+    }
+    else if(!strcmp(argv[i],"--qelimInt") && i < argc-1) {
+      qelimInt = atoi(argv[++i]);
+    }
+    else if(!strcmp(argv[i],"--repeat") && i < argc-1) {
+      repeat = atoi(argv[++i]);
+    }
+    else if(!strcmp(argv[i],"--unsat")) unsat = true;
+    else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
+    else {
+      Usage(argv[0]);
+      exit(1);
+    }
+  }
+
+  //set values of unitialized variables
   if(qelimInt < 0) qelimInt = depth;
   printf("depth = %d branch = %d unsat = %s\n",
          depth,branch,unsat ? "true" : "false");
