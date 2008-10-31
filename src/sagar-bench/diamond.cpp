@@ -28,7 +28,7 @@
 //command line options
 int depth = 0;
 int branch = 0;
-int qelimInt = -1;
+int qelimInt = 0;
 bool unsat = false;
 bool qelim2 = false;
 size_t repeat = 1;
@@ -114,14 +114,11 @@ void ProcessInputs(int argc,char *argv[])
     printf("ERROR: can only repeat at most 1000 times!\n");
     exit(1);
   }
-  if(qelimInt < 1) {
-    printf("qelimInt must be at least 1!\n");
-    exit(0);
-  }
   if(depth <= 0) {
     printf("ERROR: depth must be greater than zero!\n");
     exit(0);
   }
+  if(qelimInt < 1) qelimInt = depth;
   
   //display final options
   printf("depth = %d branch = %d qelimInt = %d repeat = %d "
