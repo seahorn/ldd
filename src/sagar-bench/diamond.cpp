@@ -346,13 +346,17 @@ void GenAndSolve()
   if(unsat) {
     if(node == Cudd_ReadLogicZero (cudd))
       printf("GOOD: result is UNSAT as expected!\n");
-    else
+    else {
       printf("ERROR: result is SAT, UNSAT expected!\n");
+      exit(1);
+    }
   } else {
     if(node == Cudd_ReadOne (cudd))
       printf("GOOD: result is SAT as expected!\n");
-    else
+    else {
       printf("ERROR: result is UNSAT, SAT expected!\n");
+      exit(1);
+    }
   }
 
   //cleanup
