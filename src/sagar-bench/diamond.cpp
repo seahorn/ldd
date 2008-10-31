@@ -60,7 +60,7 @@ void Usage(char *cmd)
   printf("\t--help|-h : display usage and exit\n");
   printf("\t--depth [number of diamonds]\n");
   printf("\t--branching <K> : K = maximum branching factor\n");
-  printf("\t--qelimInit <K> : do QELIM after every K diamonds\n");
+  printf("\t--qelimInt <K> : do QELIM after every K diamonds\n");
   printf("\t--repeat <K> : repeat experiment K times\n");
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
@@ -109,14 +109,18 @@ void ProcessInputs(int argc,char *argv[])
     }
   }
 
-  //set values of unitialized variables
+  //sanity check on various option values
   if(qelimInt < 0) qelimInt = depth;
-  printf("depth = %d branch = %d unsat = %s\n",
-         depth,branch,unsat ? "true" : "false");
   if(depth <= 0) {
     printf("ERROR: depth must be greater than zero!\n");
     exit(0);
   }
+  
+  //display final options
+  printf("depth = %d branch = %d qelimInt = %d repeat = %d "
+         "unsat = %s qelim2 = %s\n",
+         depth,branch,qelimInt,repeat,unsat ? "true" : "false",
+         qelim2 ? "true" : "false");
 }
 
 /*********************************************************************/
