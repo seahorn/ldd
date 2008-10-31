@@ -134,6 +134,16 @@ void CreateManagers()
 }
 
 /*********************************************************************/
+//create all kinds of managers
+/*********************************************************************/
+void DestroyManagers()
+{
+  ddd_destroy_theory(theory);
+  tdd_quit(tdd);
+  Cudd_Quit(cudd);
+}
+
+/*********************************************************************/
 //create and return the tdd_node for the constraint X-Y <= K
 /*********************************************************************/
 tdd_node *ConsToTdd(int x,int y,int k)
@@ -326,7 +336,10 @@ int main(int argc,char *argv[])
 {
   srand(time(NULL));
   ProcessInputs(argc,argv);
-  CreateManagers();
-  GenAndSolve();
+  for(size_t i = 0;i < repeat;++i) {
+    CreateManagers();
+    GenAndSolve();
+    DestroyManagers();
+  }
   return 0;
 }
