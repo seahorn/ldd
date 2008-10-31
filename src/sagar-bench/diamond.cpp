@@ -29,9 +29,10 @@
 int depth = 0;
 int branch = 0;
 int qelimInt = 0;
+size_t repeat = 1;
+size_t disj = 1;
 bool unsat = false;
 bool qelim2 = false;
-size_t repeat = 1;
 
 //other data structures
 DdManager *cudd;
@@ -62,6 +63,7 @@ void Usage(char *cmd)
   printf("\t--branching <K> : K = maximum branching factor\n");
   printf("\t--qelimInt <K> : do QELIM after every K diamonds\n");
   printf("\t--repeat <K> : repeat experiment K (<= 1000) times\n");
+  printf("\t--disj <K> : ensure that invariants have K disjuncts\n");
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
 }
@@ -101,6 +103,9 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--repeat") && i < argc-1) {
       repeat = atoi(argv[++i]);
     }
+    else if(!strcmp(argv[i],"--disj") && i < argc-1) {
+      disj = atoi(argv[++i]);
+    }
     else if(!strcmp(argv[i],"--unsat")) unsat = true;
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
     else {
@@ -110,15 +115,19 @@ void ProcessInputs(int argc,char *argv[])
   }
 
   //sanity check on various option values
-  if(repeat > 1000) {
-    printf("ERROR: can only repeat at most 1000 times!\n");
-    exit(1);
-  }
   if(depth <= 0) {
     printf("ERROR: depth must be greater than zero!\n");
     exit(0);
   }
   if(qelimInt < 1) qelimInt = depth;
+  if(repeat > 1000) {
+    printf("ERROR: can only repeat at most 1000 times!\n");
+    exit(1);
+  }
+  if(disj < 1 || disj > 1000) {
+    printf("ERROR: can have at least 1 and at most 1000 disjuncts in invariants!\n");
+    exit(1);
+  }
   
   //display final options
   printf("depth = %d branch = %d qelimInt = %d repeat = %d "
@@ -208,9 +217,11 @@ tdd_node *Qelim(tdd_node *node,int min,int max)
 /*********************************************************************/
 void GenAndSolve()
 {
-  //the constant bound K for invariants. the invariant at the join
-  //points after each diamond is X - Y >= K
-  int bound = Rand(-1000,1000);
+  //the constant bounds for invariants. there are as many bounds as
+  //the number of disjuncts in the invariant. the invariant at the
+  //join points after each diamond is ||( X - Y <= K_i)
+  int *bounds = new int[disj];
+  for(size_t i = 0;i < disj;++i) bounds[i] = Rand(-1000,1000);
 
   //the depth at which we are going to generate the UNSAT clause, if
   //any
@@ -231,14 +242,24 @@ void GenAndSolve()
 #ifdef DEBUG
       printf("level = 0\n");
 #endif
-      //create constraint v1 - v2 <= bound
-      tdd_node *node1 = ConsToTdd(v1,v2,bound);
+      //generate the top-level disjunctive invariant 
+      tdd_node *choice = tdd_get_false(tdd);
+      Cudd_Ref(choice);
+      for(size_t i = 0;i < disj;++i) {
+        //create constraint v1 - v2 <= bound
+        tdd_node *node1 = ConsToTdd(v1,v2,bounds[i]);
+        Cudd_Ref(node1);
+        tdd_node *node2 = tdd_or(tdd,choice,node1);
+        Cudd_Ref(node2);
+        Cudd_RecursiveDeref(cudd,choice);
+        Cudd_RecursiveDeref(cudd,node1);
+        choice = node2;
+      }
+      tdd_node *node1 = tdd_and(tdd,node,choice);
       Cudd_Ref(node1);
-      tdd_node *node2 = tdd_and(tdd,node,node1);
-      Cudd_Ref(node2);
       Cudd_RecursiveDeref(cudd,node);
-      Cudd_RecursiveDeref(cudd,node1);
-      node = node2;
+      Cudd_RecursiveDeref(cudd,choice);
+      node = node1;
 #ifdef DEBUG
       printf ("node is:\n");
       Cudd_PrintMinterm (cudd, node);
@@ -296,13 +317,15 @@ void GenAndSolve()
     //generate a constraint that makes the whole system unsatisfiable,
     //if needed
     if(unsat && d == target) {
-      tdd_node *node1 = ConsToTdd(v2,v1,-bound-1);
-      Cudd_Ref(node1);
-      tdd_node *node2 = tdd_and(tdd,node,node1);
-      Cudd_Ref(node2);
-      Cudd_RecursiveDeref(cudd,node);
-      Cudd_RecursiveDeref(cudd,node1);
-      node = node2;
+      for(size_t i = 0;i < disj;++i) {
+        tdd_node *node1 = ConsToTdd(v2,v1,-bounds[i]-1);
+        Cudd_Ref(node1);
+        tdd_node *node2 = tdd_and(tdd,node,node1);
+        Cudd_Ref(node2);
+        Cudd_RecursiveDeref(cudd,node);
+        Cudd_RecursiveDeref(cudd,node1);
+        node = node2;
+      }
 #ifdef DEBUG
       printf ("node is:\n");
       Cudd_PrintMinterm (cudd, node);
@@ -331,6 +354,9 @@ void GenAndSolve()
     else
       printf("ERROR: result is UNSAT, SAT expected!\n");
   }
+
+  //cleanup
+  delete [] bounds;
 }
 
 /*********************************************************************/
@@ -347,3 +373,7 @@ int main(int argc,char *argv[])
   }
   return 0;
 }
+
+/*********************************************************************/
+//end of diamond.cpp
+/*********************************************************************/
