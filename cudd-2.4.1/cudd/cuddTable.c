@@ -2000,9 +2000,21 @@ cuddInsertSubtables(
 	cuddRef(unique->vars[i]);
     }
     if (unique->tree != NULL) {
+      int oldTreeSize = unique->tree->size;
 	unique->tree->size += n;
 	unique->tree->index = unique->invperm[0];
 	ddPatchTree(unique,unique->tree);
+	/* if needed, insert a subtree that was just erased */
+	if (unique->tree->child == NULL) 
+	  {
+	    MtrNode* group;
+	    group = Mtr_MakeGroup (unique->tree, unique->tree->low,
+				   oldTreeSize, unique->tree->flags);
+	    if (group == NULL) return (0);
+	    group->index = unique->tree->index;
+	    unique->tree->flags = MTR_DEFAULT;
+	  }
+	
     }
     unique->autoDyn = reorderSave;
 
