@@ -11,6 +11,8 @@
 #include "tdd-oct.h"
 #include "tdd-tvpi.h"
 
+//#define DEBUG
+
 /**
  * This program creates a set of constraints that correspond to a
  * diamond-shaped program. At each meet-point, two new freash
@@ -36,7 +38,8 @@ size_t disj = 1;
 size_t varNum = 1;
 bool unsat = false;
 bool qelim2 = false;
-enum TddType { DIA_DDD, DIA_OCT, DIA_TVPI } tddType = DIA_DDD;
+enum TddType { DIA_DDD, DIA_OCT, DIA_TVPI } 
+  tddType = DIA_DDD,consType = DIA_DDD;
 
 //other data structures
 DdManager *cudd;
@@ -72,7 +75,9 @@ void Usage(char *cmd)
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
   printf("\t--oct : use octagon theory\n");
+  printf("\t--octCons : use octagon constraints\n");
   printf("\t--tvpi : use TVPI theory\n");
+  printf("\t--tvpiCons : use TVPI constraints\n");
 }
 
 /*********************************************************************/
@@ -119,7 +124,9 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--unsat")) unsat = true;
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
     else if(!strcmp(argv[i],"--oct")) tddType = DIA_OCT;
+    else if(!strcmp(argv[i],"--octCons")) consType = DIA_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = DIA_TVPI;
+    else if(!strcmp(argv[i],"--tvpiCons")) consType = DIA_TVPI;
     else {
       Usage(argv[0]);
       exit(1);
@@ -142,6 +149,14 @@ void ProcessInputs(int argc,char *argv[])
   }
   if(varNum < 1 || varNum > 1000) {
     printf("ERROR: can have at least 1 and at most 1000 fresh variables at each step!\n");
+    exit(1);
+  }
+  if(consType == DIA_OCT && tddType == DIA_DDD) {
+    printf("ERROR: cannot use DDD theory with octagon constraints!\n");
+    exit(1);
+  }
+  if(consType == DIA_TVPI && tddType != DIA_TVPI) {
+    printf("ERROR: must use TVPI theory with TVPI constraints!\n");
     exit(1);
   }
   
@@ -177,18 +192,18 @@ void DestroyManagers()
 }
 
 /*********************************************************************/
-//create and return the tdd_node for the constraint X-Y <= K
+//create and return the tdd_node for the constraint C1 * X + C2 * Y <= K
 /*********************************************************************/
-tdd_node *ConsToTdd(int x,int y,int k)
+tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
 {
 #ifdef DEBUG
-  printf("adding x%d - x%d <= %d\n",x,y,k);
+  printf("adding %d * x%d + %d * x%d <= %d\n",c1,x,c2,y,k);
 #endif
   constant_t cst = theory->create_int_cst(k);
   int *cf = (int*)malloc(2 * varNum * depth * sizeof(int));
   memset(cf,0,2 * varNum * depth * sizeof(int));
-  cf[x] = 1;
-  cf[y] = -1;
+  cf[x] = c1;
+  cf[y] = c2;
   linterm_t term = theory->create_linterm(cf,2 * varNum * depth);
   free(cf);
   lincons_t cons = theory->create_cons(term,0,cst);
@@ -240,13 +255,30 @@ void GenAndSolve()
   //the constant bounds for invariants. there are as many bounds as
   //the number of disjuncts in the invariant. the invariant at the
   //join points after each diamond is ||( X - Y <= K_i)
-  int **bounds = new int*[varNum];
+  int **bounds = new int* [varNum];
   for(size_t i = 0;i < varNum;++i) {
-    bounds[i] = new int[disj];
+    bounds[i] = new int [disj];
     for(size_t j = 0;j < disj;++j) bounds[i][j] = Rand(-1000,1000);
   }
-  //the depth at which we are going to generate the UNSAT clause, if
-  //any
+
+  //generate coefficients
+  int *coeffs = new int [2 * varNum];
+  for(size_t i = 0;i < varNum;++i) {
+    if(consType == DIA_DDD) {
+      coeffs[2 * i] = 1;
+      coeffs[2 * i + 1] = -1;
+    }
+    if(consType == DIA_OCT) {
+      coeffs[2 * i] = Rand(0,2) ? 1 : -1;
+      coeffs[2 * i + 1] = Rand(0,2) ? 1 : -1;
+    }
+    if(consType == DIA_TVPI) {
+      coeffs[2 * i] = Rand(1,50);
+      coeffs[2 * i + 1] = Rand(-50,0);
+    }
+  }
+
+  //the depth at which we are going to generate the UNSAT clause
   int target = Rand(0,depth);
 #ifdef DEBUG
   printf("target = %d\n",target);
@@ -260,7 +292,7 @@ void GenAndSolve()
 
   for(int d = 0;d < depth;++d) {
     //fresh variables
-    int *freshVars = new int[2 * varNum];
+    int *freshVars = new int [2 * varNum];
     for(size_t i = 0;i < 2 * varNum;++i) {
       freshVars[i] = 2 * varNum * d + i;
     }
@@ -276,7 +308,7 @@ void GenAndSolve()
         tdd_node *unsat = tdd_get_true(tdd);
         Cudd_Ref(unsat);
         for(size_t i = 0;i < disj;++i) {
-          tdd_node *node1 = ConsToTdd(v2,v1,-bounds[vn][i]-1);
+          tdd_node *node1 = ConsToTdd(-coeffs[2 * vn + 1],v2,-coeffs[2 * vn],v1,-bounds[vn][i]-1);
           Cudd_Ref(node1);
           tdd_node *node2 = tdd_and(tdd,unsat,node1);
           Cudd_Ref(node2);
@@ -314,7 +346,7 @@ void GenAndSolve()
         Cudd_Ref(choice);
         for(size_t i = 0;i < disj;++i) {
           //create constraint v1 - v2 <= bound
-          tdd_node *node1 = ConsToTdd(v1,v2,bounds[vn][i]);
+          tdd_node *node1 = ConsToTdd(coeffs[v1],v1,coeffs[v2],v2,bounds[vn][i]);
           Cudd_Ref(node1);
           tdd_node *node2 = tdd_or(tdd,choice,node1);
           Cudd_Ref(node2);
@@ -349,18 +381,55 @@ void GenAndSolve()
       //disjunctive choices at the start of this diamond
       tdd_node *choice = tdd_get_false(tdd);
       Cudd_Ref(choice);
-      //create branches
-      for(int i = 0;i < bfac;++i) {
-        //create a random positive slippage
-        int slip = Rand(0,1000);
-        //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
-        //slip. together with the previous invariant pv1 - pv2 <= bound,
-        //this ensures the new invariant v1 - v2 <= bound.
-        tdd_node *node1 = ConsToTdd(v1,pv1,-slip);
+
+      //for DDD constraints
+      if(consType == DIA_DDD) {
+        //create branches
+        for(int i = 0;i < bfac;++i) {
+          //create a random positive slippage
+          int slip = Rand(0,1000);
+          //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
+          //slip. together with the previous invariant pv1 - pv2 <= bound,
+          //this ensures the new invariant v1 - v2 <= bound.
+          tdd_node *node1 = ConsToTdd(1,v1,-1,pv1,-slip);
+          Cudd_Ref(node1);
+          tdd_node *node2 = ConsToTdd(1,pv2,-1,v2,-slip);
+          Cudd_Ref(node2);
+          tdd_node *node3 = tdd_and(tdd,node1,node2);
+          Cudd_Ref(node3);
+          Cudd_RecursiveDeref(cudd,node1);
+          Cudd_RecursiveDeref(cudd,node2);
+          tdd_node *node4 = tdd_or(tdd,choice,node3);
+          Cudd_Ref(node4);
+          Cudd_RecursiveDeref(cudd,choice);
+          Cudd_RecursiveDeref(cudd,node3);
+          choice = node4;
+        }
+      }
+      //for non-DDD constraints
+      else {
+        //create constraints v1 = pv1 and v2 = pv2. together with
+        //the previous invariant c1*pv1 + c2*pv2 <= bound, this
+        //ensures the new invariant c1*v1 + c2*v2 <= bound.
+        tdd_node *node1 = ConsToTdd(1,v1,-1,pv1,0);
         Cudd_Ref(node1);
-        tdd_node *node2 = ConsToTdd(pv2,v2,-slip);
+        tdd_node *node2 = ConsToTdd(1,pv1,-1,v1,0);
         Cudd_Ref(node2);
         tdd_node *node3 = tdd_and(tdd,node1,node2);
+        Cudd_Ref(node3);
+        Cudd_RecursiveDeref(cudd,node1);
+        Cudd_RecursiveDeref(cudd,node2);
+        node1 = node3;
+        node2 = ConsToTdd(1,v2,-1,pv2,0);
+        Cudd_Ref(node2);
+        node3 = tdd_and(tdd,node1,node2);
+        Cudd_Ref(node3);
+        Cudd_RecursiveDeref(cudd,node1);
+        Cudd_RecursiveDeref(cudd,node2);
+        node1 = node3;
+        node2 = ConsToTdd(1,pv2,-1,v2,0);
+        Cudd_Ref(node2);
+        node3 = tdd_and(tdd,node1,node2);
         Cudd_Ref(node3);
         Cudd_RecursiveDeref(cudd,node1);
         Cudd_RecursiveDeref(cudd,node2);
@@ -369,7 +438,7 @@ void GenAndSolve()
         Cudd_RecursiveDeref(cudd,choice);
         Cudd_RecursiveDeref(cudd,node3);
         choice = node4;
-      }    
+      }
       //add the choice
 #ifdef DEBUG
       printf ("choice is:\n");
@@ -419,6 +488,7 @@ void GenAndSolve()
   //cleanup
   for(size_t i = 0;i < varNum;++i) delete [] bounds[i];
   delete [] bounds;
+  delete [] coeffs;
 }
 
 /*********************************************************************/
