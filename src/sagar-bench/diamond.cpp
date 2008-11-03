@@ -17,8 +17,8 @@
  * maintained. 
  *
  * The program accepts a number of inputs:
- * -- depth <K>: the number of diamonds in the program generated
- * -- branch <K>: the branching factor
+ * --depth <K>: the number of diamonds in the program generated
+ * --branch <K>: the branching factor
  * --unsat: if the problem should be unsatisfiable
  */
 
@@ -31,6 +31,7 @@ int branch = 0;
 int qelimInt = 0;
 size_t repeat = 1;
 size_t disj = 1;
+size_t varNum = 1;
 bool unsat = false;
 bool qelim2 = false;
 
@@ -64,6 +65,7 @@ void Usage(char *cmd)
   printf("\t--qelimInt <K> : do QELIM after every K diamonds\n");
   printf("\t--repeat <K> : repeat experiment K (<= 1000) times\n");
   printf("\t--disj <K> : ensure that invariants have K disjuncts\n");
+  printf("\t--vars <K> : use K pairs of fresh variables at each step\n");
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
 }
@@ -106,6 +108,9 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--disj") && i < argc-1) {
       disj = atoi(argv[++i]);
     }
+    else if(!strcmp(argv[i],"--vars") && i < argc-1) {
+      varNum = atoi(argv[++i]);
+    }
     else if(!strcmp(argv[i],"--unsat")) unsat = true;
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
     else {
@@ -128,12 +133,16 @@ void ProcessInputs(int argc,char *argv[])
     printf("ERROR: can have at least 1 and at most 1000 disjuncts in invariants!\n");
     exit(1);
   }
+  if(varNum < 1 || varNum > 1000) {
+    printf("ERROR: can have at least 1 and at most 1000 fresh variables at each step!\n");
+    exit(1);
+  }
   
   //display final options
   printf("depth = %d branch = %d qelimInt = %d repeat = %d "
-         "unsat = %s qelim2 = %s\n",
-         depth,branch,qelimInt,repeat,unsat ? "true" : "false",
-         qelim2 ? "true" : "false");
+         "disj = %d vars = %d unsat = %s qelim2 = %s\n",
+         depth,branch,qelimInt,repeat,disj,varNum,
+         unsat ? "true" : "false",qelim2 ? "true" : "false");
 }
 
 /*********************************************************************/
@@ -142,7 +151,7 @@ void ProcessInputs(int argc,char *argv[])
 void CreateManagers()
 {
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  theory = ddd_create_int_theory (2 * depth);
+  theory = ddd_create_int_theory (2 * varNum * depth);
   tdd = tdd_init (cudd, theory);  
 }
 
@@ -165,11 +174,11 @@ tdd_node *ConsToTdd(int x,int y,int k)
   printf("adding x%d - x%d <= %d\n",x,y,k);
 #endif
   constant_t cst = theory->create_int_cst(k);
-  int *cf = (int*)malloc(2 * depth * sizeof(int));
-  memset(cf,0,2 * depth * sizeof(int));
+  int *cf = (int*)malloc(2 * varNum * depth * sizeof(int));
+  memset(cf,0,2 * varNum * depth * sizeof(int));
   cf[x] = 1;
   cf[y] = -1;
-  linterm_t term = theory->create_linterm(cf,2 * depth);
+  linterm_t term = theory->create_linterm(cf,2 * varNum * depth);
   free(cf);
   lincons_t cons = theory->create_cons(term,0,cst);
   tdd_node *res = to_tdd(tdd,cons);
@@ -183,8 +192,8 @@ tdd_node *ConsToTdd(int x,int y,int k)
 /*********************************************************************/
 tdd_node *Qelim(tdd_node *node,int min,int max)
 {
-  int *vars = new int [2 * depth];
-  memset(vars,0,2*depth);
+  int *vars = new int [2 * varNum * depth];
+  memset(vars,0,2 * varNum * depth);
 
   //now quantify out elements if using qelim1, or set the elements of
   //vars to 1 if using qelim2
@@ -238,20 +247,41 @@ void GenAndSolve()
 
   for(int d = 0;d < depth;++d) {
     //fresh variables
-    int v1 = 2 * d,v2 = 2 * d + 1;
+    int *freshVars = new int[2 * varNum];
+    for(size_t i = 0;i < 2 * varNum;++i) {
+      freshVars[i] = 2 * varNum * d + i;
+    }
 
     //generate a constraint that makes the whole system unsatisfiable,
     //if needed
     if(unsat && d == target) {
-      for(size_t i = 0;i < disj;++i) {
-        tdd_node *node1 = ConsToTdd(v2,v1,-bounds[i]-1);
+      tdd_node *choice = tdd_get_false(tdd);
+      Cudd_Ref(choice);
+      for(size_t vn = 0;vn < varNum;++vn) {
+        int v1 = 2 * (varNum * d + vn);
+        int v2 = v1 + 1;
+        tdd_node *unsat = tdd_get_true(tdd);
+        Cudd_Ref(unsat);
+        for(size_t i = 0;i < disj;++i) {
+          tdd_node *node1 = ConsToTdd(v2,v1,-bounds[i]-1);
+          Cudd_Ref(node1);
+          tdd_node *node2 = tdd_and(tdd,unsat,node1);
+          Cudd_Ref(node2);
+          Cudd_RecursiveDeref(cudd,unsat);
+          Cudd_RecursiveDeref(cudd,node1);
+          unsat = node2;
+        }
+        tdd_node *node1 = tdd_or(tdd,choice,unsat);
         Cudd_Ref(node1);
-        tdd_node *node2 = tdd_and(tdd,node,node1);
-        Cudd_Ref(node2);
-        Cudd_RecursiveDeref(cudd,node);
-        Cudd_RecursiveDeref(cudd,node1);
-        node = node2;
+        Cudd_RecursiveDeref(cudd,choice);
+        Cudd_RecursiveDeref(cudd,unsat);
+        choice = node1;
       }
+      tdd_node *node1 = tdd_and(tdd,node,choice);
+      Cudd_Ref(node1);
+      Cudd_RecursiveDeref(cudd,node);
+      Cudd_RecursiveDeref(cudd,choice);
+      node = node1;
 #ifdef DEBUG
       printf ("node is:\n");
       Cudd_PrintMinterm (cudd, node);
@@ -263,24 +293,28 @@ void GenAndSolve()
 #ifdef DEBUG
       printf("level = 0\n");
 #endif
-      //generate the top-level disjunctive invariant 
-      tdd_node *choice = tdd_get_false(tdd);
-      Cudd_Ref(choice);
-      for(size_t i = 0;i < disj;++i) {
-        //create constraint v1 - v2 <= bound
-        tdd_node *node1 = ConsToTdd(v1,v2,bounds[i]);
+      for(size_t vn = 0;vn < varNum;++vn) {
+        int v1 = 2 * (varNum * d + vn);
+        int v2 = v1 + 1;
+        //generate the top-level disjunctive invariant 
+        tdd_node *choice = tdd_get_false(tdd);
+        Cudd_Ref(choice);
+        for(size_t i = 0;i < disj;++i) {
+          //create constraint v1 - v2 <= bound
+          tdd_node *node1 = ConsToTdd(v1,v2,bounds[i]);
+          Cudd_Ref(node1);
+          tdd_node *node2 = tdd_or(tdd,choice,node1);
+          Cudd_Ref(node2);
+          Cudd_RecursiveDeref(cudd,choice);
+          Cudd_RecursiveDeref(cudd,node1);
+          choice = node2;
+        }
+        tdd_node *node1 = tdd_and(tdd,node,choice);
         Cudd_Ref(node1);
-        tdd_node *node2 = tdd_or(tdd,choice,node1);
-        Cudd_Ref(node2);
+        Cudd_RecursiveDeref(cudd,node);
         Cudd_RecursiveDeref(cudd,choice);
-        Cudd_RecursiveDeref(cudd,node1);
-        choice = node2;
+        node = node1;
       }
-      tdd_node *node1 = tdd_and(tdd,node,choice);
-      Cudd_Ref(node1);
-      Cudd_RecursiveDeref(cudd,node);
-      Cudd_RecursiveDeref(cudd,choice);
-      node = node1;
 #ifdef DEBUG
       printf ("node is:\n");
       Cudd_PrintMinterm (cudd, node);
@@ -288,48 +322,52 @@ void GenAndSolve()
       continue;
     }
 
-    //get the branching factor
-    int bfac = Rand(1,branch + 1);
+    for(size_t vn = 0;vn < varNum;++vn) {
+      int v1 = 2 * (varNum * d + vn);
+      int v2 = v1 + 1;
+      //get the branching factor
+      int bfac = Rand(1,branch + 1);
 #ifdef DEBUG
-    printf("level = %d\tbranching = %d\n",d,bfac);
+      printf("level = %d\tbranching = %d\n",d,bfac);
 #endif
-    //get the previous variables
-    int pv1 = 2 * (d - 1),pv2 = 2 * d - 1;
-    //disjunctive choices at the start of this diamond
-    tdd_node *choice = tdd_get_false(tdd);
-    Cudd_Ref(choice);
-    //create branches
-    for(int i = 0;i < bfac;++i) {
-      //create a random positive slippage
-      int slip = Rand(0,1000);
-      //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
-      //slip. together with the previous invariant pv1 - pv2 <= bound,
-      //this ensures the new invariant v1 - v2 <= bound.
-      tdd_node *node1 = ConsToTdd(v1,pv1,-slip);
+      //get the previous variables
+      int pv1 = v1 - 2 * varNum;
+      int pv2 = pv1 + 1;
+      //disjunctive choices at the start of this diamond
+      tdd_node *choice = tdd_get_false(tdd);
+      Cudd_Ref(choice);
+      //create branches
+      for(int i = 0;i < bfac;++i) {
+        //create a random positive slippage
+        int slip = Rand(0,1000);
+        //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
+        //slip. together with the previous invariant pv1 - pv2 <= bound,
+        //this ensures the new invariant v1 - v2 <= bound.
+        tdd_node *node1 = ConsToTdd(v1,pv1,-slip);
+        Cudd_Ref(node1);
+        tdd_node *node2 = ConsToTdd(pv2,v2,-slip);
+        Cudd_Ref(node2);
+        tdd_node *node3 = tdd_and(tdd,node1,node2);
+        Cudd_Ref(node3);
+        Cudd_RecursiveDeref(cudd,node1);
+        Cudd_RecursiveDeref(cudd,node2);
+        tdd_node *node4 = tdd_or(tdd,choice,node3);
+        Cudd_Ref(node4);
+        Cudd_RecursiveDeref(cudd,choice);
+        Cudd_RecursiveDeref(cudd,node3);
+        choice = node4;
+      }    
+      //add the choice
+#ifdef DEBUG
+      printf ("choice is:\n");
+      Cudd_PrintMinterm (cudd, choice);
+#endif
+      tdd_node *node1 = tdd_and(tdd,node,choice);
       Cudd_Ref(node1);
-      tdd_node *node2 = ConsToTdd(pv2,v2,-slip);
-      Cudd_Ref(node2);
-      tdd_node *node3 = tdd_and(tdd,node1,node2);
-      Cudd_Ref(node3);
-      Cudd_RecursiveDeref(cudd,node1);
-      Cudd_RecursiveDeref(cudd,node2);
-      tdd_node *node4 = tdd_or(tdd,choice,node3);
-      Cudd_Ref(node4);
+      Cudd_RecursiveDeref(cudd,node);
       Cudd_RecursiveDeref(cudd,choice);
-      Cudd_RecursiveDeref(cudd,node3);
-      choice = node4;
+      node = node1;
     }
-    
-    //add the choice
-#ifdef DEBUG
-    printf ("choice is:\n");
-    Cudd_PrintMinterm (cudd, choice);
-#endif
-    tdd_node *node1 = tdd_and(tdd,node,choice);
-    Cudd_Ref(node1);
-    Cudd_RecursiveDeref(cudd,node);
-    Cudd_RecursiveDeref(cudd,choice);
-    node = node1;
 #ifdef DEBUG
     printf ("node is:\n");
     Cudd_PrintMinterm (cudd, node);
@@ -337,13 +375,16 @@ void GenAndSolve()
 
     //quantify if we have completed the next interval
     if(d > 0 && (d % qelimInt) == 0) {
-      node = Qelim(node,minVar,v1);
-      minVar = v1;
+      node = Qelim(node,minVar,2 * varNum * d);
+      minVar = 2 * varNum * d;
     }
+
+    //cleanup
+    delete [] freshVars;
   }
 
   //quantify
-  node = Qelim(node,minVar,2 * depth);
+  node = Qelim(node,minVar,2 * varNum * depth);
 
   //check if the result is correct
   if(unsat) {
