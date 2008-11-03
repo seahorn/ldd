@@ -15,7 +15,11 @@
 #include <assert.h>
 #include <gmp.h>
 #include "tdd-tvpi.h"
-#include "../tdd/tddInt.h"
+#include "tddInt.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**********************************************************************
  * private data structures
@@ -160,6 +164,10 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
 tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l);
 void tvpi_print_lincons(FILE *f,lincons_t l);
 tvpi_theory_t *tvpi_create_theory_common(size_t vn);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TDD_TVPI_INT_H__
 

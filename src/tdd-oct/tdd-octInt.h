@@ -14,7 +14,11 @@
 #include <string.h>
 #include <assert.h>
 #include "tdd-oct.h"
-#include "../tdd/tddInt.h"
+#include "tddInt.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**********************************************************************
  * private data structures
@@ -138,6 +142,10 @@ tdd_node *oct_get_node(tdd_manager* m,oct_cons_node_t *curr,
 tdd_node* oct_to_tdd(tdd_manager* m, lincons_t l);
 void oct_print_lincons(FILE *f,lincons_t l);
 oct_theory_t *oct_create_theory_common(size_t vn);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__TDD_OCT_INT_H__
 
