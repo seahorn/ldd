@@ -8,6 +8,8 @@
 #include "cudd.h"
 #include "tdd.h"
 #include "tdd-ddd.h"
+#include "tdd-oct.h"
+#include "tdd-tvpi.h"
 
 /**
  * This program creates a set of constraints that correspond to a
@@ -34,6 +36,7 @@ size_t disj = 1;
 size_t varNum = 1;
 bool unsat = false;
 bool qelim2 = false;
+enum TddType { DIA_DDD, DIA_OCT, DIA_TVPI } tddType = DIA_DDD;
 
 //other data structures
 DdManager *cudd;
@@ -68,6 +71,8 @@ void Usage(char *cmd)
   printf("\t--vars <K> : use K pairs of fresh variables at each step\n");
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
+  printf("\t--oct : use octagon theory\n");
+  printf("\t--tvpi : use TVPI theory\n");
 }
 
 /*********************************************************************/
@@ -113,6 +118,8 @@ void ProcessInputs(int argc,char *argv[])
     }
     else if(!strcmp(argv[i],"--unsat")) unsat = true;
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
+    else if(!strcmp(argv[i],"--oct")) tddType = DIA_OCT;
+    else if(!strcmp(argv[i],"--tvpi")) tddType = DIA_TVPI;
     else {
       Usage(argv[0]);
       exit(1);
@@ -151,7 +158,9 @@ void ProcessInputs(int argc,char *argv[])
 void CreateManagers()
 {
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  theory = ddd_create_int_theory (2 * varNum * depth);
+  if(tddType == DIA_DDD) theory = ddd_create_int_theory (2 * varNum * depth);
+  if(tddType == DIA_OCT) theory = oct_create_int_theory (2 * varNum * depth);
+  if(tddType == DIA_TVPI) theory = tvpi_create_int_theory (2 * varNum * depth);
   tdd = tdd_init (cudd, theory);  
 }
 
@@ -160,7 +169,9 @@ void CreateManagers()
 /*********************************************************************/
 void DestroyManagers()
 {
-  ddd_destroy_theory(theory);
+  if(tddType == DIA_DDD) ddd_destroy_theory(theory);
+  if(tddType == DIA_OCT) oct_destroy_theory(theory);
+  if(tddType == DIA_TVPI) tvpi_destroy_theory(theory);
   tdd_quit(tdd);
   Cudd_Quit(cudd);
 }
