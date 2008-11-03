@@ -31,7 +31,7 @@
 /*********************************************************************/
 //command line options
 int depth = 0;
-int branch = 0;
+int branch = 1;
 int qelimInt = 0;
 size_t repeat = 1;
 size_t disj = 1;
@@ -291,12 +291,6 @@ void GenAndSolve()
   Cudd_Ref(node);
 
   for(int d = 0;d < depth;++d) {
-    //fresh variables
-    int *freshVars = new int [2 * varNum];
-    for(size_t i = 0;i < 2 * varNum;++i) {
-      freshVars[i] = 2 * varNum * d + i;
-    }
-
     //generate a constraint that makes the whole system unsatisfiable,
     //if needed
     if(unsat && d == target) {
@@ -460,9 +454,6 @@ void GenAndSolve()
       node = Qelim(node,minVar,2 * varNum * d);
       minVar = 2 * varNum * d;
     }
-
-    //cleanup
-    delete [] freshVars;
   }
 
   //quantify
