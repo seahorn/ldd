@@ -240,9 +240,11 @@ void GenAndSolve()
   //the constant bounds for invariants. there are as many bounds as
   //the number of disjuncts in the invariant. the invariant at the
   //join points after each diamond is ||( X - Y <= K_i)
-  int *bounds = new int[disj];
-  for(size_t i = 0;i < disj;++i) bounds[i] = Rand(-1000,1000);
-
+  int **bounds = new int*[varNum];
+  for(size_t i = 0;i < varNum;++i) {
+    bounds[i] = new int[disj];
+    for(size_t j = 0;j < disj;++j) bounds[i][j] = Rand(-1000,1000);
+  }
   //the depth at which we are going to generate the UNSAT clause, if
   //any
   int target = Rand(0,depth);
@@ -274,7 +276,7 @@ void GenAndSolve()
         tdd_node *unsat = tdd_get_true(tdd);
         Cudd_Ref(unsat);
         for(size_t i = 0;i < disj;++i) {
-          tdd_node *node1 = ConsToTdd(v2,v1,-bounds[i]-1);
+          tdd_node *node1 = ConsToTdd(v2,v1,-bounds[vn][i]-1);
           Cudd_Ref(node1);
           tdd_node *node2 = tdd_and(tdd,unsat,node1);
           Cudd_Ref(node2);
@@ -312,7 +314,7 @@ void GenAndSolve()
         Cudd_Ref(choice);
         for(size_t i = 0;i < disj;++i) {
           //create constraint v1 - v2 <= bound
-          tdd_node *node1 = ConsToTdd(v1,v2,bounds[i]);
+          tdd_node *node1 = ConsToTdd(v1,v2,bounds[vn][i]);
           Cudd_Ref(node1);
           tdd_node *node2 = tdd_or(tdd,choice,node1);
           Cudd_Ref(node2);
@@ -415,6 +417,7 @@ void GenAndSolve()
   }
 
   //cleanup
+  for(size_t i = 0;i < varNum;++i) delete [] bounds[i];
   delete [] bounds;
 }
 
