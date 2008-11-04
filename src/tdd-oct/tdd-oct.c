@@ -353,7 +353,7 @@ void oct_print_cst(FILE *f,oct_cst_t *c)
  *********************************************************************/
 void oct_print_term(FILE *f,oct_term_t *t)
 {
-  fprintf(f,"%s%d%s%d",t->coeff1 < 0 ? "-" : "+",t->var1,
+  fprintf(f,"%sx%d%sx%d",t->coeff1 < 0 ? "-" : "+",t->var1,
           t->coeff2 < 0 ? "-" : "+",t->var2);
 }
 
@@ -741,7 +741,21 @@ tdd_node *oct_get_node(tdd_manager* m,oct_cons_node_t *curr,
     oct_cons_node_t *cn = 
       (oct_cons_node_t*)malloc(sizeof(oct_cons_node_t));
     cn->cons = *c;
-    cn->node = tdd_new_var(m,(lincons_t)c);
+
+    if (prev)
+      /* last constraint in the list, need a node right after prev */
+      cn->node = tdd_new_var_after (m, prev->node, (lincons_t) c);
+    else
+      /* first constraint in the list*/
+      cn->node = tdd_new_var(m,(lincons_t)c);
+
+    if (cn->node == NULL)
+      {
+	free (cn);
+	return NULL;
+      }
+    cuddRef (cn->node);
+
     //if not at the start of the list
     if(prev) {
       cn->next = prev->next;

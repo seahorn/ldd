@@ -781,7 +781,21 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
     tvpi_cons_node_t *cn = 
       (tvpi_cons_node_t*)malloc(sizeof(tvpi_cons_node_t));
     cn->cons = tvpi_dup_lincons(c);
-    cn->node = tdd_new_var(m,(lincons_t)c);
+
+    if (prev)
+      /* last constraint in the list, need a node right after prev */
+      cn->node = tdd_new_var_after (m, prev->node, (lincons_t) c);
+    else
+      /* first constraint in the list*/
+      cn->node = tdd_new_var(m,(lincons_t)c);
+
+    if (cn->node == NULL)
+      {
+	free (cn);
+	return NULL;
+      }
+    cuddRef (cn->node);
+
     //if not at the start of the list
     if(prev) {
       cn->next = prev->next;
@@ -793,7 +807,6 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
       cn->next = theory->cons_node_map[c->term->vars[0]][c->term->vars[1]];
       theory->cons_node_map[c->term->vars[0]][c->term->vars[1]] = cn;
     }
-    printf("********at the end of the list\n");
     return cn->node;
   }
 
@@ -801,10 +814,7 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
   if(tvpi_term_equals(curr->cons->term,c->term) &&
      ((tvpi_is_strict(curr->cons) && tvpi_is_strict(c)) ||
       (!tvpi_is_strict(curr->cons) && !tvpi_is_strict(c))) &&
-     tvpi_cst_eq(curr->cons->cst,c->cst)) {
-    printf("********found matching element\n");
-    return curr->node;
-  }
+     tvpi_cst_eq(curr->cons->cst,c->cst)) return curr->node;
 
   //if the c implies curr, then add c just before curr
   if(m->theory->is_stronger_cons(c,curr->cons)) {
@@ -835,8 +845,6 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
  *********************************************************************/
 tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l)
 {
-  fflush(stdout);
-  tvpi_print_cons(stdout,l);
   tvpi_theory_t *theory = (tvpi_theory_t*)m->theory;
 
   //negate the constraint if necessary
@@ -849,9 +857,6 @@ tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l)
   //find the right node. create one if necessary.
   tdd_node *res = 
     tvpi_get_node(m,theory->cons_node_map[c->term->vars[0]][c->term->vars[1]],NULL,c);
-
-  printf(" === %s(%d,%d)\n",neg?"-":"+",res->index,cuddI(m->cudd,res->index));
-  fflush(stdout);
 
   //cleanup
   if(neg) {
