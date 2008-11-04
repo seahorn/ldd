@@ -11,7 +11,7 @@
 #include "tdd-oct.h"
 #include "tdd-tvpi.h"
 
-//#define DEBUG
+#define DEBUG
 
 /**
  * This program creates a set of constraints that correspond to a
@@ -196,9 +196,7 @@ void DestroyManagers()
 /*********************************************************************/
 tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
 {
-#ifdef DEBUG
   printf("adding %d * x%d + %d * x%d <= %d\n",c1,x,c2,y,k);
-#endif
   constant_t cst = theory->create_int_cst(k);
   int *cf = (int*)malloc(2 * varNum * depth * sizeof(int));
   memset(cf,0,2 * varNum * depth * sizeof(int));
@@ -224,12 +222,15 @@ tdd_node *Qelim(tdd_node *node,int min,int max)
   //now quantify out elements if using qelim1, or set the elements of
   //vars to 1 if using qelim2
   for(int i = min;i < max;++i) {
+    printf("quantifying %d ...\n",i);
     if(qelim2) vars[i] = 1;
     else {
       tdd_node *tmp = tdd_exist_abstract (tdd, node, i);
       Cudd_Ref (tmp);
       Cudd_RecursiveDeref (cudd, node);
       node = tmp;
+      printf ("node after qelim is:\n");
+      Cudd_PrintMinterm (cudd, node);
     }
   }
 
@@ -258,7 +259,7 @@ void GenAndSolve()
   int **bounds = new int* [varNum];
   for(size_t i = 0;i < varNum;++i) {
     bounds[i] = new int [disj];
-    for(size_t j = 0;j < disj;++j) bounds[i][j] = Rand(-1000,1000);
+    for(size_t j = 0;j < disj;++j) bounds[i][j] = Rand(-2,2);
   }
 
   //generate coefficients
@@ -273,16 +274,14 @@ void GenAndSolve()
       coeffs[2 * i + 1] = Rand(0,2) ? 1 : -1;
     }
     if(consType == DIA_TVPI) {
-      coeffs[2 * i] = Rand(1,50);
-      coeffs[2 * i + 1] = Rand(-50,0);
+      coeffs[2 * i] = Rand(-1,0);
+      coeffs[2 * i + 1] = Rand(1,2);
     }
   }
 
   //the depth at which we are going to generate the UNSAT clause
   int target = Rand(0,depth);
-#ifdef DEBUG
   printf("target = %d\n",target);
-#endif
 
   //the minimum variable from which to start qelim
   int minVar = 0;
@@ -487,7 +486,7 @@ void GenAndSolve()
 /*********************************************************************/
 int main(int argc,char *argv[])
 {
-  srand(time(NULL));
+  srand(10);
   ProcessInputs(argc,argv);
   for(size_t i = 0;i < repeat;++i) {
     CreateManagers();

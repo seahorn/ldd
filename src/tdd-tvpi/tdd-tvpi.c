@@ -369,9 +369,9 @@ void tvpi_print_cst(FILE *f,tvpi_cst_t *c)
 void tvpi_print_term(FILE *f,tvpi_term_t *t)
 {
   mpq_out_str(f,10,t->coeffs[0]);
-  fprintf(f," * %d + ",t->vars[0]);
+  fprintf(f," * x%d + ",t->vars[0]);
   mpq_out_str(f,10,t->coeffs[1]);
-  fprintf(f," * %d",t->vars[1]);
+  fprintf(f," * x%d",t->vars[1]);
 }
 
 /**********************************************************************
@@ -793,6 +793,7 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
       cn->next = theory->cons_node_map[c->term->vars[0]][c->term->vars[1]];
       theory->cons_node_map[c->term->vars[0]][c->term->vars[1]] = cn;
     }
+    printf("********at the end of the list\n");
     return cn->node;
   }
 
@@ -800,7 +801,10 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
   if(tvpi_term_equals(curr->cons->term,c->term) &&
      ((tvpi_is_strict(curr->cons) && tvpi_is_strict(c)) ||
       (!tvpi_is_strict(curr->cons) && !tvpi_is_strict(c))) &&
-     tvpi_cst_eq(curr->cons->cst,c->cst)) return curr->node;
+     tvpi_cst_eq(curr->cons->cst,c->cst)) {
+    printf("********found matching element\n");
+    return curr->node;
+  }
 
   //if the c implies curr, then add c just before curr
   if(m->theory->is_stronger_cons(c,curr->cons)) {
@@ -831,6 +835,8 @@ tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
  *********************************************************************/
 tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l)
 {
+  fflush(stdout);
+  tvpi_print_cons(stdout,l);
   tvpi_theory_t *theory = (tvpi_theory_t*)m->theory;
 
   //negate the constraint if necessary
@@ -843,6 +849,9 @@ tdd_node* tvpi_to_tdd(tdd_manager* m, lincons_t l)
   //find the right node. create one if necessary.
   tdd_node *res = 
     tvpi_get_node(m,theory->cons_node_map[c->term->vars[0]][c->term->vars[1]],NULL,c);
+
+  printf(" === %s(%d,%d)\n",neg?"-":"+",res->index,cuddI(m->cudd,res->index));
+  fflush(stdout);
 
   //cleanup
   if(neg) {
