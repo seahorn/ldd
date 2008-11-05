@@ -190,7 +190,34 @@ void DestroyManagers()
 }
 
 /*********************************************************************/
-//create and return the tdd_node for the constraint C1 * X + C2 * Y <= K
+//utility function for operating on tdd nodes. assumes that the
+//argument is refed. derefs the arguments and refs the result. if op
+//is "!", then the second argument should be NULL.
+/*********************************************************************/
+tdd_node *TddOp(tdd_node *arg1,tdd_node *arg2,char op)
+{
+  tdd_node *res = NULL;
+  if(op == '&') {
+    res = tdd_and(tdd,arg1,arg2);
+  } else if(op == '|') {
+    res = tdd_or(tdd,arg1,arg2);
+  } else if(op == '^') {
+    res = tdd_xor(tdd,arg1,arg2);
+  } else if(op == '!') {
+    res = tdd_not(arg1);
+  } else {
+    printf("ERROR: illegal operator %c passed to TddOp!\n",op);
+    exit(1);
+  }
+  Cudd_Ref(res);  
+  Cudd_RecursiveDeref(cudd,arg1);
+  if(arg2) Cudd_RecursiveDeref(cudd,arg2);
+  return res;
+}
+
+/*********************************************************************/
+//create and return the tdd_node for the constraint C1 * X + C2 * Y <=
+//K. refs the result.
 /*********************************************************************/
 tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
 {
@@ -207,6 +234,7 @@ tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
   lincons_t cons = theory->create_cons(term,0,cst);
   tdd_node *res = to_tdd(tdd,cons);
   theory->destroy_lincons(cons);
+  Cudd_Ref(res);
   return res;
 }
 
@@ -303,24 +331,11 @@ void GenAndSolve()
         Cudd_Ref(unsat);
         for(size_t i = 0;i < disj;++i) {
           tdd_node *node1 = ConsToTdd(-coeffs[2 * vn + 1],v2,-coeffs[2 * vn],v1,-bounds[vn][i]-1);
-          Cudd_Ref(node1);
-          tdd_node *node2 = tdd_and(tdd,unsat,node1);
-          Cudd_Ref(node2);
-          Cudd_RecursiveDeref(cudd,unsat);
-          Cudd_RecursiveDeref(cudd,node1);
-          unsat = node2;
+          unsat = TddOp(unsat,node1,'&');
         }
-        tdd_node *node1 = tdd_or(tdd,choice,unsat);
-        Cudd_Ref(node1);
-        Cudd_RecursiveDeref(cudd,choice);
-        Cudd_RecursiveDeref(cudd,unsat);
-        choice = node1;
+        choice = TddOp(choice,unsat,'|');
       }
-      tdd_node *node1 = tdd_and(tdd,node,choice);
-      Cudd_Ref(node1);
-      Cudd_RecursiveDeref(cudd,node);
-      Cudd_RecursiveDeref(cudd,choice);
-      node = node1;
+      node = TddOp(node,choice,'&');
 #ifdef DEBUG
       printf ("node is:\n");
       Cudd_PrintMinterm (cudd, node);
@@ -341,18 +356,9 @@ void GenAndSolve()
         for(size_t i = 0;i < disj;++i) {
           //create constraint v1 - v2 <= bound
           tdd_node *node1 = ConsToTdd(coeffs[v1],v1,coeffs[v2],v2,bounds[vn][i]);
-          Cudd_Ref(node1);
-          tdd_node *node2 = tdd_or(tdd,choice,node1);
-          Cudd_Ref(node2);
-          Cudd_RecursiveDeref(cudd,choice);
-          Cudd_RecursiveDeref(cudd,node1);
-          choice = node2;
+          choice = TddOp(choice,node1,'|');
         }
-        tdd_node *node1 = tdd_and(tdd,node,choice);
-        Cudd_Ref(node1);
-        Cudd_RecursiveDeref(cudd,node);
-        Cudd_RecursiveDeref(cudd,choice);
-        node = node1;
+        node = TddOp(node,choice,'&');
       }
 #ifdef DEBUG
       printf ("node is:\n");
@@ -386,18 +392,8 @@ void GenAndSolve()
           //slip. together with the previous invariant pv1 - pv2 <= bound,
           //this ensures the new invariant v1 - v2 <= bound.
           tdd_node *node1 = ConsToTdd(1,v1,-1,pv1,-slip);
-          Cudd_Ref(node1);
           tdd_node *node2 = ConsToTdd(1,pv2,-1,v2,-slip);
-          Cudd_Ref(node2);
-          tdd_node *node3 = tdd_and(tdd,node1,node2);
-          Cudd_Ref(node3);
-          Cudd_RecursiveDeref(cudd,node1);
-          Cudd_RecursiveDeref(cudd,node2);
-          tdd_node *node4 = tdd_or(tdd,choice,node3);
-          Cudd_Ref(node4);
-          Cudd_RecursiveDeref(cudd,choice);
-          Cudd_RecursiveDeref(cudd,node3);
-          choice = node4;
+          choice = TddOp(choice,TddOp(node1,node2,'&'),'|');
         }
       }
       //for non-DDD constraints
@@ -406,43 +402,20 @@ void GenAndSolve()
         //the previous invariant c1*pv1 + c2*pv2 <= bound, this
         //ensures the new invariant c1*v1 + c2*v2 <= bound.
         tdd_node *node1 = ConsToTdd(1,v1,-1,pv1,0);
-        Cudd_Ref(node1);
         tdd_node *node2 = ConsToTdd(1,pv1,-1,v1,0);
-        Cudd_Ref(node2);
-        tdd_node *node3 = tdd_and(tdd,node1,node2);
-        Cudd_Ref(node3);
-        Cudd_RecursiveDeref(cudd,node1);
-        Cudd_RecursiveDeref(cudd,node2);
-        node1 = node3;
+        node1 = TddOp(node1,node2,'&');
         node2 = ConsToTdd(1,v2,-1,pv2,0);
-        Cudd_Ref(node2);
-        node3 = tdd_and(tdd,node1,node2);
-        Cudd_Ref(node3);
-        Cudd_RecursiveDeref(cudd,node1);
-        Cudd_RecursiveDeref(cudd,node2);
-        node1 = node3;
+        node1 = TddOp(node1,node2,'&');
         node2 = ConsToTdd(1,pv2,-1,v2,0);
-        Cudd_Ref(node2);
-        node3 = tdd_and(tdd,node1,node2);
-        Cudd_Ref(node3);
-        Cudd_RecursiveDeref(cudd,node1);
-        Cudd_RecursiveDeref(cudd,node2);
-        tdd_node *node4 = tdd_or(tdd,choice,node3);
-        Cudd_Ref(node4);
-        Cudd_RecursiveDeref(cudd,choice);
-        Cudd_RecursiveDeref(cudd,node3);
-        choice = node4;
+        node1 = TddOp(node1,node2,'&');
+        choice = TddOp(choice,node1,'|');
       }
       //add the choice
 #ifdef DEBUG
       printf ("choice is:\n");
       Cudd_PrintMinterm (cudd, choice);
 #endif
-      tdd_node *node1 = tdd_and(tdd,node,choice);
-      Cudd_Ref(node1);
-      Cudd_RecursiveDeref(cudd,node);
-      Cudd_RecursiveDeref(cudd,choice);
-      node = node1;
+      node = TddOp(node,choice,'&');
     }
 #ifdef DEBUG
     printf ("node is:\n");
