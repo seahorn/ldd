@@ -36,6 +36,7 @@ size_t disj = 1;
 size_t varNum = 1;
 bool unsat = false;
 bool qelim2 = false;
+bool compInv = false;
 enum TddType { DIA_DDD, DIA_OCT, DIA_TVPI } 
   tddType = DIA_DDD,consType = DIA_DDD;
 
@@ -76,6 +77,7 @@ void Usage(char *cmd)
   printf("\t--octCons : use octagon constraints\n");
   printf("\t--tvpi : use TVPI theory\n");
   printf("\t--tvpiCons : use TVPI constraints\n");
+  printf("\t--compInv : enable propositionally complex invariants\n");
 }
 
 /*********************************************************************/
@@ -125,6 +127,7 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--octCons")) consType = DIA_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = DIA_TVPI;
     else if(!strcmp(argv[i],"--tvpiCons")) consType = DIA_TVPI;
+    else if(!strcmp(argv[i],"--compInv")) compInv = true;
     else {
       Usage(argv[0]);
       exit(1);
@@ -375,8 +378,14 @@ void GenAndSolve()
 #ifdef DEBUG
       printf("level = %d\tbranching = %d\n",d,bfac);
 #endif
-      //get the previous variables
-      int pv1 = v1 - 2 * varNum;
+      //get the previous variables -- choose a random pair from the
+      //previous generation
+      
+      //choose the first for propositionally complex invariants, and
+      //the second for propositionally simple invariants
+      int pv1 = compInv ? 
+        (2 * (varNum * (d - 1) + Rand(0,varNum))) : (v1 - 2 * varNum);
+
       int pv2 = pv1 + 1;
       //disjunctive choices at the start of this diamond
       tdd_node *choice = tdd_get_false(tdd);
