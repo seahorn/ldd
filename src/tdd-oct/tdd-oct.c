@@ -735,6 +735,32 @@ lincons_t oct_dup_lincons(lincons_t l)
 tdd_node *oct_get_node(tdd_manager* m,oct_cons_node_t *curr,
                        oct_cons_node_t *prev,oct_cons_t *c)
 {
+  //if i saw a previous constraint with the same term, but the current
+  //constraint has a different term, insert the new constraint just
+  //before the current term
+  if(prev && oct_term_equals(oct_get_term(&(prev->cons)),oct_get_term(c))) {
+    if(curr && !oct_term_equals(oct_get_term(&(curr->cons)),oct_get_term(c))) {
+      oct_cons_node_t *cn = 
+        (oct_cons_node_t*)malloc(sizeof(oct_cons_node_t));
+      cn->cons = *c;
+
+      /* need a node right after prev */
+      cn->node = tdd_new_var_after (m, prev->node, (lincons_t) c);
+
+      if (cn->node == NULL)
+        {
+          free (cn);
+          return NULL;
+        }
+      cuddRef (cn->node);
+
+      //insert cn in the list
+      cn->next = prev->next;
+      prev->next = cn;
+      return cn->node;
+    }
+  }
+
   //if at the end of the list -- create a fresh tdd_node and insert it
   //at the end of the list
   if(curr == NULL) {

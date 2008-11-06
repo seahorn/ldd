@@ -7,6 +7,9 @@
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
+#ifdef DEBUG
+#include "tddInt.h"
+#endif
 #include "tdd-ddd.h"
 #include "tdd-oct.h"
 #include "tdd-tvpi.h"
@@ -241,6 +244,39 @@ tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
   return res;
 }
 
+#ifdef DEBUG
+/*********************************************************************/
+//utility function to print a DD. assumes that the DD has a single
+//cube.
+/*********************************************************************/
+void PrintDD(tdd_node *node)
+{
+  Cudd_PrintMinterm (cudd, node);
+  int *sup = Cudd_SupportIndex(cudd,node);
+  //int ssize = Cudd_SupportSize(cudd,node);
+  for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
+    if(sup[i]) {
+      if(Cudd_bddAnd(cudd,node,Cudd_bddIthVar(cudd,i)) != Cudd_ReadLogicZero(cudd)) {
+        theory->print_lincons(stdout,tdd->ddVars[i]);
+        printf(" && ");
+      }
+      if(Cudd_bddAnd(cudd,node,Cudd_Not(Cudd_bddIthVar(cudd,i))) != Cudd_ReadLogicZero(cudd)) {
+        theory->print_lincons(stdout,theory->negate_cons(tdd->ddVars[i]));
+        printf(" && ");
+      }
+    }
+  }
+  printf("\n");
+  for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
+    if(sup[i]) {
+      printf("level of %d is %d\n",i,cuddI(cudd,i));
+    }
+  }
+  printf("\n");
+  free(sup);
+}
+#endif
+
 /*********************************************************************/
 //quantify out all variables from min to max-1 from node and return
 //the result. deref node.
@@ -255,10 +291,17 @@ tdd_node *Qelim(tdd_node *node,int min,int max)
   for(int i = min;i < max;++i) {
     if(qelim2) vars[i] = 1;
     else {
+#ifdef DEBUG
+      printf("***** eliminating numeric variable %d ...\n",i);
+#endif
       tdd_node *tmp = tdd_exist_abstract (tdd, node, i);
       Cudd_Ref (tmp);
       Cudd_RecursiveDeref (cudd, node);
       node = tmp;
+#ifdef DEBUG
+      printf ("node is:\n");
+      PrintDD (node);
+#endif
     }
   }
 
@@ -325,23 +368,28 @@ void GenAndSolve()
     //generate a constraint that makes the whole system unsatisfiable,
     //if needed
     if(unsat && d == target) {
+#ifdef DEBUG
+      printf("generating UNSAT constraints ...\n");
+#endif
       tdd_node *choice = tdd_get_false(tdd);
       Cudd_Ref(choice);
-      for(size_t vn = 0;vn < varNum;++vn) {
-        int v1 = 2 * (varNum * d + vn);
+      for(size_t vn1 = 0;vn1 < varNum;++vn1) {
+        int v1 = 2 * (varNum * d + vn1);
         int v2 = v1 + 1;
         tdd_node *unsat = tdd_get_true(tdd);
         Cudd_Ref(unsat);
-        for(size_t i = 0;i < disj;++i) {
-          tdd_node *node1 = ConsToTdd(-coeffs[2 * vn + 1],v2,-coeffs[2 * vn],v1,-bounds[vn][i]-1);
-          unsat = TddOp(unsat,node1,'&');
+        for(size_t vn2 = 0;vn2 < varNum;++vn2) {
+          for(size_t i = 0;i < disj;++i) {
+            tdd_node *node1 = ConsToTdd(-coeffs[2 * vn2 + 1],v2,-coeffs[2 * vn2],v1,-bounds[vn2][i]-1);
+            unsat = TddOp(unsat,node1,'&');
+          }
         }
         choice = TddOp(choice,unsat,'|');
       }
       node = TddOp(node,choice,'&');
 #ifdef DEBUG
       printf ("node is:\n");
-      Cudd_PrintMinterm (cudd, node);
+      PrintDD(node);
 #endif
     }
 
@@ -365,7 +413,7 @@ void GenAndSolve()
       }
 #ifdef DEBUG
       printf ("node is:\n");
-      Cudd_PrintMinterm (cudd, node);
+      PrintDD(node);
 #endif
       continue;
     }
@@ -422,13 +470,13 @@ void GenAndSolve()
       //add the choice
 #ifdef DEBUG
       printf ("choice is:\n");
-      Cudd_PrintMinterm (cudd, choice);
+      PrintDD(choice);
 #endif
       node = TddOp(node,choice,'&');
     }
 #ifdef DEBUG
     printf ("node is:\n");
-    Cudd_PrintMinterm (cudd, node);
+    PrintDD(node);
 #endif
 
     //quantify if we have completed the next interval

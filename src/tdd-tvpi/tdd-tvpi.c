@@ -773,8 +773,34 @@ lincons_t tvpi_dup_lincons(lincons_t l)
  * exists, create one at the right spot.
  *********************************************************************/
 tdd_node *tvpi_get_node(tdd_manager* m,tvpi_cons_node_t *curr,
-                       tvpi_cons_node_t *prev,tvpi_cons_t *c)
+                        tvpi_cons_node_t *prev,tvpi_cons_t *c)
 {
+  //if i saw a previous constraint with the same term, but the current
+  //constraint has a different term, insert the new constraint just
+  //before the current term
+  if(prev && tvpi_term_equals(tvpi_get_term(prev->cons),tvpi_get_term(c))) {
+    if(curr && !tvpi_term_equals(tvpi_get_term(curr->cons),tvpi_get_term(c))) {
+      tvpi_cons_node_t *cn = 
+        (tvpi_cons_node_t*)malloc(sizeof(tvpi_cons_node_t));
+      cn->cons = tvpi_dup_lincons(c);
+
+      /* need a node right after prev */
+      cn->node = tdd_new_var_after (m, prev->node, (lincons_t) c);
+
+      if (cn->node == NULL)
+        {
+          free (cn);
+          return NULL;
+        }
+      cuddRef (cn->node);
+
+      //insert cn in the list
+      cn->next = prev->next;
+      prev->next = cn;
+      return cn->node;
+    }
+  }
+
   //if at the end of the list -- create a fresh tdd_node and insert it
   //at the end of the list
   if(curr == NULL) {
