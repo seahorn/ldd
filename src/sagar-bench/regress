@@ -1,0 +1,15 @@
+#!/bin/tcsh
+
+set BASECMD="./diamond --branch 5 --depth 25 --repeat 20 --vars 5"
+
+foreach I ("" "--oct" "--oct --octCons" "--tvpi" "--tvpi --tvpiCons")
+  foreach J ("" "--unsat")
+    foreach K ("" "--compInv")
+      foreach L ("" "--qelimInt 1")
+        set CMD="$BASECMD $I $J $K $L"
+        echo $CMD
+        $CMD |& grep ERROR
+      end
+    end
+  end
+end
