@@ -65,7 +65,8 @@ tdd_node * tdd_xor (tdd_manager * tdd,
 
 /**
  * Required: 
- *    f != g
+ *    f != g 
+ *    f == Cudd_Regular (f)
  */
 tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index, 
 			    tdd_node *f, tdd_node *g)
@@ -83,7 +84,10 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
   v = Cudd_bddIthVar (CUDD, index);
   if (v == NULL) return NULL;
 
+
   F = Cudd_Regular (f);
+  assert (f == F);
+
   G = Cudd_Regular (g);
   /* both f and g are constants */
   if (F == G)
