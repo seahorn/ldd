@@ -878,65 +878,83 @@ void ddd_qelim_push(qelim_context_t* ctx, lincons_t l)
 {
   //create new stack element
   ddd_qelim_context_t *x = (ddd_qelim_context_t*)ctx;
-  ddd_qelim_stack_t *new_stack = (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
+  ddd_qelim_stack_t *new_stack = 
+    (ddd_qelim_stack_t*)malloc(sizeof(ddd_qelim_stack_t));
   new_stack->cons = (ddd_cons_t*)l;
 
 #ifdef DDD_QELIM_INC
 
-  //if already unsat
+  /* if the current top element is already unsat, record
+   * what was pushed and terminate early 
+   */
   if(x->stack && x->stack->unsat) {
     new_stack->unsat = 1;
-    new_stack->dbm = NULL;
+    new_stack->dbm = NULL; 
+    /* new_stack->maxvar is undefined since dbm == NULL */
     new_stack->next = x->stack;
     x->stack = new_stack;
     return;
   }
 
+  /* assume new stack is SAT, and check with new constraint */
   new_stack->unsat = 0;
 
-  //allocate dbm
+  /* allocate space for dbm */
   int vn = x->tdd->theory->num_of_vars(x->tdd->theory); 
   new_stack->dbm = (int*)malloc(vn * vn * sizeof(int));
 
-  //initialize dbm
+  /* initialize current DBM using top of the stack */
   int i,j,k;
-  for(i = 0;i < vn;++i) {
-    for(j = 0;j < vn;++j) {
-      new_stack->dbm[i * vn + j] = x->stack ? x->stack->dbm[i * vn + j] : INT_MAX;
-    }
-  }
-
-  //get variables and constant of term being pushed
+  for(i = 0;i < vn; ++i) 
+    for(j = 0;j < vn; ++j) 
+      new_stack->dbm[i * vn + j] = 
+	x->stack ? x->stack->dbm[i * vn + j] : INT_MAX;
+  
+  /* extract variables and constant of the new constraint */
   int v1 = new_stack->cons->term.var1;
   int v2 = new_stack->cons->term.var2;
   int cst = new_stack->cons->cst.int_val;
 
-  //if the dbm does not need to be updated
-  if(new_stack->dbm[v1 * vn + v2] < cst) {
-    new_stack->next = x->stack;
-    x->stack = new_stack;
-    return;
-  }
+  /* find the largest variable occurring in any constraints seen so far */
+  new_stack->maxvar = 
+    x->stack ? MAX(x->stack->maxvar,MAX(v1,v2)) : MAX(v1,v2);
 
-  //update maxvar
-  new_stack->maxvar = x->stack ? MAX(x->stack->maxvar,MAX(v1,v2)) : MAX(v1,v2);
+  /* if the new constraint is implied by an existing constraint, 
+     nothing to be done.
+  */
+  if(new_stack->dbm[v1 * vn + v2] <= cst) 
+    {
+      /* push element into the stack */
+      new_stack->next = x->stack;
+      x->stack = new_stack;
+      return;
+    }
 
-  //update dbm using floyd warshall
+
+  /* update the DBM. At this point, we know it needs updating */
+  /* assert (cst < new_stack->dbm[v1 * vn + v2]) */
   new_stack->dbm[v1 *vn + v2] = cst;
 
-  //use floyd-warshall to update the DBM
-  for(k = 0;k <= new_stack->maxvar && !new_stack->unsat;++k) {
-    for(i = 0;i < vn && !new_stack->unsat;++i) {
-      for(j = 0;j < vn;++j) {
-        //get current weights and sum
+  /* run Floyd-Warshall to compute transitive closure of the new DBM */
+  for(k = 0; k <= new_stack->maxvar && !new_stack->unsat; k++) {
+    for(i = 0; i < vn && !new_stack->unsat; i++) {
+      for(j = 0; j < vn; j++) {
+
+	/* weight of i->k */
         int cik = new_stack->dbm[i*vn + k];
         if(cik == INT_MAX) continue;
+
+	/* weight of k->j */
         int ckj = new_stack->dbm[k*vn + j];
         if(ckj == INT_MAX) continue;
+
+	/* weight of i->k->j */
         int cikkj = cik + ckj;
+
+	/* weight of i->j */
         int cij = new_stack->dbm[i*vn + j]; 
 
-        //update weight
+        /* update weight of i->j */
         new_stack->dbm[i*vn + j] = MIN(cij,cikkj);
 
         //check for negative cycles
@@ -962,7 +980,10 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
 #ifdef DDD_QELIM_INC
 
   ddd_qelim_stack_t *stack = x->stack;
-  
+
+  /* if stack is NULL, then no constraints were added */
+  if (stack == NULL) return tdd_get_true (x->tdd);
+
   //check for UNSAT
   if(stack->unsat) return tdd_get_false(x->tdd);
 
@@ -971,19 +992,29 @@ tdd_node* ddd_qelim_solve(qelim_context_t* ctx)
   tdd_node *res = tdd_get_true(x->tdd);
   int i,j;
   for(i = 0;i < vn;++i) {
+    /* skip all constraints with term xi-xj if xi is quantified out */
     if (x->vars[i]) continue;
     for(j = 0;j < vn;++j) {
+      /* skip all constraints with term xi-xj where xj is quantified out */
       if (x->vars [j]) continue;
-      
+
+      /* get the constant of the constraint */
       int cij = stack->dbm[i*vn + j]; 
       if(cij == INT_MAX) continue;
+
+      /* create a constraint by hand */
       ddd_cons_t cons;
       cons.term.var1 = i;
       cons.term.var2 = j;
       cons.cst.type = DDD_INT;
       cons.cst.int_val = cij;
       cons.strict = 0;
-      res = tdd_and(x->tdd,res,x->tdd->theory->to_tdd(x->tdd,(lincons_t)(&cons)));
+
+      /* conjoin everything together.
+       * XXX Both arguments can be garbage collected during the AND operation!
+       */
+      res = tdd_and(x->tdd,res,
+		    x->tdd->theory->to_tdd(x->tdd,(lincons_t)(&cons)));
     }
   }  
   return res;

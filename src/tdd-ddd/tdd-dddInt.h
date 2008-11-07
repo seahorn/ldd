@@ -81,18 +81,27 @@ typedef struct ddd_cons_node
  *********************************************************************/
 typedef struct ddd_qelim_stack
 {
+  /* constraint being pushed onto the stack */
   ddd_cons_t *cons;
 #ifdef DDD_QELIM_INC
-  int *dbm,maxvar;
+  /* current DBM including cons */
+  int *dbm;
+  /* largest variable occurring in dbm. Undefined if dbm == NULL */
+  int maxvar;
+  /* true if dbm is unsat */
   bool unsat;
 #endif
+  /* next element in the stack */
   struct ddd_qelim_stack *next;
 } ddd_qelim_stack_t;
 
 typedef struct ddd_qelim_context
 {
+  /* the manager */
   tdd_manager *tdd;
+  /* a bool-set representing all variables that are quantified out */
   bool *vars;
+  /* the stack of current constraints */
   ddd_qelim_stack_t *stack;
 } ddd_qelim_context_t;
 
