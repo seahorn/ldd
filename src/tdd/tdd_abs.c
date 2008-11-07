@@ -177,6 +177,7 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   /* true if root constraint has to be eliminated, false otherwise */
   int fElimRoot;
 
+
  
   manager = CUDD;
   F = Cudd_Regular (f);
@@ -184,10 +185,10 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   /* base case */
   if (cuddIsConstant (F)) return f;
 
-
   /* check cache */
   if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, f)) != NULL))
     return res;
+
 
   /* deconstruct f into the root constraint and cofactors */
   v = F->index;
@@ -196,10 +197,9 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   
   fv = cuddT (F);
   fnv = cuddE (F);
-  
+
   fv = Cudd_NotCond (fv, f != F);
   fnv = Cudd_NotCond (fnv, f != F);
-
 
   /* if variables of vTerm do not contain var, we just recurse.
      otherwise, top constraint is removed and propagated to children
@@ -230,14 +230,25 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
 #ifdef DEBUG
       fprintf (stderr, "exist_abstract: eliminating vCons: ");
       THEORY->print_lincons (stderr, vCons);
-      fprintf (stderr, "\n");
+      fprintf (stderr, " ... ");
+      fflush (stderr);
 #endif
 
       /* resolve root constraint with THEN branch */
       tmp = tdd_resolve_elim_inter (tdd, fv, vTerm, vCons, var);
       if (tmp == NULL)
-	return NULL;
+	{
+	  return NULL;
+	}
+
+      
       cuddRef (tmp);
+
+#ifdef DEBUG
+      fprintf (stderr, "done\n");
+      fflush (stderr);
+#endif
+
 
 #ifdef DEBUG_FINE
       if (Cudd_DagSize (fv) + 200 <= Cudd_DagSize (tmp))
@@ -252,7 +263,8 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
 #ifdef DEBUG
       fprintf (stderr, "exist_abstract: eliminating nvCons: ");
       THEORY->print_lincons (stderr, nvCons);
-      fprintf (stderr, "\n");
+      fprintf (stderr, " ... ");
+      fflush (stderr);
 #endif
 
       tmp = tdd_resolve_elim_inter (tdd, fnv, vTerm, nvCons, var);
@@ -264,6 +276,12 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
 	  return NULL;
 	}
       cuddRef (tmp);
+
+#ifdef DEBUG
+      fprintf (stderr, "done\n");
+      fflush (stderr);
+#endif
+
 
 #ifdef DEBUG_FINE
       if (Cudd_DagSize (fnv) + 200 <= Cudd_DagSize (tmp))
@@ -779,9 +797,22 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
   
   /* base case */
   if (f == one)
-    return THEORY->qelim_solve (qelimCtx);
+    {
+      tdd_node *sol;
+
+      sol = THEORY->qelim_solve (qelimCtx);
+      return sol;
+    }
+  
 
   if (f == zero) return zero;
+
+  if (THEORY->qelim_solve (qelimCtx) == zero) 
+    {
+/*       fprintf (stderr, "EARLY EXIT\n"); */
+      return zero;
+    }
+  
 
   /* deconstruct f into the root constraint and cofactors */
   F = Cudd_Regular (f);
@@ -814,7 +845,10 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
 
   /* recurse on the THEN branch*/
   if (fElimRoot)
+    {
       THEORY->qelim_push (qelimCtx, vCons);
+    }
+  
 
   T = tdd_exist_abstract_v2_recur (tdd, fv, vars, qelimCtx, table);
 
