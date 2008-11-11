@@ -9,9 +9,10 @@ foreach I ("" "--oct" "--oct --octCons" "--tvpi" "--tvpi --tvpiCons")
         foreach M ("" "--summary")
           set CMD="$BASECMD $I $J $K $L $M"
           echo $CMD
-          $CMD |& grep ERROR
+          $CMD |& grep ERROR &
         end
       end
+      wait
     end
   end
 end
