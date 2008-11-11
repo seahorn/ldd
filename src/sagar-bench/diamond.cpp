@@ -185,7 +185,7 @@ void ProcessInputs(int argc,char *argv[])
 
   //compute total number of numeric variables, and allocate array used
   //to represent sets of variables
-  totalVarNum = summary ? 2 * varNum * (depth + 2) : 2 * varNum * depth;
+  totalVarNum = (summary || image) ? 2 * varNum * (depth + 2) : 2 * varNum * depth;
   varSet = new int [totalVarNum];
 
   //display final options
@@ -362,8 +362,8 @@ tdd_node *InitCons()
   tdd_node *node = tdd_get_true(tdd);
   Cudd_Ref(node);
   
-  //if we are computing summaries
-  if(summary) {
+  //if we are computing summaries or images
+  if(summary || image) {
     for(size_t vn = 0;vn < varNum;++vn) {
       int v1 = 2 * vn;
       int v2 = v1 + 1;
@@ -390,8 +390,8 @@ tdd_node *FinalCons()
   tdd_node *node = tdd_get_true(tdd);
   Cudd_Ref(node);
 
-  //if we are computing summaries
-  if(summary) {
+  //if we are computing summaries or images
+  if(summary || image) {
     for(size_t vn = 0;vn < varNum;++vn) {
       int v1 = 2 * (varNum * (depth - 1) + vn);
       int v2 = v1 + 1;
@@ -424,7 +424,7 @@ void CheckResult(tdd_node *node)
     }
   } else {
     //condition under which we should expect true after QELIM
-    bool expTrue = !summary;
+    bool expTrue = !summary && !image;
     if((!expTrue && node != Cudd_ReadLogicZero (cudd)) || (expTrue && node == Cudd_ReadOne (cudd)))
       printf("GOOD: result is SAT as expected!\n");
     else {
@@ -676,8 +676,11 @@ void GenAndSolve()
   //generate final constraints
   node = TddOp(node,FinalCons(),'&');
 
-  //quantify
-  node = Qelim(node,minTransVar,maxTransVar);
+  //quantify to get the summary or the image
+  if(image)
+    node = Qelim(node,minTransVar,maxTransVar + 2 * varNum);
+  else 
+    node = Qelim(node,minTransVar,maxTransVar);
 
   //check if the result is correct
   CheckResult(node);
