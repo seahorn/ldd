@@ -345,72 +345,119 @@ tdd_node *Qelim(tdd_node *node,int min,int max)
 tdd_node *VarEq(int x,int y)
 {
   tdd_node *node1 = ConsToTdd(1,x,-1,y,0);
-  fprintf(stdout,"********DONE\n");
-  fflush(stdout);
   tdd_node *node2 = ConsToTdd(1,y,-1,x,0);
-  fprintf(stdout,"********DONE\n");
-  fflush(stdout);
   return TddOp(node1,node2,'&');
 }
 
 /*********************************************************************/
-//generate all the constraints and then quantify out all but the last
-//two fresh variables
+//generate constraints that relate initial state variables or
+//predicates to initial transition relation variables
 /*********************************************************************/
-void GenAndSolve()
+tdd_node *InitCons()
 {
-  //each step of the transition relation introduces 2 * varNum fresh
-  //variables. therefore, total number of variables in the transition
-  //relation is K = 2 * varNum * depth. these are numbered from 0 to
-  //K-1. in general, the variables at step I (first step being step 0)
-  //are numbered from 2 * varNum * I to 2 * varNum * (I+1) - 1. if
-  //predicate abstraction is used (with P predicates), then we use 2 *
-  //P * 2 additional variables for predicates. these are numbered from
-  //2 * varNum * depth to 2 * varNum * depth + 2 * P * 2 - 1. if
-  //predicate abstraction is not used, then we use 2 * varNum * 2
-  //additional variables for initial and final numeric
-  //variables. these are numbered from 2 * varNum * depth to 2 *
-  //varNum * (depth + 2) - 1.
-
-  //the minimum and maximum variables for the transition relation
-  int minTransVar = 0;
+  //the largest transition relation variable (+1)
   int maxTransVar = 2 * varNum * depth;
 
-  //the minimum and (maximum+1) pre-variables and post-variables.
-  //int minPre = maxVar;
-  //int maxPre = predNum ? minPre + 2 * predNum : minPre + 2 * varNum;
-  //int minPost = maxPre;
-  //int maxPost = predNum ? minPost + 2 * predNum : minPost + 2 * varNum;
-
-  //the overall tdd
+  //the result to be computed
   tdd_node *node = tdd_get_true(tdd);
   Cudd_Ref(node);
-
-  //generate initial constraints
+  
+  //if we are computing summaries
   if(summary) {
     for(size_t vn = 0;vn < varNum;++vn) {
       int v1 = 2 * vn;
       int v2 = v1 + 1;
       int pv1 = v1 + maxTransVar;
       int pv2 = pv1 + 1;
-
+      
       //create constraints v1 = pv1 and v2 = pv2.
       node = TddOp(node,VarEq(v1,pv1),'&');
       node = TddOp(node,VarEq(v2,pv2),'&');
     }
   }
+  
+  //all done
+  return node;
+}
 
-  //the constant bounds for invariants. there are as many bounds as
-  //the number of disjuncts in the invariant. the invariant at the
-  //join points after each diamond is ||( X - Y <= K_i)
+/*********************************************************************/
+//generate constraints that relate final state variables or predicates
+//to final transition relation variables
+/*********************************************************************/
+tdd_node *FinalCons()
+{
+  //the result to be computed
+  tdd_node *node = tdd_get_true(tdd);
+  Cudd_Ref(node);
+
+  //if we are computing summaries
+  if(summary) {
+    for(size_t vn = 0;vn < varNum;++vn) {
+      int v1 = 2 * (varNum * (depth - 1) + vn);
+      int v2 = v1 + 1;
+      int pv1 = v1 + 4 * varNum;
+      int pv2 = pv1 + 1;
+
+      //create constraints v1 = pv1 and v2 = pv2. together with
+      //the previous invariant c1*pv1 + c2*pv2 <= bound, this
+      //ensures the new invariant c1*v1 + c2*v2 <= bound.
+      node = TddOp(node,VarEq(v1,pv1),'&');
+      node = TddOp(node,VarEq(v2,pv2),'&');
+    }
+  }
+
+  //all done
+  return node;
+}
+
+/*********************************************************************/
+//check final result
+/*********************************************************************/
+void CheckResult(tdd_node *node)
+{
+  if(unsat) {
+    if(node == Cudd_ReadLogicZero (cudd))
+      printf("GOOD: result is UNSAT as expected!\n");
+    else {
+      printf("ERROR: result is SAT, UNSAT expected!\n");
+      exit(1);
+    }
+  } else {
+    //condition under which we should expect true after QELIM
+    bool expTrue = !summary;
+    if((!expTrue && node != Cudd_ReadLogicZero (cudd)) || (expTrue && node == Cudd_ReadOne (cudd)))
+      printf("GOOD: result is SAT as expected!\n");
+    else {
+      printf("ERROR: result is UNSAT, SAT expected!\n");
+      exit(1);
+    }
+  }
+}
+
+/*********************************************************************/
+//generate constant bounds for transition relation invariants. there
+//are as many bounds as the number of disjuncts in the invariant. the
+//invariant at the join points after each diamond is ||( X - Y <= K_i)
+/*********************************************************************/
+int **Bounds()
+{
   int **bounds = new int* [varNum];
+
   for(size_t i = 0;i < varNum;++i) {
     bounds[i] = new int [disj];
     for(size_t j = 0;j < disj;++j) bounds[i][j] = Rand(-1000,1000);
   }
 
-  //generate coefficients
+  return bounds;
+}
+
+/*********************************************************************/
+//generate coefficients for the transition relation constraints
+/*********************************************************************/
+int *Coeffs()
+{
   int *coeffs = new int [2 * varNum];
+
   for(size_t i = 0;i < varNum;++i) {
     if(consType == DIA_DDD) {
       coeffs[2 * i] = 1;
@@ -428,11 +475,42 @@ void GenAndSolve()
     }
   }
 
+  return coeffs;
+}
+
+/*********************************************************************/
+//generate constraints and then quantify out all transition relation
+//variables. each step of the transition relation introduces 2 *
+//varNum fresh variables. therefore, total number of variables in the
+//transition relation is K = 2 * varNum * depth. these are numbered
+//from 0 to K-1. in general, the variables at step I (first step being
+//step 0) are numbered from 2 * varNum * I to 2 * varNum * (I+1) -
+//1. if predicate abstraction is used (with P predicates), then we use
+//2 * P * 2 additional variables for predicates. these are numbered
+//from 2 * varNum * depth to 2 * varNum * depth + 2 * P * 2 - 1. if
+//predicate abstraction is not used, then we use 2 * varNum * 2
+//additional variables for initial and final numeric variables. these
+//are numbered from 2 * varNum * depth to 2 * varNum * (depth + 2) -
+//1.
+/*********************************************************************/
+void GenAndSolve()
+{
+  //the minimum and maximum variables for the transition relation
+  int minTransVar = 0;
+  int maxTransVar = 2 * varNum * depth;
+
+  //generate bounds and coefficients
+  int **bounds = Bounds();
+  int *coeffs = Coeffs();
+
   //the depth at which we are going to generate the UNSAT clause
   int target = Rand(0,depth);
 #ifdef DEBUG
   printf("target = %d\n",target);
 #endif
+
+  //the overall tdd
+  tdd_node *node = InitCons();
 
   for(int d = 0;d < depth;++d) {
     //generate a constraint that makes the whole system unsatisfiable,
@@ -552,44 +630,16 @@ void GenAndSolve()
   }
 
   //generate final constraints
-  if(summary) {
-    for(size_t vn = 0;vn < varNum;++vn) {
-      int v1 = 2 * (varNum * (depth - 1) + vn);
-      int v2 = v1 + 1;
-      int pv1 = v1 + 4 * varNum;
-      int pv2 = pv1 + 1;
-
-      //create constraints v1 = pv1 and v2 = pv2. together with
-      //the previous invariant c1*pv1 + c2*pv2 <= bound, this
-      //ensures the new invariant c1*v1 + c2*v2 <= bound.
-      node = TddOp(node,VarEq(v1,pv1),'&');
-      node = TddOp(node,VarEq(v2,pv2),'&');
-    }
-  }
+  node = TddOp(node,FinalCons(),'&');
 
   //quantify
   node = Qelim(node,minTransVar,maxTransVar);
 
   //check if the result is correct
-  if(unsat) {
-    if(node == Cudd_ReadLogicZero (cudd))
-      printf("GOOD: result is UNSAT as expected!\n");
-    else {
-      printf("ERROR: result is SAT, UNSAT expected!\n");
-      exit(1);
-    }
-  } else {
-    //condition under which we should expect true after QELIM
-    bool expTrue = !summary;
-    if((!expTrue && node != Cudd_ReadLogicZero (cudd)) || (expTrue && node == Cudd_ReadOne (cudd)))
-      printf("GOOD: result is SAT as expected!\n");
-    else {
-      printf("ERROR: result is UNSAT, SAT expected!\n");
-      exit(1);
-    }
-  }
+  CheckResult(node);
 
   //cleanup
+  Cudd_RecursiveDeref(cudd,node);
   for(size_t i = 0;i < varNum;++i) delete [] bounds[i];
   delete [] bounds;
   delete [] coeffs;
