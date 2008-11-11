@@ -50,6 +50,7 @@ bool image = false;
 
 //other data structures
 int totalVarNum = 0;
+int *varSet = NULL;
 DdManager *cudd;
 tdd_manager *tdd;
 theory_t *theory;
@@ -182,8 +183,10 @@ void ProcessInputs(int argc,char *argv[])
     exit(1);
   }
 
-  //compute total number of numeric variables
+  //compute total number of numeric variables, and allocate array used
+  //to represent sets of variables
   totalVarNum = summary ? 2 * varNum * (depth + 2) : 2 * varNum * depth;
+  varSet = new int [totalVarNum];
 
   //display final options
   printf("depth = %d branch = %d qelimInt = %d repeat = %d "
@@ -252,12 +255,10 @@ tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
   printf("adding %d * x%d + %d * x%d <= %d\n",c1,x,c2,y,k);
 #endif
   constant_t cst = theory->create_int_cst(k);
-  int *cf = (int*)malloc(totalVarNum * sizeof(int));
-  memset(cf,0,totalVarNum * sizeof(int));
-  cf[x] = c1;
-  cf[y] = c2;
-  linterm_t term = theory->create_linterm(cf,totalVarNum);
-  free(cf);
+  memset(varSet,0,totalVarNum * sizeof(int));
+  varSet[x] = c1;
+  varSet[y] = c2;
+  linterm_t term = theory->create_linterm(varSet,totalVarNum);
   lincons_t cons = theory->create_cons(term,0,cst);
   tdd_node *res = to_tdd(tdd,cons);
   theory->destroy_lincons(cons);
@@ -304,13 +305,13 @@ void PrintDD(tdd_node *node)
 /*********************************************************************/
 tdd_node *Qelim(tdd_node *node,int min,int max)
 {
-  int *vars = new int [2 * varNum * depth];
-  memset(vars,0,2 * varNum * depth);
+  //clear variable set
+  memset(varSet,0,2 * varNum * depth);
 
   //now quantify out elements if using qelim1, or set the elements of
-  //vars to 1 if using qelim2
+  //varSet to 1 if using qelim2
   for(int i = min;i < max;++i) {
-    if(qelim2) vars[i] = 1;
+    if(qelim2) varSet[i] = 1;
     else {
 #ifdef DEBUG
       printf("***** eliminating numeric variable %d ...\n",i);
@@ -328,14 +329,13 @@ tdd_node *Qelim(tdd_node *node,int min,int max)
 
   //quantify, if using qelim2
   if(qelim2) {
-    tdd_node *tmp = tdd_exist_abstract_v2 (tdd, node, vars);
+    tdd_node *tmp = tdd_exist_abstract_v2 (tdd, node, varSet);
     Cudd_Ref (tmp);
     Cudd_RecursiveDeref (cudd, node);
     node = tmp;
   }
 
   //cleanup and return
-  delete [] vars;
   return node;
 }
 
@@ -607,6 +607,7 @@ int main(int argc,char *argv[])
     GenAndSolve();
     DestroyManagers();
   }
+  delete [] varSet;
   return 0;
 }
 
