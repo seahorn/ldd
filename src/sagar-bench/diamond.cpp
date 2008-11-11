@@ -479,6 +479,142 @@ int *Coeffs()
 }
 
 /*********************************************************************/
+//generate constraints that make the transition relation UNSAT
+/*********************************************************************/
+tdd_node *Unsat(int **bounds,int *coeffs,int d)
+{
+#ifdef DEBUG
+  printf("generating UNSAT constraints ...\n");
+#endif
+
+  tdd_node *choice = tdd_get_false(tdd);
+  Cudd_Ref(choice);
+  for(size_t vn1 = 0;vn1 < varNum;++vn1) {
+    int v1 = 2 * (varNum * d + vn1);
+    int v2 = v1 + 1;
+    tdd_node *unsat = tdd_get_true(tdd);
+    Cudd_Ref(unsat);
+    for(size_t vn2 = 0;vn2 < varNum;++vn2) {
+      for(size_t i = 0;i < disj;++i) {
+        tdd_node *node1 = ConsToTdd(-coeffs[2 * vn2 + 1],v2,-coeffs[2 * vn2],v1,-bounds[vn2][i]-1);
+        unsat = TddOp(unsat,node1,'&');
+      }
+    }
+    choice = TddOp(choice,unsat,'|');
+  }
+
+#ifdef DEBUG
+  printf ("UNSAT node is:\n");
+  PrintDD(choice);
+#endif
+
+  return choice;
+}
+
+/*********************************************************************/
+//generate constraints that enforce the invariant at the start of the
+//transition relation
+/*********************************************************************/
+tdd_node *InitInv(int **bounds,int *coeffs,int d)
+{
+  tdd_node *node = tdd_get_true(tdd);
+  Cudd_Ref(node);
+
+  for(size_t vn = 0;vn < varNum;++vn) {
+    int v1 = 2 * (varNum * d + vn);
+    int v2 = v1 + 1;
+
+    //generate the top-level disjunctive invariant 
+    tdd_node *choice = tdd_get_false(tdd);
+    Cudd_Ref(choice);
+
+    for(size_t i = 0;i < disj;++i) {
+      //create constraint v1 - v2 <= bound
+      tdd_node *node1 = ConsToTdd(coeffs[v1],v1,coeffs[v2],v2,bounds[vn][i]);
+      choice = TddOp(choice,node1,'|');
+    }
+
+    node = TddOp(node,choice,'&');
+  }
+#ifdef DEBUG
+  printf ("INIT Invariant node is:\n");
+  PrintDD(node);
+#endif
+
+  return node;
+}
+
+/*********************************************************************/
+//unwind the transition relation by relating variables at step d to
+//those at step d-1 such that the invariant is maintained
+/*********************************************************************/
+tdd_node *Unwind(int d)
+{
+  tdd_node *node = tdd_get_true(tdd);
+  Cudd_Ref(node);
+
+  for(size_t vn = 0;vn < varNum;++vn) {
+    int v1 = 2 * (varNum * d + vn);
+    int v2 = v1 + 1;
+
+    //get the branching factor
+    int bfac = Rand(1,branch + 1);
+#ifdef DEBUG
+    printf("level = %d\tbranching = %d\n",d,bfac);
+#endif
+
+    //get the previous variables to relate to v1 and v2
+    int pv1 = compInv ? 
+      (2 * (varNum * (d - 1) + Rand(0,varNum))) : (v1 - 2 * varNum);
+    int pv2 = pv1 + 1;
+
+    //disjunctive choices at the start of this diamond
+    tdd_node *choice = tdd_get_false(tdd);
+    Cudd_Ref(choice);
+
+    //for DDD constraints
+    if(consType == DIA_DDD) {
+      //create branches
+      for(int i = 0;i < bfac;++i) {
+        //create a random positive slippage
+        int slip = Rand(0,1000);
+
+        //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
+        //slip. together with the previous invariant pv1 - pv2 <= bound,
+        //this ensures the new invariant v1 - v2 <= bound.
+        tdd_node *node1 = ConsToTdd(1,v1,-1,pv1,-slip);
+        tdd_node *node2 = ConsToTdd(1,pv2,-1,v2,-slip);
+        choice = TddOp(choice,TddOp(node1,node2,'&'),'|');
+      }
+    }
+    //for non-DDD constraints
+    else {
+      //create constraints v1 = pv1 and v2 = pv2. together with
+      //the previous invariant c1*pv1 + c2*pv2 <= bound, this
+      //ensures the new invariant c1*v1 + c2*v2 <= bound.
+      tdd_node *node1 = VarEq(v1,pv1);
+      tdd_node *node2 = VarEq(v2,pv2);
+      choice = TddOp(choice,TddOp(node1,node2,'&'),'|');
+    }
+
+#ifdef DEBUG
+    printf ("choice is:\n");
+    PrintDD(choice);
+#endif
+
+    //add the choice
+    node = TddOp(node,choice,'&');
+  }
+
+#ifdef DEBUG
+  printf ("node is:\n");
+  PrintDD(node);
+#endif
+
+  return node;
+}
+
+/*********************************************************************/
 //generate constraints and then quantify out all transition relation
 //variables. each step of the transition relation introduces 2 *
 //varNum fresh variables. therefore, total number of variables in the
@@ -512,115 +648,23 @@ void GenAndSolve()
   //the overall tdd
   tdd_node *node = InitCons();
 
+  //unwind the transition relation
   for(int d = 0;d < depth;++d) {
     //generate a constraint that makes the whole system unsatisfiable,
     //if needed
-    if(unsat && d == target) {
-#ifdef DEBUG
-      printf("generating UNSAT constraints ...\n");
-#endif
-      tdd_node *choice = tdd_get_false(tdd);
-      Cudd_Ref(choice);
-      for(size_t vn1 = 0;vn1 < varNum;++vn1) {
-        int v1 = 2 * (varNum * d + vn1);
-        int v2 = v1 + 1;
-        tdd_node *unsat = tdd_get_true(tdd);
-        Cudd_Ref(unsat);
-        for(size_t vn2 = 0;vn2 < varNum;++vn2) {
-          for(size_t i = 0;i < disj;++i) {
-            tdd_node *node1 = ConsToTdd(-coeffs[2 * vn2 + 1],v2,-coeffs[2 * vn2],v1,-bounds[vn2][i]-1);
-            unsat = TddOp(unsat,node1,'&');
-          }
-        }
-        choice = TddOp(choice,unsat,'|');
-      }
-      node = TddOp(node,choice,'&');
-#ifdef DEBUG
-      printf ("node is:\n");
-      PrintDD(node);
-#endif
-    }
+    if(unsat && d == target) 
+      node = TddOp(node,Unsat(bounds,coeffs,d),'&');
 
     //if at the start of the program
     if(d == 0) {
-#ifdef DEBUG
-      printf("level = 0\n");
-#endif
-      for(size_t vn = 0;vn < varNum;++vn) {
-        int v1 = 2 * (varNum * d + vn);
-        int v2 = v1 + 1;
-        //generate the top-level disjunctive invariant 
-        tdd_node *choice = tdd_get_false(tdd);
-        Cudd_Ref(choice);
-        for(size_t i = 0;i < disj;++i) {
-          //create constraint v1 - v2 <= bound
-          tdd_node *node1 = ConsToTdd(coeffs[v1],v1,coeffs[v2],v2,bounds[vn][i]);
-          choice = TddOp(choice,node1,'|');
-        }
-        node = TddOp(node,choice,'&');
-      }
-#ifdef DEBUG
-      printf ("node is:\n");
-      PrintDD(node);
-#endif
+      node = TddOp(node,InitInv(bounds,coeffs,d),'&');      
       continue;
     }
 
-    for(size_t vn = 0;vn < varNum;++vn) {
-      int v1 = 2 * (varNum * d + vn);
-      int v2 = v1 + 1;
-      //get the branching factor
-      int bfac = Rand(1,branch + 1);
-#ifdef DEBUG
-      printf("level = %d\tbranching = %d\n",d,bfac);
-#endif
-      //get the previous variables -- choose a random pair from the
-      //previous generation
-      
-      //choose the first for propositionally complex invariants, and
-      //the second for propositionally simple invariants
-      int pv1 = compInv ? 
-        (2 * (varNum * (d - 1) + Rand(0,varNum))) : (v1 - 2 * varNum);
-
-      int pv2 = pv1 + 1;
-      //disjunctive choices at the start of this diamond
-      tdd_node *choice = tdd_get_false(tdd);
-      Cudd_Ref(choice);
-
-      //for DDD constraints
-      if(consType == DIA_DDD) {
-        //create branches
-        for(int i = 0;i < bfac;++i) {
-          //create a random positive slippage
-          int slip = Rand(0,1000);
-          //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
-          //slip. together with the previous invariant pv1 - pv2 <= bound,
-          //this ensures the new invariant v1 - v2 <= bound.
-          tdd_node *node1 = ConsToTdd(1,v1,-1,pv1,-slip);
-          tdd_node *node2 = ConsToTdd(1,pv2,-1,v2,-slip);
-          choice = TddOp(choice,TddOp(node1,node2,'&'),'|');
-        }
-      }
-      //for non-DDD constraints
-      else {
-        //create constraints v1 = pv1 and v2 = pv2. together with
-        //the previous invariant c1*pv1 + c2*pv2 <= bound, this
-        //ensures the new invariant c1*v1 + c2*v2 <= bound.
-        tdd_node *node1 = VarEq(v1,pv1);
-        tdd_node *node2 = VarEq(v2,pv2);
-        choice = TddOp(choice,TddOp(node1,node2,'&'),'|');
-      }
-      //add the choice
-#ifdef DEBUG
-      printf ("choice is:\n");
-      PrintDD(choice);
-#endif
-      node = TddOp(node,choice,'&');
-    }
-#ifdef DEBUG
-    printf ("node is:\n");
-    PrintDD(node);
-#endif
+    //not at the start of the program -- generate constraints that
+    //preserve the invariant by relating fresh variables with the
+    //variables from the previous step
+    node = TddOp(node,Unwind(d),'&');      
 
     //quantify if we have completed the next interval
     if(d > 0 && (d % qelimInt) == 0) {
