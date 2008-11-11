@@ -49,7 +49,8 @@ typedef struct ddd_cst
 } ddd_cst_t;
 
 /**********************************************************************
- * a DDD term is of the form X-Y and consists of two variables
+ * A DDD term is of the form X-Y. var1 is the positive variable, and
+ * var2 is the negative one.
  *********************************************************************/
 typedef struct ddd_term { int var1,var2; } ddd_term_t;
   
@@ -59,9 +60,9 @@ typedef struct ddd_term { int var1,var2; } ddd_term_t;
  *********************************************************************/
 typedef struct ddd_cons
 { 
-  ddd_term_t term; //the term
-  ddd_cst_t cst; //the constant
-  bool strict; //whether the inequality is strict
+  ddd_term_t term; /* the term */
+  ddd_cst_t cst;  /* the constant */
+  bool strict; /* whether the inequality is strict */
 } ddd_cons_t;
 
 /**********************************************************************
@@ -79,6 +80,7 @@ typedef struct ddd_cons_node
 /**********************************************************************
  * data structures for incremental quantifier elimination
  *********************************************************************/
+
 typedef struct ddd_qelim_stack
 {
   /* constraint being pushed onto the stack */

@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -I../../cudd-2.4.1/include -I../include -g -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD -pg -O2
 AR = ar -rcs 
-OBJS = tdd-ddd.o
+OBJS = tdd-ddd.o dbm.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
 LIB = libtdd-ddd.a
 
