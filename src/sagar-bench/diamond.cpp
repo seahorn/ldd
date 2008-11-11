@@ -42,6 +42,9 @@ bool qelim2 = false;
 bool compInv = false;
 enum TddType { DIA_DDD, DIA_OCT, DIA_TVPI } 
   tddType = DIA_DDD,consType = DIA_DDD;
+bool predAbs = false;
+bool summary = false;
+bool image = false;
 
 //other data structures
 DdManager *cudd;
@@ -81,6 +84,9 @@ void Usage(char *cmd)
   printf("\t--tvpi : use TVPI theory\n");
   printf("\t--tvpiCons : use TVPI constraints\n");
   printf("\t--compInv : enable propositionally complex invariants\n");
+  printf("\t--predAbs : whether to do predicate abstraction\n");
+  printf("\t--summary : whether to compute summaries\n");
+  printf("\t--image : whether to do image computation\n");
 }
 
 /*********************************************************************/
@@ -131,6 +137,9 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--tvpi")) tddType = DIA_TVPI;
     else if(!strcmp(argv[i],"--tvpiCons")) consType = DIA_TVPI;
     else if(!strcmp(argv[i],"--compInv")) compInv = true;
+    else if(!strcmp(argv[i],"--predAbs")) predAbs = true;
+    else if(!strcmp(argv[i],"--summary")) summary = true;
+    else if(!strcmp(argv[i],"--image")) image = true;
     else {
       Usage(argv[0]);
       exit(1);
