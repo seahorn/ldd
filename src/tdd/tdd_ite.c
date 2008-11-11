@@ -74,41 +74,27 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
   tdd_node * res;
   DdNode  *v, *t, *e;
 
-  DdNode *F;
   DdNode *G;
-  DdNode *V;
   
 
 
+  assert (f != g);
 
   v = Cudd_bddIthVar (CUDD, index);
   if (v == NULL) return NULL;
 
-
-  F = Cudd_Regular (f);
-  assert (f == F);
+  assert (f == Cudd_Regular (f));
 
   G = Cudd_Regular (g);
   /* both f and g are constants */
-  if (F == G)
-    return Cudd_NotCond (v, g == DD_ONE(CUDD));
+  if (f == G && G == tdd->cudd->one)
+    return v;
 
   /* from this point on, we will need v */
   cuddRef (v);
-  V = Cudd_Regular (v);
 
-  /* Using: (!v -> f, g) === (v -> g, f) */
-  if (!Cudd_IsComplement (v))
-    {
-      t = f;
-      e = g;
-    }
-  else
-    {
-      t = g;
-      e = f;
-    }
-  
+  t = f;
+  e = g;
 
 
   /*** 
@@ -118,7 +104,7 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
    ***/
   if (!Cudd_IsConstant (e))
     {
-      lincons_t vCons = tdd->ddVars [V->index];
+      lincons_t vCons = tdd->ddVars [v->index];
       lincons_t eCons = tdd->ddVars [Cudd_Regular (e)->index];
 
       if (THEORY->is_stronger_cons (vCons, eCons))
@@ -139,30 +125,17 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
     }
   
 
-  /* Ensure that then branch is not complemented */
-  if (Cudd_IsComplement (t))
+  res = cuddUniqueInter (CUDD, (int)index, t, e);
+  if (res == NULL)
     {
-      /* Using: (v -> t, e) === !(v -> !t, !e)  */
-      res = 
-	cuddUniqueInter (CUDD, (int)index, Cudd_Not (t), Cudd_Not (e));
-      if (res == NULL)
-	{
-	  Cudd_IterDerefBdd (CUDD, v);
-	  return NULL;
-	}
-      res = Cudd_Not (res);
+      Cudd_IterDerefBdd (CUDD, v);
+      return NULL;
     }
-  else
-    {
-      res = cuddUniqueInter (CUDD, (int)index, t, e);
-      if (res == NULL)
-	{
-	  Cudd_IterDerefBdd (CUDD, v);
-	  return NULL;
-	}
-    }
-  
+
+  cuddRef (res);
   Cudd_IterDerefBdd (CUDD, v);
+
+  cuddDeref (res);
   return res;
 }
 
