@@ -4,6 +4,8 @@
 #include <cassert>
 #include <ctime>
 
+//#define DEBUG
+
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
@@ -37,16 +39,17 @@ int qelimInt = 0;
 size_t repeat = 1;
 size_t disj = 1;
 size_t varNum = 1;
+int predNum = 0;
 bool unsat = false;
 bool qelim2 = false;
 bool compInv = false;
 enum TddType { DIA_DDD, DIA_OCT, DIA_TVPI } 
   tddType = DIA_DDD,consType = DIA_DDD;
-bool predAbs = false;
 bool summary = false;
 bool image = false;
 
 //other data structures
+int totalVarNum = 0;
 DdManager *cudd;
 tdd_manager *tdd;
 theory_t *theory;
@@ -77,6 +80,7 @@ void Usage(char *cmd)
   printf("\t--repeat <K> : repeat experiment K (<= 1000) times\n");
   printf("\t--disj <K> : ensure that invariants have K disjuncts\n");
   printf("\t--vars <K> : use K pairs of fresh variables at each step\n");
+  printf("\t--preds <K> : use K predicates\n");
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
   printf("\t--oct : use octagon theory\n");
@@ -84,7 +88,6 @@ void Usage(char *cmd)
   printf("\t--tvpi : use TVPI theory\n");
   printf("\t--tvpiCons : use TVPI constraints\n");
   printf("\t--compInv : enable propositionally complex invariants\n");
-  printf("\t--predAbs : whether to do predicate abstraction\n");
   printf("\t--summary : whether to compute summaries\n");
   printf("\t--image : whether to do image computation\n");
 }
@@ -130,6 +133,9 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--vars") && i < argc-1) {
       varNum = atoi(argv[++i]);
     }
+    else if(!strcmp(argv[i],"--preds") && i < argc-1) {
+      predNum = atoi(argv[++i]);
+    }
     else if(!strcmp(argv[i],"--unsat")) unsat = true;
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
     else if(!strcmp(argv[i],"--oct")) tddType = DIA_OCT;
@@ -137,7 +143,6 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--tvpi")) tddType = DIA_TVPI;
     else if(!strcmp(argv[i],"--tvpiCons")) consType = DIA_TVPI;
     else if(!strcmp(argv[i],"--compInv")) compInv = true;
-    else if(!strcmp(argv[i],"--predAbs")) predAbs = true;
     else if(!strcmp(argv[i],"--summary")) summary = true;
     else if(!strcmp(argv[i],"--image")) image = true;
     else {
@@ -164,6 +169,10 @@ void ProcessInputs(int argc,char *argv[])
     printf("ERROR: can have at least 1 and at most 1000 fresh variables at each step!\n");
     exit(1);
   }
+  if(varNum < 0 || varNum > 100) {
+    printf("ERROR: can have at least 0 and at most 100 predicates!\n");
+    exit(1);
+  }
   if(consType == DIA_OCT && tddType == DIA_DDD) {
     printf("ERROR: cannot use DDD theory with octagon constraints!\n");
     exit(1);
@@ -172,7 +181,10 @@ void ProcessInputs(int argc,char *argv[])
     printf("ERROR: must use TVPI theory with TVPI constraints!\n");
     exit(1);
   }
-  
+
+  //compute total number of numeric variables
+  totalVarNum = summary ? 2 * varNum * (depth + 2) : 2 * varNum * depth;
+
   //display final options
   printf("depth = %d branch = %d qelimInt = %d repeat = %d "
          "disj = %d vars = %d unsat = %s qelim2 = %s\n",
@@ -186,9 +198,9 @@ void ProcessInputs(int argc,char *argv[])
 void CreateManagers()
 {
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  if(tddType == DIA_DDD) theory = ddd_create_int_theory (2 * varNum * depth);
-  if(tddType == DIA_OCT) theory = oct_create_int_theory (2 * varNum * depth);
-  if(tddType == DIA_TVPI) theory = tvpi_create_int_theory (2 * varNum * depth);
+  if(tddType == DIA_DDD) theory = ddd_create_int_theory (totalVarNum);
+  if(tddType == DIA_OCT) theory = oct_create_int_theory (totalVarNum);
+  if(tddType == DIA_TVPI) theory = tvpi_create_int_theory (totalVarNum);
   tdd = tdd_init (cudd, theory);  
 }
 
@@ -240,11 +252,11 @@ tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
   printf("adding %d * x%d + %d * x%d <= %d\n",c1,x,c2,y,k);
 #endif
   constant_t cst = theory->create_int_cst(k);
-  int *cf = (int*)malloc(2 * varNum * depth * sizeof(int));
-  memset(cf,0,2 * varNum * depth * sizeof(int));
+  int *cf = (int*)malloc(totalVarNum * sizeof(int));
+  memset(cf,0,totalVarNum * sizeof(int));
   cf[x] = c1;
   cf[y] = c2;
-  linterm_t term = theory->create_linterm(cf,2 * varNum * depth);
+  linterm_t term = theory->create_linterm(cf,totalVarNum);
   free(cf);
   lincons_t cons = theory->create_cons(term,0,cst);
   tdd_node *res = to_tdd(tdd,cons);
@@ -328,6 +340,20 @@ tdd_node *Qelim(tdd_node *node,int min,int max)
 }
 
 /*********************************************************************/
+//create a tdd for X = Y
+/*********************************************************************/
+tdd_node *VarEq(int x,int y)
+{
+  tdd_node *node1 = ConsToTdd(1,x,-1,y,0);
+  fprintf(stdout,"********DONE\n");
+  fflush(stdout);
+  tdd_node *node2 = ConsToTdd(1,y,-1,x,0);
+  fprintf(stdout,"********DONE\n");
+  fflush(stdout);
+  return TddOp(node1,node2,'&');
+}
+
+/*********************************************************************/
 //generate all the constraints and then quantify out all but the last
 //two fresh variables
 /*********************************************************************/
@@ -337,12 +363,42 @@ void GenAndSolve()
   //variables. therefore, total number of variables in the transition
   //relation is K = 2 * varNum * depth. these are numbered from 0 to
   //K-1. in general, the variables at step I (first step being step 0)
-  //are numbered from 2 * varNum * I to 2 * varNum * (I+1) - 1. in
-  //addition, if predicate abstraction is used (with P predicates),
-  //then we use 2 * P additional variables for predicates. these are
-  //numbered from 2 * varNum * depth to 2 * varNum * depth + 2 * P -
-  //1.
+  //are numbered from 2 * varNum * I to 2 * varNum * (I+1) - 1. if
+  //predicate abstraction is used (with P predicates), then we use 2 *
+  //P * 2 additional variables for predicates. these are numbered from
+  //2 * varNum * depth to 2 * varNum * depth + 2 * P * 2 - 1. if
+  //predicate abstraction is not used, then we use 2 * varNum * 2
+  //additional variables for initial and final numeric
+  //variables. these are numbered from 2 * varNum * depth to 2 *
+  //varNum * (depth + 2) - 1.
 
+  //the minimum and maximum variables for the transition relation
+  int minTransVar = 0;
+  int maxTransVar = 2 * varNum * depth;
+
+  //the minimum and (maximum+1) pre-variables and post-variables.
+  //int minPre = maxVar;
+  //int maxPre = predNum ? minPre + 2 * predNum : minPre + 2 * varNum;
+  //int minPost = maxPre;
+  //int maxPost = predNum ? minPost + 2 * predNum : minPost + 2 * varNum;
+
+  //the overall tdd
+  tdd_node *node = tdd_get_true(tdd);
+  Cudd_Ref(node);
+
+  //generate initial constraints
+  if(summary) {
+    for(size_t vn = 0;vn < varNum;++vn) {
+      int v1 = 2 * vn;
+      int v2 = v1 + 1;
+      int pv1 = v1 + maxTransVar;
+      int pv2 = pv1 + 1;
+
+      //create constraints v1 = pv1 and v2 = pv2.
+      node = TddOp(node,VarEq(v1,pv1),'&');
+      node = TddOp(node,VarEq(v2,pv2),'&');
+    }
+  }
 
   //the constant bounds for invariants. there are as many bounds as
   //the number of disjuncts in the invariant. the invariant at the
@@ -377,13 +433,6 @@ void GenAndSolve()
 #ifdef DEBUG
   printf("target = %d\n",target);
 #endif
-
-  //the minimum variable from which to start qelim
-  int minVar = summary ? 2 * varNum : 0;
-  int maxVar = summary ? 2 * varNum * (depth - 1) : 2 * varNum * depth;
-
-  tdd_node *node = tdd_get_true(tdd);
-  Cudd_Ref(node);
 
   for(int d = 0;d < depth;++d) {
     //generate a constraint that makes the whole system unsatisfiable,
@@ -479,14 +528,9 @@ void GenAndSolve()
         //create constraints v1 = pv1 and v2 = pv2. together with
         //the previous invariant c1*pv1 + c2*pv2 <= bound, this
         //ensures the new invariant c1*v1 + c2*v2 <= bound.
-        tdd_node *node1 = ConsToTdd(1,v1,-1,pv1,0);
-        tdd_node *node2 = ConsToTdd(1,pv1,-1,v1,0);
-        node1 = TddOp(node1,node2,'&');
-        node2 = ConsToTdd(1,v2,-1,pv2,0);
-        node1 = TddOp(node1,node2,'&');
-        node2 = ConsToTdd(1,pv2,-1,v2,0);
-        node1 = TddOp(node1,node2,'&');
-        choice = TddOp(choice,node1,'|');
+        tdd_node *node1 = VarEq(v1,pv1);
+        tdd_node *node2 = VarEq(v2,pv2);
+        choice = TddOp(choice,TddOp(node1,node2,'&'),'|');
       }
       //add the choice
 #ifdef DEBUG
@@ -502,13 +546,29 @@ void GenAndSolve()
 
     //quantify if we have completed the next interval
     if(d > 0 && (d % qelimInt) == 0) {
-      node = Qelim(node,minVar,2 * varNum * d);
-      minVar = 2 * varNum * d;
+      node = Qelim(node,minTransVar,2 * varNum * d);
+      minTransVar = 2 * varNum * d;
+    }
+  }
+
+  //generate final constraints
+  if(summary) {
+    for(size_t vn = 0;vn < varNum;++vn) {
+      int v1 = 2 * (varNum * (depth - 1) + vn);
+      int v2 = v1 + 1;
+      int pv1 = v1 + 4 * varNum;
+      int pv2 = pv1 + 1;
+
+      //create constraints v1 = pv1 and v2 = pv2. together with
+      //the previous invariant c1*pv1 + c2*pv2 <= bound, this
+      //ensures the new invariant c1*v1 + c2*v2 <= bound.
+      node = TddOp(node,VarEq(v1,pv1),'&');
+      node = TddOp(node,VarEq(v2,pv2),'&');
     }
   }
 
   //quantify
-  node = Qelim(node,minVar,maxVar);
+  node = Qelim(node,minTransVar,maxTransVar);
 
   //check if the result is correct
   if(unsat) {
@@ -521,7 +581,7 @@ void GenAndSolve()
   } else {
     //condition under which we should expect true after QELIM
     bool expTrue = !summary;
-    if((!expTrue && node != Cudd_ReadLogicZero (cudd)) || (expTrue && (node == Cudd_ReadOne (cudd))))
+    if((!expTrue && node != Cudd_ReadLogicZero (cudd)) || (expTrue && node == Cudd_ReadOne (cudd)))
       printf("GOOD: result is SAT as expected!\n");
     else {
       printf("ERROR: result is UNSAT, SAT expected!\n");
