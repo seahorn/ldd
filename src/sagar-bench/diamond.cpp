@@ -333,6 +333,17 @@ tdd_node *Qelim(tdd_node *node,int min,int max)
 /*********************************************************************/
 void GenAndSolve()
 {
+  //each step of the transition relation introduces 2 * varNum fresh
+  //variables. therefore, total number of variables in the transition
+  //relation is K = 2 * varNum * depth. these are numbered from 0 to
+  //K-1. in general, the variables at step I (first step being step 0)
+  //are numbered from 2 * varNum * I to 2 * varNum * (I+1) - 1. in
+  //addition, if predicate abstraction is used (with P predicates),
+  //then we use 2 * P additional variables for predicates. these are
+  //numbered from 2 * varNum * depth to 2 * varNum * depth + 2 * P -
+  //1.
+
+
   //the constant bounds for invariants. there are as many bounds as
   //the number of disjuncts in the invariant. the invariant at the
   //join points after each diamond is ||( X - Y <= K_i)
@@ -368,7 +379,8 @@ void GenAndSolve()
 #endif
 
   //the minimum variable from which to start qelim
-  int minVar = 0;
+  int minVar = summary ? 2 * varNum : 0;
+  int maxVar = summary ? 2 * varNum * (depth - 1) : 2 * varNum * depth;
 
   tdd_node *node = tdd_get_true(tdd);
   Cudd_Ref(node);
@@ -496,7 +508,7 @@ void GenAndSolve()
   }
 
   //quantify
-  node = Qelim(node,minVar,2 * varNum * depth);
+  node = Qelim(node,minVar,maxVar);
 
   //check if the result is correct
   if(unsat) {
@@ -507,7 +519,9 @@ void GenAndSolve()
       exit(1);
     }
   } else {
-    if(node == Cudd_ReadOne (cudd))
+    //condition under which we should expect true after QELIM
+    bool expTrue = !summary;
+    if((!expTrue && node != Cudd_ReadLogicZero (cudd)) || (expTrue && (node == Cudd_ReadOne (cudd))))
       printf("GOOD: result is SAT as expected!\n");
     else {
       printf("ERROR: result is UNSAT, SAT expected!\n");
