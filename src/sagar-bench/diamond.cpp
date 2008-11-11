@@ -306,7 +306,7 @@ void PrintDD(tdd_node *node)
 tdd_node *Qelim(tdd_node *node,int min,int max)
 {
   //clear variable set
-  memset(varSet,0,2 * varNum * depth);
+  memset(varSet,0,totalVarNum * sizeof(int));
 
   //now quantify out elements if using qelim1, or set the elements of
   //varSet to 1 if using qelim2
