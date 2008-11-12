@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 dbm_t * 
 dbm_alloc (unsigned int mindim, unsigned int maxdim)
@@ -55,6 +56,27 @@ dbm_create (unsigned int mindim, unsigned int maxdim)
   return dbm;
 }
 
+dbm_t * 
+dbm_create_init (unsigned int dim1, unsigned int dim2, int cst)
+{
+  dbm_t * dbm;
+  
+  unsigned int mindim;
+  unsigned int maxdim;
+  
+  mindim = dim1 < dim2 ? dim1 : dim2;
+  maxdim = dim1 < dim2 ? dim2 : dim1;
+  
+  dbm = dbm_create (mindim, maxdim);
+  if (dbm == NULL) return NULL;
+  
+  DBM_SEL(dbm, dim1 - mindim, dim2 - mindim).val = cst;
+  DBM_SEL(dbm, dim1 - mindim, dim2 - mindim).inf = 0;  
+  dbm->closed = 1;
+  
+  return dbm;
+}
+
 
 
 void 
@@ -77,7 +99,7 @@ dbm_dup (dbm_t *dbm)
   if (res == NULL) return NULL;
   
   res->data = (struct dbm_value *) 
-    malloc (sizeof (struct dbm_value *) * dbm->width * dbm->width);
+    malloc (sizeof (struct dbm_value) * dbm->width * dbm->width);
   if (res->data == NULL)
     {
       free (res);
@@ -105,7 +127,8 @@ dbm_floyd_warshal (dbm_t * dbm)
 {
   /* bailout quickly if possible */
   if (dbm->unsat || dbm->closed) return ;
-  
+
+
   /* run the algorithm */
   {
     unsigned int i, j, k;
@@ -118,33 +141,32 @@ dbm_floyd_warshal (dbm_t * dbm)
 	    int new_ij;
 	    
 	    /* distance from i to k is infinity */
-	    if (dbm->data [i * dbm->width + k].inf)
+	    if (DBM_SEL (dbm, i, k).inf)
 	      continue;
 	    /* distance from k to  j is infinity */
-	    else if (dbm->data [k * dbm->width + j].inf)
+	    else if (DBM_SEL (dbm, k, j).inf)
 	      continue;
 
-	    new_ij = dbm->data [i * dbm->width + k].val + 
-	      dbm->data [k * dbm->width + j].val;
+	    new_ij = DBM_SEL (dbm, i, k).val + DBM_SEL (dbm, k, j).val;
 
 	    /* check for negative weight cycles */
 	    if (i == j && new_ij < 0)
 	      {
 		dbm->unsat = 1;
-		break;
+		dbm->closed = 1;
+		return;
 	      }
 	    
-	    if (dbm->data [i*dbm->width +j].inf ||
-		new_ij < dbm->data [i*dbm->width + j].val)
+	    if (DBM_SEL (dbm, i, j).inf || new_ij < DBM_SEL (dbm, i, j).val)
 	      {
-		dbm->data [i*dbm->width + j].val = new_ij;
-		dbm->data [i*dbm->width + j].inf = 0;
+		DBM_SEL (dbm, i, j).val = new_ij;
+		DBM_SEL (dbm, i, j).inf = 0;
 	      }
 	    
 	  }
   }
 
-  dbm->closed = 1;
+  dbm->closed = 1;  
 }
 
 dbm_t * 
@@ -161,29 +183,24 @@ dbm_resize (dbm_t * dbm, unsigned int mindim, unsigned int maxdim)
   
   res = dbm_alloc (mindim, maxdim);
   if (res == NULL) return NULL; 
-      
+
+
+  /* First initialize all entries of res, then copy dbm over them.
+     This can be optimized in the future 
+  */
+  dbm_init (res);
+  
   
   /* copy dbm into res */
   prefix = dbm->mindim - mindim;
   for (i = 0; i < dbm->width; i++)
     for (j = 0; j < dbm->width; j++)
-      {
-	res->data [(prefix + i) * res->width + (prefix + j)] =
-	  dbm->data [i * dbm->width + j];
-      }
+      DBM_SEL (res, prefix + i, prefix + j) = DBM_SEL (dbm, i, j);
 
-  /* initialize the rest of res */
+  res->unsat = dbm->unsat;
+  res->closed = dbm->closed;
 
-  /* the prefix */
-  for (i = 0; i < prefix; i++)
-    for (j = 0; j < prefix; j++)
-      res->data [i * res->width + j].inf = 1;
-  
-  /* the suffix */
-  for (i = dbm->maxdim + 1; i < res->width; i++)
-    for (j = dbm->maxdim + 1; j < res->width; j++)
-      res->data [i * res->width + j].inf = 1;
-  
+
   return res;
 }
 
@@ -193,12 +210,15 @@ dbm_update_entry (dbm_t * dbm, int dim1, int dim2, int cst)
 {
   dbm_t * res;
   
-
   assert (dim1 != dim2);
+
+  if (dbm == NULL) 
+    return NULL;
 
   /* if the dbm is unsat, don't bother adding anything */
   if (dbm->unsat) return dbm;
   
+
 
   /* check if we need to resize */
   if (dim1 < dbm->mindim || dim1 > dbm->maxdim ||
@@ -219,8 +239,8 @@ dbm_update_entry (dbm_t * dbm, int dim1, int dim2, int cst)
     }
 
   /* check if we need to update at all */
-  else  if (!dbm->data [dim1 * dbm->width + dim2].inf &&
-	    dbm->data [dim1 * dbm->width + dim2].val <= cst) 
+  else if (!DBM_SEL (dbm, dim1, dim2).inf &&
+	   DBM_SEL (dbm, dim1, dim2).val <= cst)
     return dbm;
 
   /* just a local update */
@@ -230,18 +250,43 @@ dbm_update_entry (dbm_t * dbm, int dim1, int dim2, int cst)
 
   assert (res->mindim <= dim1 && dim1 <= res->maxdim &&
 	  res->mindim <= dim2 && dim2 <= res->maxdim);
-  
-  res->data [dim1 * dbm->width + dim2].inf = 0;
-  res->data [dim1 * dbm->width + dim2].val = cst;
+
+  DBM_SEL (res, dim1, dim2).inf = 0;
+  DBM_SEL (res, dim1, dim2).val = cst;
 
   /* adding a new constraint opens the DBM */
   res->closed = 0;
   /* since DBM is not closed, don't know it's SAT status */
   res->unsat = 0;
 
+
+
   return res;
   
 }
 
+void
+dbm_debug_dump (FILE* out, dbm_t * dbm)
+{
+  int i,j;
+  
+  fprintf (out, 
+	   "dbm=%p, mindim=%d, maxdim=%d, width=%d, unsat=%d, closed=%d\n",
+	   dbm, dbm->mindim, dbm->maxdim, dbm->width, 
+	   dbm->unsat, dbm->closed);
+
+ 
+  for (i = 0; i < dbm->width; i++)
+    {
+      for (j = 0; j < dbm->width; j++)
+	{
+	  if (DBM_SEL (dbm, i, j).inf)
+	    fprintf (out, "oo ");
+	  else
+	    fprintf (out, "%d ", DBM_SEL (dbm, i, j).val);
+	}
+      fprintf (out, "\n");
+    }
+}
 
 

@@ -2,6 +2,14 @@
 #ifndef _DBM__H_
 #define _DBM__H_
 
+#include <stdio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+
 /* DBM entries are integers */
 
 struct dbm_value
@@ -31,7 +39,8 @@ typedef struct dbm
 } dbm_t;
   
 
-
+/* Access cel (i,j) of the DBM */
+#define DBM_SEL(dbm,i,j) (dbm)->data[(i)*(dbm)->width + (j)]
   
 
 /* Applyes Floyd Warshal algorithm to close the DBM.  As a side effect
@@ -57,6 +66,10 @@ void dbm_destory (dbm_t* dbm);
 /** Creates an empty dbm */
 dbm_t *dbm_create (unsigned int mindim, unsigned int maxdim);
 
+/** Creates a DBM and initializes it with the constraint dim1 - dim2 <= cst */
+dbm_t * dbm_create_init (unsigned int dim1, unsigned int dim2, int cst);
+
+
 /*** Low level functions. Use with care */
 
 /* Allocates memory for a DBM */
@@ -67,7 +80,13 @@ void dbm_init (dbm_t *dbm);
 /* Resizes the DBM to accomodate new mindim and maxdim */
 dbm_t* dbm_resize(dbm_t *dbm, unsigned int mindim, unsigned int maxdim);
 
+void dbm_debug_dump (FILE* out, dbm_t *dbm);
+
 /** dbm_to_tdd */
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif 
