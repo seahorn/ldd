@@ -71,61 +71,81 @@ tdd_node * tdd_xor (tdd_manager * tdd,
 tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index, 
 			    tdd_node *f, tdd_node *g)
 {
-  tdd_node * res;
-  DdNode  *v, *t, *e;
-
-  DdNode *G;
-  
-
+  tdd_node *res, *v, *G;
 
   assert (f != g);
+  assert (f == Cudd_Regular (f));
 
   v = Cudd_bddIthVar (CUDD, index);
   if (v == NULL) return NULL;
 
-  assert (f == Cudd_Regular (f));
-
   G = Cudd_Regular (g);
-  /* both f and g are constants */
-  if (f == G && G == tdd->cudd->one)
+
+  /* Check whether both f and g are constants */
+  if (f == G && G == DD_ONE (CUDD))
     return v;
 
   /* from this point on, we will need v */
   cuddRef (v);
 
-  t = f;
-  e = g;
-
 
   /*** 
    *** TDD Simplification
-   ***  (v -> t, (e->t, y)) == (e->t,y)  if  v is_stronger_cons e 
+   ***  (v -> f, (g->x, y)) == (g->x,y)  if x == f AND 
+                                         cons(v) is_stronger_cons cons(g)
    ***                          
    ***/
-  if (!Cudd_IsConstant (e))
+
+#ifdef OLD_UNIQUE_INTER
+  if (G != DD_ONE(CUDD))
     {
       lincons_t vCons = tdd->ddVars [v->index];
-      lincons_t eCons = tdd->ddVars [Cudd_Regular (e)->index];
+      lincons_t gCons = tdd->ddVars [G->index];
 
-      if (THEORY->is_stronger_cons (vCons, eCons))
+      if (THEORY->is_stronger_cons (vCons, gCons))
 	{
 	  DdNode * x;
-	  DdNode * E;
 	  
 	  /* take THEN cofactor of e */
-	  E = Cudd_Regular (e);
-	  x = Cudd_NotCond (cuddT (E), e != E);
+	  x = Cudd_NotCond (cuddT (G), g != G);
 
-	  if (t == x) 
+	  if (f == x) 
 	    {
 	      Cudd_IterDerefBdd (CUDD, v);
-	      return e;
+	      return g;
 	    }
 	}
     }
-  
+#else
+  /* it is faster to first check whether the THEN branch of e and the
+     THEN branch of v are the same. If they aren't, we don't need to
+     do a more complex constraint checking 
+  */
+  /* use the fact that e == g and Cudd_Regular(e) == G. 
+     Only applies if G is not a constant, otherwise it has no children*/
+  if (G != DD_ONE(CUDD))
+    {
+      DdNode *x;
+      
+      /* take THEN cofactor of e */
+      x = Cudd_NotCond (cuddT (G), g != G);
+      if (f == x)
+	{
+	  /* now need to check the constraints */
+	  lincons_t vCons = tdd->ddVars [v->index];
+	  lincons_t gCons = tdd->ddVars [G->index];
+	  
+	  if (THEORY->is_stronger_cons (vCons, gCons))
+	    {
+	      /* Apply simplification, get rid of v */
+	      Cudd_IterDerefBdd (CUDD, v);
+	      return g;
+	    }
+	}
+    }
+#endif
 
-  res = cuddUniqueInter (CUDD, (int)index, t, e);
+  res = cuddUniqueInter (CUDD, index, f, g);
   if (res == NULL)
     {
       Cudd_IterDerefBdd (CUDD, v);
