@@ -182,10 +182,19 @@ void ProcessInputs(int argc,char *argv[])
     printf("ERROR: must use TVPI theory with TVPI constraints!\n");
     exit(1);
   }
+  if(summary && image) {
+    printf("ERROR: cannot compute both summary and image!\n");
+    exit(1);
+  }
+  if(predNum > 0 && !summary && !image) {
+    printf("ERROR: must compute summary or image with predicate abstraction!\n");
+    exit(1);
+  }
 
   //compute total number of numeric variables, and allocate array used
   //to represent sets of variables
-  totalVarNum = (summary || image) ? 2 * varNum * (depth + 2) : 2 * varNum * depth;
+  totalVarNum = (predNum > 0) ? 2 * varNum * depth + 4 * predNum : 
+    ((summary || image) ? 2 * varNum * (depth + 2) : 2 * varNum * depth);
   varSet = new int [totalVarNum];
 
   //display final options
@@ -218,6 +227,39 @@ void DestroyManagers()
   tdd_quit(tdd);
   Cudd_Quit(cudd);
 }
+
+#ifdef DEBUG
+/*********************************************************************/
+//utility function to print a DD. assumes that the DD has a single
+//cube.
+/*********************************************************************/
+void PrintDD(tdd_node *node)
+{
+  Cudd_PrintMinterm (cudd, node);
+  int *sup = Cudd_SupportIndex(cudd,node);
+  //int ssize = Cudd_SupportSize(cudd,node);
+  for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
+    if(sup[i]) {
+      if(Cudd_bddAnd(cudd,node,Cudd_bddIthVar(cudd,i)) != Cudd_ReadLogicZero(cudd)) {
+        theory->print_lincons(stdout,tdd->ddVars[i]);
+        printf(" && ");
+      }
+      if(Cudd_bddAnd(cudd,node,Cudd_Not(Cudd_bddIthVar(cudd,i))) != Cudd_ReadLogicZero(cudd)) {
+        theory->print_lincons(stdout,theory->negate_cons(tdd->ddVars[i]));
+        printf(" && ");
+      }
+    }
+  }
+  printf("\n");
+  for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
+    if(sup[i]) {
+      printf("level of %d is %d\n",i,cuddI(cudd,i));
+    }
+  }
+  printf("\n");
+  free(sup);
+}
+#endif
 
 /*********************************************************************/
 //utility function for operating on tdd nodes. assumes that the
@@ -265,39 +307,6 @@ tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
   Cudd_Ref(res);
   return res;
 }
-
-#ifdef DEBUG
-/*********************************************************************/
-//utility function to print a DD. assumes that the DD has a single
-//cube.
-/*********************************************************************/
-void PrintDD(tdd_node *node)
-{
-  Cudd_PrintMinterm (cudd, node);
-  int *sup = Cudd_SupportIndex(cudd,node);
-  //int ssize = Cudd_SupportSize(cudd,node);
-  for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
-    if(sup[i]) {
-      if(Cudd_bddAnd(cudd,node,Cudd_bddIthVar(cudd,i)) != Cudd_ReadLogicZero(cudd)) {
-        theory->print_lincons(stdout,tdd->ddVars[i]);
-        printf(" && ");
-      }
-      if(Cudd_bddAnd(cudd,node,Cudd_Not(Cudd_bddIthVar(cudd,i))) != Cudd_ReadLogicZero(cudd)) {
-        theory->print_lincons(stdout,theory->negate_cons(tdd->ddVars[i]));
-        printf(" && ");
-      }
-    }
-  }
-  printf("\n");
-  for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
-    if(sup[i]) {
-      printf("level of %d is %d\n",i,cuddI(cudd,i));
-    }
-  }
-  printf("\n");
-  free(sup);
-}
-#endif
 
 /*********************************************************************/
 //quantify out all variables from min to max-1 from node and return
@@ -350,88 +359,38 @@ tdd_node *VarEq(int x,int y)
 }
 
 /*********************************************************************/
-//generate constraints that relate initial state variables or
-//predicates to initial transition relation variables
+//generate constants and coefficients for predicates, these are
+//generated as an int array of size (5 * predNum) where each
+//successive 5 elements are coeff1, var1, coeff2, var2, and the
+//constant for a predicate.
 /*********************************************************************/
-tdd_node *InitCons()
+int *Preds()
 {
-  //the largest transition relation variable (+1)
-  int maxTransVar = 2 * varNum * depth;
+  if(predNum <= 0) return NULL;
 
-  //the result to be computed
-  tdd_node *node = tdd_get_true(tdd);
-  Cudd_Ref(node);
-  
-  //if we are computing summaries or images
-  if(summary || image) {
-    for(size_t vn = 0;vn < varNum;++vn) {
-      int v1 = 2 * vn;
-      int v2 = v1 + 1;
-      int pv1 = v1 + maxTransVar;
-      int pv2 = pv1 + 1;
-      
-      //create constraints v1 = pv1 and v2 = pv2.
-      node = TddOp(node,VarEq(v1,pv1),'&');
-      node = TddOp(node,VarEq(v2,pv2),'&');
+  int *preds = new int [5 * predNum];
+
+  for(int i = 0;i < predNum;++i) {
+    if(consType == DIA_DDD) {
+      preds[5 * i] = 1;
+      preds[5 * i + 2] = -1;
     }
-  }
-  
-  //all done
-  return node;
-}
-
-/*********************************************************************/
-//generate constraints that relate final state variables or predicates
-//to final transition relation variables
-/*********************************************************************/
-tdd_node *FinalCons()
-{
-  //the result to be computed
-  tdd_node *node = tdd_get_true(tdd);
-  Cudd_Ref(node);
-
-  //if we are computing summaries or images
-  if(summary || image) {
-    for(size_t vn = 0;vn < varNum;++vn) {
-      int v1 = 2 * (varNum * (depth - 1) + vn);
-      int v2 = v1 + 1;
-      int pv1 = v1 + 4 * varNum;
-      int pv2 = pv1 + 1;
-
-      //create constraints v1 = pv1 and v2 = pv2. together with
-      //the previous invariant c1*pv1 + c2*pv2 <= bound, this
-      //ensures the new invariant c1*v1 + c2*v2 <= bound.
-      node = TddOp(node,VarEq(v1,pv1),'&');
-      node = TddOp(node,VarEq(v2,pv2),'&');
+    if(consType == DIA_OCT) {
+      preds[5 * i] = Rand(0,2) ? 1 : -1;
+      preds[5 * i + 2] = Rand(0,2) ? 1 : -1;
     }
+    if(consType == DIA_TVPI) {
+      do { preds[5 * i] = Rand(-50,50); } while (preds[5 * i] == 0);
+      do { preds[5 * i + 2] = Rand(-50,50); } while (preds[5 * i + 2] == 0);
+    }
+    preds[5 * i + 1] = Rand(0,2 * varNum);
+    do {
+      preds[5 * i + 3] = Rand(0,2 * varNum);
+    } while (preds[5 * i + 3] == preds[5 * i + 1]);
+    preds[5 * i + 4] = Rand(-1000,1000);
   }
 
-  //all done
-  return node;
-}
-
-/*********************************************************************/
-//check final result
-/*********************************************************************/
-void CheckResult(tdd_node *node)
-{
-  if(unsat) {
-    if(node == Cudd_ReadLogicZero (cudd))
-      printf("GOOD: result is UNSAT as expected!\n");
-    else {
-      printf("ERROR: result is SAT, UNSAT expected!\n");
-      exit(1);
-    }
-  } else {
-    //condition under which we should expect true after QELIM
-    bool expTrue = !summary && !image;
-    if((!expTrue && node != Cudd_ReadLogicZero (cudd)) || (expTrue && node == Cudd_ReadOne (cudd)))
-      printf("GOOD: result is SAT as expected!\n");
-    else {
-      printf("ERROR: result is UNSAT, SAT expected!\n");
-      exit(1);
-    }
-  }
+  return preds;
 }
 
 /*********************************************************************/
@@ -468,14 +427,68 @@ int *Coeffs()
       coeffs[2 * i + 1] = Rand(0,2) ? 1 : -1;
     }
     if(consType == DIA_TVPI) {
-      coeffs[2 * i] = Rand(-50,50);
-      coeffs[2 * i] = coeffs[2 * i] ? coeffs[2 * i] : 1;
-      coeffs[2 * i + 1] = Rand(-50,50);
-      coeffs[2 * i + 1] = coeffs[2 * i + 1] ? coeffs[2 * i + 1] : -1;
+      do { coeffs[2 * i] = Rand(-50,50); } while (coeffs[2 * i] == 0);
+      do { coeffs[2 * i + 1] = Rand(-50,50); } while (coeffs[2 * i + 1] == 0);
     }
   }
 
   return coeffs;
+}
+
+/*********************************************************************/
+//generate constraints that relate initial state variables or
+//predicates to initial transition relation variables
+/*********************************************************************/
+tdd_node *InitCons(int *preds)
+{
+#ifdef DEBUG
+  printf("generating INIT constraints ...\n");
+#endif
+
+  //the largest transition relation variable (+1)
+  int maxTransVar = 2 * varNum * depth;
+
+  //the result to be computed
+  tdd_node *node = tdd_get_true(tdd);
+  Cudd_Ref(node);
+  
+  //if we are using predicate abstraction -- this implies summary or
+  //image computation
+  if(preds) {
+    //generate predicate constraints
+    for(int i = 0;i < predNum;++i) {
+      int id = 5 * i;
+      tdd_node *pred1 = ConsToTdd(preds[id],preds[id + 1],preds[id + 2],
+                                  preds[id + 3],preds[id + 4]);
+      
+      int v1 = maxTransVar + 2 * i;
+      int v2 = v1 + 1;
+      tdd_node *pred2 = ConsToTdd(1,v1,-1,v2,0);
+      tdd_node *eq = TddOp(TddOp(pred1,pred2,'^'),NULL,'!');
+      node = TddOp(node,eq,'&');
+    }
+  }
+  //if we are computing summaries or images
+  else if(summary || image) {
+    for(size_t vn = 0;vn < varNum;++vn) {
+      int v1 = 2 * vn;
+      int v2 = v1 + 1;
+      int pv1 = v1 + maxTransVar;
+      int pv2 = pv1 + 1;
+      
+      //create constraints v1 = pv1 and v2 = pv2.
+      node = TddOp(node,VarEq(v1,pv1),'&');
+      node = TddOp(node,VarEq(v2,pv2),'&');
+    }
+  }
+  
+#ifdef DEBUG
+  printf ("INIT node is:\n");
+  PrintDD(node);
+#endif
+
+  //all done
+  return node;
 }
 
 /*********************************************************************/
@@ -615,6 +628,89 @@ tdd_node *Unwind(int d)
 }
 
 /*********************************************************************/
+//generate constraints that relate final state variables or predicates
+//to final transition relation variables
+/*********************************************************************/
+tdd_node *FinalCons(int *preds)
+{
+#ifdef DEBUG
+  printf("generating FINAL constraints ...\n");
+#endif
+
+  //the largest transition relation variable (+1)
+  int maxTransVar = 2 * varNum * depth;
+
+  //the result to be computed
+  tdd_node *node = tdd_get_true(tdd);
+  Cudd_Ref(node);
+
+  //if we are using predicate abstraction -- this implies summary or
+  //image computation
+  if(preds) {
+    //generate predicate constraints
+    for(int i = 0;i < predNum;++i) {
+      int id = 5 * i;
+      int baseVar = 2 * varNum * (depth - 1);
+      tdd_node *pred1 = ConsToTdd(preds[id],baseVar + preds[id + 1],
+                                  preds[id + 2],baseVar + preds[id + 3],
+                                  preds[id + 4]);      
+      int v1 = maxTransVar + 2 * (predNum + i);
+      int v2 = v1 + 1;
+      tdd_node *pred2 = ConsToTdd(1,v1,-1,v2,0);
+      tdd_node *eq = TddOp(TddOp(pred1,pred2,'^'),NULL,'!');
+      node = TddOp(node,eq,'&');
+    }
+  }
+  //if we are computing summaries or images
+  else if(summary || image) {
+    for(size_t vn = 0;vn < varNum;++vn) {
+      int v1 = 2 * (varNum * (depth - 1) + vn);
+      int v2 = v1 + 1;
+      int pv1 = v1 + 4 * varNum;
+      int pv2 = pv1 + 1;
+
+      //create constraints v1 = pv1 and v2 = pv2. together with
+      //the previous invariant c1*pv1 + c2*pv2 <= bound, this
+      //ensures the new invariant c1*v1 + c2*v2 <= bound.
+      node = TddOp(node,VarEq(v1,pv1),'&');
+      node = TddOp(node,VarEq(v2,pv2),'&');
+    }
+  }
+  
+#ifdef DEBUG
+  printf ("FINAL node is:\n");
+  PrintDD(node);
+#endif
+
+  //all done
+  return node;
+}
+
+/*********************************************************************/
+//check final result
+/*********************************************************************/
+void CheckResult(tdd_node *node)
+{
+  if(unsat) {
+    if(node == Cudd_ReadLogicZero (cudd))
+      printf("GOOD: result is UNSAT as expected!\n");
+    else {
+      printf("ERROR: result is SAT, UNSAT expected!\n");
+      exit(1);
+    }
+  } else {
+    //condition under which we should expect true after QELIM
+    bool expTrue = !summary && !image;
+    if((!expTrue && node != Cudd_ReadLogicZero (cudd)) || (expTrue && node == Cudd_ReadOne (cudd)))
+      printf("GOOD: result is SAT as expected!\n");
+    else {
+      printf("ERROR: result is UNSAT, SAT expected!\n");
+      exit(1);
+    }
+  }
+}
+
+/*********************************************************************/
 //generate constraints and then quantify out all transition relation
 //variables. each step of the transition relation introduces 2 *
 //varNum fresh variables. therefore, total number of variables in the
@@ -635,7 +731,10 @@ void GenAndSolve()
   int minTransVar = 0;
   int maxTransVar = 2 * varNum * depth;
 
-  //generate bounds and coefficients
+  //generate constants and coefficients for predicates
+  int *preds = Preds();
+
+  //generate bounds and coefficients for transition relation invariant
   int **bounds = Bounds();
   int *coeffs = Coeffs();
 
@@ -646,7 +745,7 @@ void GenAndSolve()
 #endif
 
   //the overall tdd
-  tdd_node *node = InitCons();
+  tdd_node *node = InitCons(preds);
 
   //unwind the transition relation
   for(int d = 0;d < depth;++d) {
@@ -674,11 +773,11 @@ void GenAndSolve()
   }
 
   //generate final constraints
-  node = TddOp(node,FinalCons(),'&');
+  node = TddOp(node,FinalCons(preds),'&');
 
   //quantify to get the summary or the image
   if(image)
-    node = Qelim(node,minTransVar,maxTransVar + 2 * varNum);
+    node = Qelim(node,minTransVar,maxTransVar + 2 * (preds ? predNum : varNum));
   else 
     node = Qelim(node,minTransVar,maxTransVar);
 
@@ -688,6 +787,7 @@ void GenAndSolve()
   //cleanup
   Cudd_RecursiveDeref(cudd,node);
   for(size_t i = 0;i < varNum;++i) delete [] bounds[i];
+  if(preds) delete [] preds;
   delete [] bounds;
   delete [] coeffs;
 }
