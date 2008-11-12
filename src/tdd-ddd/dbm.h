@@ -20,6 +20,7 @@ struct dbm_value
 };
 
 
+  /* The DBM */
 typedef struct dbm
 {
   /* the entries */
@@ -40,7 +41,12 @@ typedef struct dbm
   
 
 /* Access cel (i,j) of the DBM */
-#define DBM_SEL(dbm,i,j) (dbm)->data[(i)*(dbm)->width + (j)]
+#define DBM_CEL(dbm,i,j) (dbm)->data[(i)*(dbm)->width + (j)]
+
+/* Access dimension (i, j) of the DBM */
+#define DBM_DIM(dbm,i,j) DBM_CEL(dbm, (i)-(dbm)->mindim, (j)-(dbm)->mindim)
+
+
   
 
 /* Applyes Floyd Warshal algorithm to close the DBM.  As a side effect
@@ -56,7 +62,15 @@ void  dbm_floyd_warshal (dbm_t* dbm);
 dbm_t * dbm_update_entry (dbm_t* dbm, int dim1, int dim2, int cst);
 
 /**
- * Returns a copy of a dbm
+ * Updates an entry in a DBM and computes its closures.  Required:
+ * dbm->closed == 1 This is more efficient version of dbm_update_entry
+ * followed by a DBM closure such as dbm_floyd_warshal.
+  */
+dbm_t * dbm_update_entry_close (dbm_t* dbm, int dim1, int dim2, int cst);
+
+
+/**
+ * Creates a duplicate copy.
  */
 dbm_t * dbm_dup (dbm_t * dbm);
 
@@ -80,6 +94,7 @@ void dbm_init (dbm_t *dbm);
 /* Resizes the DBM to accomodate new mindim and maxdim */
 dbm_t* dbm_resize(dbm_t *dbm, unsigned int mindim, unsigned int maxdim);
 
+  /* Outputs debugging information */
 void dbm_debug_dump (FILE* out, dbm_t *dbm);
 
 /** dbm_to_tdd */

@@ -134,14 +134,15 @@ ddd_qelim_push(qelim_context_t* context, lincons_t l)
   else
     {
       /* create a new DBM using the newly pushed constraint */
-      new_stack->dbm = dbm_update_entry (ctx->stack->dbm, 
-					 new_stack->cons->term.var1,
-					 new_stack->cons->term.var2,
-					 new_stack->cons->cst.int_val);
+      new_stack->dbm = dbm_update_entry_close (ctx->stack->dbm, 
+					       new_stack->cons->term.var1,
+					       new_stack->cons->term.var2,
+					       new_stack->cons->cst.int_val);
       
+      /* close above takes care of the closure */
       /* new constraint was really new, so need to run floyd-warshall again */
-      if (new_stack->dbm != ctx->stack->dbm)
-	dbm_floyd_warshal (new_stack->dbm);
+/*       if (new_stack->dbm != ctx->stack->dbm) */
+/*       	dbm_floyd_warshal (new_stack->dbm); */
     }
   
 
@@ -192,7 +193,7 @@ ddd_qelim_solve (qelim_context_t* context)
 	    if (ctx->vars [dbm->mindim + j]) continue;
 	    
 	    /* check that there is a constraint */
-	    if (DBM_SEL (dbm, i, j).inf) continue;
+	    if (DBM_DIM (dbm, i, j).inf) continue;
 	    
 	    /* XXX For correctness, only need to produce a set of
 	       constraints that are logically equivalent to a
@@ -203,7 +204,7 @@ ddd_qelim_solve (qelim_context_t* context)
 	    cons.term.var1 = dbm->mindim + i;
 	    cons.term.var2 = dbm->mindim + j;
 	    cons.cst.type = DDD_INT;
-	    cons.cst.int_val = DBM_SEL (dbm, i, j).val;
+	    cons.cst.int_val = DBM_DIM (dbm, i, j).val;
 	    cons.strict = 0;
 	    
 	    /* create tdd for the constraint */

@@ -69,9 +69,10 @@ dbm_create_init (unsigned int dim1, unsigned int dim2, int cst)
   
   dbm = dbm_create (mindim, maxdim);
   if (dbm == NULL) return NULL;
-  
-  DBM_SEL(dbm, dim1 - mindim, dim2 - mindim).val = cst;
-  DBM_SEL(dbm, dim1 - mindim, dim2 - mindim).inf = 0;  
+
+
+  DBM_DIM (dbm, dim1, dim2).val = cst;
+  DBM_DIM (dbm, dim1, dim2).inf = 0;  
   dbm->closed = 1;
   
   return dbm;
@@ -141,13 +142,13 @@ dbm_floyd_warshal (dbm_t * dbm)
 	    int new_ij;
 	    
 	    /* distance from i to k is infinity */
-	    if (DBM_SEL (dbm, i, k).inf)
+	    if (DBM_CEL (dbm, i, k).inf)
 	      continue;
 	    /* distance from k to  j is infinity */
-	    else if (DBM_SEL (dbm, k, j).inf)
+	    else if (DBM_CEL (dbm, k, j).inf)
 	      continue;
 
-	    new_ij = DBM_SEL (dbm, i, k).val + DBM_SEL (dbm, k, j).val;
+	    new_ij = DBM_CEL (dbm, i, k).val + DBM_CEL (dbm, k, j).val;
 
 	    /* check for negative weight cycles */
 	    if (i == j && new_ij < 0)
@@ -157,10 +158,10 @@ dbm_floyd_warshal (dbm_t * dbm)
 		return;
 	      }
 	    
-	    if (DBM_SEL (dbm, i, j).inf || new_ij < DBM_SEL (dbm, i, j).val)
+	    if (DBM_CEL (dbm, i, j).inf || new_ij < DBM_CEL (dbm, i, j).val)
 	      {
-		DBM_SEL (dbm, i, j).val = new_ij;
-		DBM_SEL (dbm, i, j).inf = 0;
+		DBM_CEL (dbm, i, j).val = new_ij;
+		DBM_CEL (dbm, i, j).inf = 0;
 	      }
 	    
 	  }
@@ -195,7 +196,7 @@ dbm_resize (dbm_t * dbm, unsigned int mindim, unsigned int maxdim)
   prefix = dbm->mindim - mindim;
   for (i = 0; i < dbm->width; i++)
     for (j = 0; j < dbm->width; j++)
-      DBM_SEL (res, prefix + i, prefix + j) = DBM_SEL (dbm, i, j);
+      DBM_CEL (res, prefix + i, prefix + j) = DBM_CEL (dbm, i, j);
 
   res->unsat = dbm->unsat;
   res->closed = dbm->closed;
@@ -239,8 +240,8 @@ dbm_update_entry (dbm_t * dbm, int dim1, int dim2, int cst)
     }
 
   /* check if we need to update at all */
-  else if (!DBM_SEL (dbm, dim1, dim2).inf &&
-	   DBM_SEL (dbm, dim1, dim2).val <= cst)
+  else if (!DBM_DIM (dbm, dim1, dim2).inf &&
+	   DBM_DIM (dbm, dim1, dim2).val <= cst)
     return dbm;
 
   /* just a local update */
@@ -251,8 +252,8 @@ dbm_update_entry (dbm_t * dbm, int dim1, int dim2, int cst)
   assert (res->mindim <= dim1 && dim1 <= res->maxdim &&
 	  res->mindim <= dim2 && dim2 <= res->maxdim);
 
-  DBM_SEL (res, dim1, dim2).inf = 0;
-  DBM_SEL (res, dim1, dim2).val = cst;
+  DBM_DIM (res, dim1, dim2).inf = 0;
+  DBM_DIM (res, dim1, dim2).val = cst;
 
   /* adding a new constraint opens the DBM */
   res->closed = 0;
@@ -264,6 +265,65 @@ dbm_update_entry (dbm_t * dbm, int dim1, int dim2, int cst)
   return res;
   
 }
+
+dbm_t * 
+dbm_update_entry_close (dbm_t * dbm, int dim1, int dim2, int cst)
+{
+  dbm_t * res;
+  unsigned int i, j;
+  unsigned int x, y;
+  
+  assert (dbm->closed);
+
+  res = dbm_update_entry (dbm, dim1, dim2, cst);
+  
+  /* nothing to do if DBM is closed on update */
+  if (res->unsat || res->closed) return res;
+
+
+  /* convert dimensions relative to the DBM res*/
+  x = dim1 - res->mindim;
+  y = dim2 - res->mindim;
+
+  /* update transitive closure */  
+  assert (DBM_DIM (res, dim1, dim2).val == cst);
+
+
+  for (i = 0; i < res->width; i++)
+    for (j = 0; j < res->width; j++)
+      {
+	int wt1, wt2, val;
+
+	if (i == x && j == y) continue;
+
+	if (i == x) wt1 = 0;
+	else if (DBM_CEL (res, i, x).inf) continue;
+	else wt1 = DBM_CEL (res, i, x).val;
+	
+	if (j == y) wt2 = 0;
+	else if (DBM_CEL (res, y, j).inf) continue;
+	else wt2 = DBM_CEL (res, y, j).val;
+
+	val = wt1 + cst + wt2;
+
+	if (i == j && val < 0)
+	  {
+	    res->unsat = 1;
+	    return res;
+	  }
+
+	if (DBM_CEL (res, i, j).inf || val < DBM_CEL (res, i, j).val)
+	  {
+	    DBM_CEL (res, i, j).val = val;
+	    DBM_CEL (res, i, j).inf = 0;
+	  }
+      }
+  res->closed = 1;
+
+  return res;  
+}
+
+
 
 void
 dbm_debug_dump (FILE* out, dbm_t * dbm)
@@ -280,10 +340,10 @@ dbm_debug_dump (FILE* out, dbm_t * dbm)
     {
       for (j = 0; j < dbm->width; j++)
 	{
-	  if (DBM_SEL (dbm, i, j).inf)
+	  if (DBM_CEL (dbm, i, j).inf)
 	    fprintf (out, "oo ");
 	  else
-	    fprintf (out, "%d ", DBM_SEL (dbm, i, j).val);
+	    fprintf (out, "%d ", DBM_CEL (dbm, i, j).val);
 	}
       fprintf (out, "\n");
     }
