@@ -16,6 +16,8 @@
 #include "tdd-ddd.h"
 #include "tddInt.h"
 
+#include "dbm.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -84,15 +86,10 @@ typedef struct ddd_cons_node
 typedef struct ddd_qelim_stack
 {
   /* constraint being pushed onto the stack */
-  ddd_cons_t *cons;
-#ifdef DDD_QELIM_INC
-  /* current DBM including cons */
-  int *dbm;
-  /* largest variable occurring in dbm. Undefined if dbm == NULL */
-  int maxvar;
-  /* true if dbm is unsat */
-  bool unsat;
-#endif
+  ddd_cons_t * cons;
+  /* the current DBM including the cons */
+  dbm_t * dbm;
+  
   /* next element in the stack */
   struct ddd_qelim_stack *next;
 } ddd_qelim_stack_t;
