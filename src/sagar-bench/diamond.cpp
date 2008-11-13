@@ -221,10 +221,10 @@ void CreateManagers()
 /*********************************************************************/
 void DestroyManagers()
 {
+  tdd_quit(tdd);
   if(tddType == DIA_DDD) ddd_destroy_theory(theory);
   if(tddType == DIA_OCT) oct_destroy_theory(theory);
   if(tddType == DIA_TVPI) tvpi_destroy_theory(theory);
-  tdd_quit(tdd);
   Cudd_Quit(cudd);
 }
 
