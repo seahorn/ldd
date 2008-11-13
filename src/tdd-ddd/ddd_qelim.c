@@ -193,7 +193,7 @@ ddd_qelim_solve (qelim_context_t* context)
 	    if (ctx->vars [dbm->mindim + j]) continue;
 	    
 	    /* check that there is a constraint */
-	    if (DBM_DIM (dbm, i, j).inf) continue;
+	    if (DBM_CEL (dbm, i, j).inf) continue;
 	    
 	    /* XXX For correctness, only need to produce a set of
 	       constraints that are logically equivalent to a
@@ -220,7 +220,6 @@ ddd_qelim_solve (qelim_context_t* context)
 	    res = tmp2;
 	  }
       }
-    
 
 	cuddDeref (res);
 	return res;
