@@ -35,7 +35,6 @@
 //command line options
 int depth = 0;
 int branch = 1;
-int qelimInt = 0;
 size_t repeat = 1;
 size_t disj = 1;
 size_t varNum = 1;
@@ -75,9 +74,8 @@ void Usage(char *cmd)
   printf("Usage : %s <options>\n",cmd);
   printf("Options:\n");
   printf("\t--help|-h : display usage and exit\n");
-  printf("\t--depth [number of diamonds]\n");
+  printf("\t--depth <number of diamonds + 1>\n");
   printf("\t--branch <K> : K = maximum branching factor\n");
-  printf("\t--qelimInt <K> : do QELIM after every K diamonds\n");
   printf("\t--repeat <K> : repeat experiment K (<= 1000) times\n");
   printf("\t--disj <K> : ensure that invariants have K disjuncts\n");
   printf("\t--vars <K> : use K pairs of fresh variables at each step\n");
@@ -122,9 +120,6 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--branch") && i < argc-1) {
       branch = atoi(argv[++i]);
     }
-    else if(!strcmp(argv[i],"--qelimInt") && i < argc-1) {
-      qelimInt = atoi(argv[++i]);
-    }
     else if(!strcmp(argv[i],"--repeat") && i < argc-1) {
       repeat = atoi(argv[++i]);
     }
@@ -157,7 +152,6 @@ void ProcessInputs(int argc,char *argv[])
     printf("ERROR: depth must be greater than zero!\n");
     exit(0);
   }
-  if(qelimInt < 1) qelimInt = depth;
   if(repeat > 1000) {
     printf("ERROR: can only repeat at most 1000 times!\n");
     exit(1);
@@ -182,6 +176,10 @@ void ProcessInputs(int argc,char *argv[])
     printf("ERROR: must use TVPI theory with TVPI constraints!\n");
     exit(1);
   }
+  if((summary || image) && depth < 2) {
+    printf("ERROR: must have at least one diamond to compute image or summary!\n");
+    exit(1);
+  }
   if(summary && image) {
     printf("ERROR: cannot compute both summary and image!\n");
     exit(1);
@@ -198,9 +196,9 @@ void ProcessInputs(int argc,char *argv[])
   varSet = new int [totalVarNum];
 
   //display final options
-  printf("depth = %d branch = %d qelimInt = %d repeat = %d "
-         "disj = %d vars = %d unsat = %s qelim2 = %s\n",
-         depth,branch,qelimInt,repeat,disj,varNum,
+  printf("depth = %d branch = %d repeat = %d disj = %d "
+         "vars = %d unsat = %s qelim2 = %s\n",
+         depth,branch,repeat,disj,varNum,
          unsat ? "true" : "false",qelim2 ? "true" : "false");
 }
 
@@ -468,19 +466,6 @@ tdd_node *InitCons(int *preds)
       node = TddOp(node,eq,'&');
     }
   }
-  //if we are computing summaries or images
-  else if(summary || image) {
-    for(size_t vn = 0;vn < varNum;++vn) {
-      int v1 = 2 * vn;
-      int v2 = v1 + 1;
-      int pv1 = v1 + maxTransVar;
-      int pv2 = pv1 + 1;
-      
-      //create constraints v1 = pv1 and v2 = pv2.
-      node = TddOp(node,VarEq(v1,pv1),'&');
-      node = TddOp(node,VarEq(v2,pv2),'&');
-    }
-  }
   
 #ifdef DEBUG
   printf ("INIT node is:\n");
@@ -661,21 +646,6 @@ tdd_node *FinalCons(int *preds)
       node = TddOp(node,eq,'&');
     }
   }
-  //if we are computing summaries or images
-  else if(summary || image) {
-    for(size_t vn = 0;vn < varNum;++vn) {
-      int v1 = 2 * (varNum * (depth - 1) + vn);
-      int v2 = v1 + 1;
-      int pv1 = v1 + 4 * varNum;
-      int pv2 = pv1 + 1;
-
-      //create constraints v1 = pv1 and v2 = pv2. together with
-      //the previous invariant c1*pv1 + c2*pv2 <= bound, this
-      //ensures the new invariant c1*v1 + c2*v2 <= bound.
-      node = TddOp(node,VarEq(v1,pv1),'&');
-      node = TddOp(node,VarEq(v2,pv2),'&');
-    }
-  }
   
 #ifdef DEBUG
   printf ("FINAL node is:\n");
@@ -692,7 +662,9 @@ tdd_node *FinalCons(int *preds)
 void CheckResult(tdd_node *node)
 {
   if(unsat) {
-    if(node == Cudd_ReadLogicZero (cudd))
+    //condition under which we should expect true after QELIM
+    bool expTrue = !summary && !image;
+    if(!expTrue || node == Cudd_ReadLogicZero (cudd))
       printf("GOOD: result is UNSAT as expected!\n");
     else {
       printf("ERROR: result is SAT, UNSAT expected!\n");
@@ -740,14 +712,16 @@ void GenAndSolve()
 
   //the depth at which we are going to generate the UNSAT clause
   int target = Rand(0,depth);
+
 #ifdef DEBUG
   printf("target = %d\n",target);
 #endif
 
   //the overall tdd
-  tdd_node *node = InitCons(preds);
+  tdd_node *node = tdd_get_true(tdd);
+  Cudd_Ref(node);
 
-  //unwind the transition relation
+  //create transition relation
   for(int d = 0;d < depth;++d) {
     //generate a constraint that makes the whole system unsatisfiable,
     //if needed
@@ -764,22 +738,31 @@ void GenAndSolve()
     //preserve the invariant by relating fresh variables with the
     //variables from the previous step
     node = TddOp(node,Unwind(d),'&');      
-
-    //quantify if we have completed the next interval
-    if(d > 0 && (d % qelimInt) == 0) {
-      node = Qelim(node,minTransVar,2 * varNum * d);
-      minTransVar = 2 * varNum * d;
-    }
   }
 
-  //generate final constraints
-  node = TddOp(node,FinalCons(preds),'&');
+  //if not computing image or summary
+  if(!summary && !image) node = Qelim(node,minTransVar,maxTransVar);
 
-  //quantify to get the summary or the image
-  if(image)
-    node = Qelim(node,minTransVar,maxTransVar + 2 * (preds ? predNum : varNum));
-  else 
-    node = Qelim(node,minTransVar,maxTransVar);
+  //if doing predicate abstraction
+  else if(preds) {
+    //generate initial and final constraints
+    node = TddOp(node,InitCons(preds),'&');
+    node = TddOp(node,FinalCons(preds),'&');
+    
+    //compute image or summary
+    if(summary) node = Qelim(node,minTransVar,maxTransVar);
+    else node = Qelim(node,minTransVar,maxTransVar + 2 * predNum);
+  }
+
+  //if computing summary without predicate abstraction
+  else if(summary) {
+    node = Qelim(node,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
+  }
+
+  //if computing image without predicate abstraction
+  else {
+    node = Qelim(node,minTransVar,maxTransVar - 2 * varNum);
+  }
 
   //check if the result is correct
   CheckResult(node);

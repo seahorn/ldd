@@ -1,16 +1,36 @@
 #!/bin/tcsh
 
-set BASECMD="./diamond --branch 2 --depth 2 --repeat 2 --vars 3"
-
-foreach I ("" "--oct" "--oct --octCons" "--tvpi" "--tvpi --tvpiCons")
-  foreach J ("" "--qelimInt 1" "--summary" "--image" "--summary --preds 2" "--image --preds 2")
-    foreach K ("" "--unsat")
-      foreach L ("" "--compInv")
-        set CMD="$BASECMD $I $J $K $L"
-        echo $CMD
-        $CMD |& grep ERROR &
+if ($1 == "--noPreds") then
+  echo "===== no predicate abstraction ====="
+  set BASECMD="./diamond --branch 5 --depth 25 --repeat 5 --vars 5"
+  foreach I ("" "--oct" "--oct --octCons" "--tvpi" "--tvpi --tvpiCons")
+    foreach J ("" "--summary" "--image")
+      foreach K ("" "--unsat")
+        foreach L ("" "--compInv")
+          set CMD="$BASECMD $I $J $K $L"
+          echo $CMD
+          $CMD |& grep ERROR &
+        end
       end
+      wait
     end
-    wait
   end
-end
+else if ($1 == "--preds") then
+  echo "===== predicate abstraction ====="
+  set BASECMD="./diamond --branch 2 --depth 3 --repeat 3 --vars 2"
+  foreach I ("" "--oct" "--oct --octCons" "--tvpi" "--tvpi --tvpiCons")
+    foreach J ("--summary --preds 1" "--image --preds 1")
+      foreach K ("" "--unsat")
+        foreach L ("" "--compInv")
+          set CMD="$BASECMD $I $J $K $L"
+          echo $CMD
+          $CMD |& grep ERROR &
+        end
+      end
+      wait
+    end
+  end
+else
+  $0 "--noPreds" |& grep -v "Done\|Exit\|\[[0-9]\]"
+  $0 "--preds" |& grep -v "Done\|Exit\|\[[0-9]\]"
+endif
