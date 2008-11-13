@@ -17,9 +17,13 @@ if ($1 == "--noPreds") then
   end
 else if ($1 == "--preds") then
   echo "===== predicate abstraction ====="
-  set BASECMD="./diamond --branch 2 --depth 3 --repeat 3 --vars 2"
-  foreach I ("" "--oct" "--oct --octCons" "--tvpi" "--tvpi --tvpiCons")
-    foreach J ("--summary --preds 1" "--image --preds 1")
+  set BASECMD="./diamond --repeat 30"
+  foreach I ("--branch 5 --depth 5 --vars 5 --preds 2" \
+             "--oct --branch 2 --depth 3 --vars 2 --preds 2" \
+             "--oct --octCons --branch 2 --depth 3 --vars 2 --preds 2" \
+             "--tvpi --branch 2 --depth 3 --vars 2 --preds 2" \
+             "--tvpi --tvpiCons --branch 2 --depth 2 --vars 2 --preds 2")
+    foreach J ("--summary" "--image")
       foreach K ("" "--unsat")
         foreach L ("" "--compInv")
           set CMD="$BASECMD $I $J $K $L"
