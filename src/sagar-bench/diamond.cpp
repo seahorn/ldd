@@ -39,6 +39,7 @@ size_t repeat = 1;
 size_t disj = 1;
 size_t varNum = 1;
 int predNum = 0;
+int randSeed = -1;
 bool unsat = false;
 bool qelim2 = false;
 bool compInv = false;
@@ -80,6 +81,7 @@ void Usage(char *cmd)
   printf("\t--disj <K> : ensure that invariants have K disjuncts\n");
   printf("\t--vars <K> : use K pairs of fresh variables at each step\n");
   printf("\t--preds <K> : use K predicates\n");
+  printf("\t--srand <K> : use randon seed K\n");
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
   printf("\t--oct : use octagon theory\n");
@@ -131,6 +133,9 @@ void ProcessInputs(int argc,char *argv[])
     }
     else if(!strcmp(argv[i],"--preds") && i < argc-1) {
       predNum = atoi(argv[++i]);
+    }
+    else if(!strcmp(argv[i],"--srand") && i < argc-1) {
+      randSeed = atoi(argv[++i]);
     }
     else if(!strcmp(argv[i],"--unsat")) unsat = true;
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
@@ -780,8 +785,8 @@ void GenAndSolve()
 /*********************************************************************/
 int main(int argc,char *argv[])
 {
-  srand(time(NULL));
   ProcessInputs(argc,argv);
+  srand(randSeed < 0 ? time(NULL) : randSeed);
   for(size_t i = 0;i < repeat;++i) {
     CreateManagers();
     GenAndSolve();
