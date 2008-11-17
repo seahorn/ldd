@@ -91,6 +91,38 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
 
   /*** 
    *** TDD Simplification
+   *** (v -> f, g) == (v -> cuddT(f), g)  
+   ***              if cons(s) is_stronger_cons than cons(f)
+   ***/
+
+  /* XXX It is not clear that this simplification belongs to
+     tdd_unique_inter. We might require the callers to perform the
+     check. 
+
+     The reasoning is that the efficiency of tdd_unique_inter is very
+     important. The check is only needed for some methods. Many TDD
+     functions that traverse the TDD, like tdd_and_recur, already
+     apply the check internally, as part of the traversal algorithm.
+
+     However, currently tdd_ite requires the check. For now, this is
+     safer.
+   */
+
+  if (f != DD_ONE(CUDD))
+    {
+      lincons_t vCons = tdd->ddVars [v->index];
+      lincons_t fCons = tdd->ddVars [f->index];
+      
+      /* if vCons implies fCons, then fCons is redundant! */
+      if (THEORY->is_stronger_cons (vCons, fCons))
+	f = cuddT (f); /* by assumption, no need to check cons of cuddT(f) */
+    }
+  
+
+
+
+  /*** 
+   *** TDD Simplification
    ***  (v -> f, (g->x, y)) == (g->x,y)  if x == f AND 
                                          cons(v) is_stronger_cons cons(g)
    ***                          
@@ -144,6 +176,8 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
 	}
     }
 #endif
+
+
 
   res = cuddUniqueInter (CUDD, index, f, g);
   if (res == NULL)
