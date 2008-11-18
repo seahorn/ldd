@@ -807,11 +807,14 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
 
   if (f == zero) return zero;
 
-  if (THEORY->qelim_solve (qelimCtx) == zero) 
-    {
-/*       fprintf (stderr, "EARLY EXIT\n"); */
-      return zero;
-    }
+  /* XXX uqly way to check for satisfiability */
+  res = THEORY->qelim_solve (qelimCtx);
+  if (res == zero) return zero;
+  
+  /* if res is not zero, need to clean it properly by first 
+     getting a reference to it, and then dropping it */
+  cuddRef (res);
+  Cudd_IterDerefBdd (manager, res);
   
 
   /* deconstruct f into the root constraint and cofactors */
