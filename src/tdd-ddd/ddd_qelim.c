@@ -177,7 +177,7 @@ ddd_qelim_solve (qelim_context_t* context)
     int i,j;
 
 
-    Cudd_Ref (res);
+    cuddRef (res);
     
     for (i = 0; i < dbm->width; i++)
       {
@@ -212,13 +212,13 @@ ddd_qelim_solve (qelim_context_t* context)
 	    
 	    /* create tdd for the constraint */
 	    tmp = ctx->tdd->theory->to_tdd (ctx->tdd, (lincons_t) (&cons));
-	    Cudd_Ref (tmp);
+	    cuddRef (tmp);
 	    
 	    /* Accumulate into result */
 	    tmp2 = tdd_and (ctx->tdd, res, tmp);
-	    Cudd_Ref (tmp2);
-	    Cudd_RecursiveDeref (ctx->tdd->cudd, tmp);
-	    Cudd_RecursiveDeref (ctx->tdd->cudd, res);
+	    cuddRef (tmp2);
+	    Cudd_IterDerefBdd (ctx->tdd->cudd, tmp);
+	    Cudd_IterDerefBdd (ctx->tdd->cudd, res);
 
 	    res = tmp2;
 	  }
