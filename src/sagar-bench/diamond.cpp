@@ -40,6 +40,7 @@ size_t disj = 1;
 size_t varNum = 1;
 int predNum = 0;
 int randSeed = -1;
+FILE *smtOut = NULL;
 bool unsat = false;
 bool qelim2 = false;
 bool compInv = false;
@@ -82,6 +83,7 @@ void Usage(char *cmd)
   printf("\t--vars <K> : use K pairs of fresh variables at each step\n");
   printf("\t--preds <K> : use K predicates\n");
   printf("\t--srand <K> : use randon seed K\n");
+  printf("\t--smtOut <K> : output SMT formula to file K\n");
   printf("\t--unsat : generate unsatisfiable constraints\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
   printf("\t--oct : use octagon theory\n");
@@ -137,6 +139,13 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--srand") && i < argc-1) {
       randSeed = atoi(argv[++i]);
     }
+    else if(!strcmp(argv[i],"--smtOut") && i < argc-1) {
+      smtOut = fopen(argv[++i],"w");
+      if(smtOut == NULL) {
+        printf("ERROR: could not open SMT output file %s!\n",argv[i]);
+        exit(1);
+      }
+    }
     else if(!strcmp(argv[i],"--unsat")) unsat = true;
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
     else if(!strcmp(argv[i],"--oct")) tddType = DIA_OCT;
@@ -155,7 +164,7 @@ void ProcessInputs(int argc,char *argv[])
   //sanity check on various option values
   if(depth <= 0) {
     printf("ERROR: depth must be greater than zero!\n");
-    exit(0);
+    exit(1);
   }
   if(repeat > 1000) {
     printf("ERROR: can only repeat at most 1000 times!\n");
