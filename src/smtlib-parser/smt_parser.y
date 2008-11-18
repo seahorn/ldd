@@ -1,9 +1,10 @@
 %{
   #include <stdio.h>
 
- #define YYERROR_VERBOSE
+  #define YYERROR_VERBOSE
 
   void yyerror (char *s);
+  int yylex (void);
 
 %}
 

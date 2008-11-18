@@ -10,6 +10,8 @@
  void yyerror (char*);
 %}
 
+%option nounput
+
 %%
 
 "exists" { return EXISTS_TOK;}
