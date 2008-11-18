@@ -40,10 +40,10 @@ typedef struct dbm
 } dbm_t;
   
 
-/* Access cel (i,j) of the DBM */
+/* Access directly the array cel (i,j) of the DBM */
 #define DBM_CEL(dbm,i,j) (dbm)->data[(i)*(dbm)->width + (j)]
 
-/* Access dimension (i, j) of the DBM */
+/* Access dimension (i, j) of the DBM. Accounts for the mindim of a dbm */
 #define DBM_DIM(dbm,i,j) DBM_CEL(dbm, (i)-(dbm)->mindim, (j)-(dbm)->mindim)
 
 

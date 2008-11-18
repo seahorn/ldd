@@ -189,6 +189,9 @@ ddd_qelim_solve (qelim_context_t* context)
 	    ddd_cons_t cons;
 	    tdd_node *tmp, *tmp2;
 	    
+	    /* ignore the diagonal */
+	    if (i == j) continue;
+	    
 	    /* check that the variable is not quantified out */
 	    if (ctx->vars [dbm->mindim + j]) continue;
 	    
@@ -204,7 +207,7 @@ ddd_qelim_solve (qelim_context_t* context)
 	    cons.term.var1 = dbm->mindim + i;
 	    cons.term.var2 = dbm->mindim + j;
 	    cons.cst.type = DDD_INT;
-	    cons.cst.int_val = DBM_DIM (dbm, i, j).val;
+	    cons.cst.int_val = DBM_CEL (dbm, i, j).val;
 	    cons.strict = 0;
 	    
 	    /* create tdd for the constraint */
