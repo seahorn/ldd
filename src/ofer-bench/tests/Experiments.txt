@@ -1,0 +1,27 @@
+qelim1
+
+Name		MAX		time		res
+ta01		20		5s		false
+ta50		20		2m34s		false
+ta70		20		19m40s		false
+ofer2		11		6s		true
+ofer2		10		7s		false
+ofer1		10		0s		false
+ofer1		<190		0s		false
+ofer1		190		.045s		false
+ofer1		230		??		??
+
+
+
+qelim2
+ofer1		230		45s		false
+ta01		200		??		??
+ta81		440		3m59s		true
+ta82		386		0s		false
+ta82		458/459		3s		false/true (qelim2, 11/17/08)
+
+ofer1		349/350				false/true
+ofer1           443/444                         false/true  (qelim2, 11/17/08)
+
+ta01 1220 -- UNSAT
+ta01 1240 -- SAT
