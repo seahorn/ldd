@@ -68,6 +68,31 @@ int write_tdd (char* filename, DdManager *cudd, tdd_node *f, char** inames)
 		      
  */
 
+void usage ()
+{
+  printf ("jobsolve [-e mode] [-m max] "
+	  "[-r res] [-l lim] [-o order] [-v] problem\n");
+
+  printf ("  -e mode\texistential quantification mode\n "
+	  "\t\t 1 tdd_exist_abstract,\n\t\t 2 tdd_exist_abstract_v2\n"
+	  "\t\t 3 tdd_exist_abstract_v2 one var at a time\n");
+
+  printf ("  -m max\tthe maximum for the job schedule\n");
+
+  printf ("  -r res\texpected result (0 FALSE, 1 TRUE, 2 ANYTHING)\n");
+
+  printf ("  -l lim\tmaximum number of variables to eliminate\n");
+
+  printf ("  -o order\tvariable elimination order\n"
+	  "\t\t 1 ascending starting from var 1\n"
+	  "\t\t 2 descending starting from last var\n"
+	  "\t\t 3 ascending starting from var 0\n");
+
+  printf ("  -v\tverbose debug mode\n");	  
+  printf (" problem\tproblem file\n");
+  abort ();
+}
+
 int main (int argc, char** argv)
 {
   size_t size;
@@ -106,21 +131,28 @@ int main (int argc, char** argv)
 	  break;
 	  
 	case '?':
+	  usage ();
 	  return 1;
 	default:
-	  abort ();
+	  usage ();
 	}      
     }
 
   if (optind >= argc)
     {
       fprintf (stderr, "No benchmark file specified\n");
-      abort ();
+      usage ();
     }
   
 
   printf ("Starting with max_bench=%d with %s\n", bench_max, argv[optind]);
   yyin = fopen (argv[optind], "r");
+  if (yyin == NULL)
+    {
+      perror ("Can't open problem file");
+      abort ();
+    }
+  
 
   //  yydebug = 1;
   yyparse ();
