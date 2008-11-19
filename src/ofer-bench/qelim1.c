@@ -15,6 +15,21 @@ extern  theory_t *t;
 extern int bench_max;
 extern tdd_node* bench;
 
+
+
+
+int write_tdd (char* filename, DdManager *cudd, tdd_node *f, char** inames)
+{
+  FILE* file;
+  int res;
+  
+  file = fopen (filename, "w+");
+  res = Cudd_DumpDaVinci(cudd, 1, &f, inames, NULL, file);
+  fclose (file);
+  return res;
+  
+}
+
 int main (int argc, char** argv)
 {
   size_t size;
@@ -39,7 +54,13 @@ int main (int argc, char** argv)
   //t->theory_debug_dump (t);
 
   size = t->num_of_vars (t);
-  printf ("Using %d DD variables\n", size);
+  printf ("Using %d numeric variables\n", size);
+
+  /* 10 = whatever */
+/*   Cudd_ReduceHeap (cudd, CUDD_REORDER_SIFT, 10); */
+/*   printf ("After reducing heap the size is %d\n", */
+/* 	  Cudd_DagSize (bench)); */
+
 
 
 /*   fprintf (stdout, "Enabling dynamic reordering\n"); */
@@ -49,10 +70,19 @@ int main (int argc, char** argv)
   printf ("Starting existential quantification\n");
   res = bench;
 
-  //for (i = size - 1 ; i >= 0; i--)
-  for (i = 1; i < size ; i++)
+
+  
+/*   printf ("Writing initial diagram:\n"); */
+/*   Cudd_PrintMinterm (cudd, res); */
+/*   write_tdd ("initial.dot", cudd, res, NULL); */
+
+
+  for (i = size - 1 ; i >= 0; i--)
+    //for (i = 1; i < size ; i++)
     {
       tdd_node* tmp;
+/*       char name[20]; */
+
       /* Only run quantification when needed */
       if (Cudd_IsConstant (res)) break;
 
@@ -62,12 +92,22 @@ int main (int argc, char** argv)
       res = tmp;
       printf ("After quantifying x%d the size is %d\n",
 	      i, Cudd_DagSize (res));
+
+      printf ("Sanity check:\n");
+      tdd_sanity_check (tdd);
+
+
+/*       printf ("Writting current result\n"); */
+/* /\*       Cudd_PrintMinterm (cudd, res); *\/ */
+/*       snprintf (name, 20, "qelim-%d.dot", i); */
+/*       write_tdd (name, cudd, res, NULL); */
+      
       //tdd_manager_debug_dump (tdd);
 
       /* 10 = whatever */
-      Cudd_ReduceHeap (cudd, CUDD_REORDER_SIFT, 10);
-      printf ("After reducing heap the size is %d\n",
-	      Cudd_DagSize (res));
+/*       Cudd_ReduceHeap (cudd, CUDD_REORDER_SIFT, 10); */
+/*       printf ("After reducing heap the size is %d\n", */
+/* 	      Cudd_DagSize (res)); */
 
 
       t->theory_debug_dump (tdd);
@@ -85,8 +125,10 @@ int main (int argc, char** argv)
   else
     {
       printf ("\n");
-      Cudd_PrintMinterm (cudd, res); 
+      Cudd_PrintMinterm (cudd, res);
     }
+
+  util_print_cpu_stats (stderr);
   
   return 0;
 }
