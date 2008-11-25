@@ -1,0 +1,25 @@
+SMT-LIB parser/checker version 3.0
+
+Designed and implemented by  
+  George Hagen, University of Iowa,
+  Daniele Zucchelli, University of Milan, 
+  Cesare Tinelli, University of Iowa
+
+This library is a simple parser for the smt-lib format.  It checks 
+most of the requirements listed in the smt-lib document for the
+current set of smt-lib logics.
+
+See http://combination.cs.uiowa.edu/smtlib for more information.
+
+The parser/checker is written in ocaml and compiling and running it requires 
+a local ocaml installation.  See http://www.ocaml.org.
+
+For installation and execution instructions, see the INSTALL file.
+
+For full attribution see the AUTHORS file.
+
+For licensing information, please see the LICENSE file.
+
+For additional information on the parser's implementation, see the
+overview.txt and logics.txt files.
+

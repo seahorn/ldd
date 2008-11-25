@@ -1,0 +1,52 @@
+SMT-LIB PARSER 3.0 OVERVIEW
+
+The SMT-LIB parser is written in Ocaml and parses benchmark files in SMT-
+LIB format, version 1.2.  It checks most of the requirements listed in
+the SMT-LIB document for the current set of SMT-LIB logics. This new
+version includes support for indexed symbols, as well as constraints
+concerning those indices, and human-readable sources describing the
+current logics supported by the SMT-LIB benchmark archive.
+
+Information and downloads concerning Ocaml can be found at
+http://www.ocaml.org
+
+Information on the SMT-LIB format and benchmarks can be found at
+http://goedel.cs.uiowa.edu/smtlib/
+
+See the overview.txt file for a general description of the 
+implementation and logics.txt file for details concerning the logic 
+description files and how to add support for new logics.
+
+===================
+
+Installation:
+
+The parser/checker is written in Ocaml and compiling and running it 
+requires a local Ocaml installation.  See http://www.ocaml.org.
+
+To compile, type "make".  The executable smtbench will be created
+in the current directory.
+
+To create ocaml html documentation for the source (to be created in 
+docs/), type "make htdocs".
+
+===================
+
+Running the example parser wrapper:
+
+This distribution contains a simple pretty-printer wrapper as a sample
+application that parses a SMT-LIB benchmark, checks it for errors, and 
+prints out the SMT-LIB version of the benchmark's abstract syntax tree.
+
+After compiling the binary, you should be able to run the sample wrapper
+with "smtbench <filename>", where <filename> is the name of a SMT-LIB
+benchmark file.
+
+If the parse is successful, it should re-print the benchmark in SMT
+format.
+
+Note that it is a known problem that a stack overflow may occur when
+parsing very large files.  If this happens, try increasing your stack
+size ("ulimit -s <newsize>" is the usual command in Linux) and re-parsing
+the benchmark.
+

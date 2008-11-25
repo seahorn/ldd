@@ -1,0 +1,218 @@
+LOGICS
+
+This document describes the details of the SMT-LIB parser's
+logic files and how to add a new logic to the parser.
+
+New Ocaml types used here are defined in types.ml.
+
+Unless otherwise noted, all strings are case sensitive.
+
+
+====================
+Logic Classes:
+
+Each logic the parser accepts is defined as a subclass of smt_logic.
+Smt_logic contains 3 instance variables that define a logic's sorts,
+default sort for numerals, and function signatures. It also contains
+accessor functions for these instance variables, and two private methods
+to import data from another logic class.
+
+All subclasses of Smt_logic also have a initializer method that is used
+to update the instance variables with the new logic's particular
+information.
+
+Instance variables:
+
+ * theory_sorts: sort_type list
+   This is the list of all new sorts specific to the logic's theory
+   
+ * numeral_sort: sort_type * index_values
+   This is the default sort type that numerals will be interpreted as by
+   the parser, as well the default index value(s) they will be assigned.
+   Floading point numerals are always interpreted as Real, while bare
+   numerals and bv* numerals will be interpreted as this type. These
+   default index_values will be applied if the benchmark does not specify
+   a different set of indices to the numeral.  (Certain bitvector
+   numerals had their type parameters (bit size) defined by their
+   length.)
+   
+ * theory_funs: typed_symbol list
+   This is the list of the signatures of all interpreted function symbols
+   in the logic's theory.  Funs are functions whose symbols do not have
+   indices, CFuns are functions whose symbols have indices, possibly
+   constrained, and ExFuns are extensible functions, having unindexed
+   symbols and any number of parameters all of the same type.
+
+The parser adds signatures for the symbols {=, distinct, ite,
+if_then_else} for all sorts of a logic (including user-defined sorts).
+These should not be redefined in the logic file.  Also note that
+smt_logic defines the basic Boolean logic of the parser, and this is
+inherited by its subclasses. Therefore in subclasses, the instance
+variables theory_sorts and theory_funs should be extended.
+
+
+====================
+Importing Theories:
+
+It is possible to define a logic as an extension of one or more other
+logics.  To do this, use the self#import_sorts and self#import_funs
+methods in the new logic's initializer.  Both methods take an instance of
+the source logic and a (possibly empty) list of sort substitutions and
+include the source's (sorts or function signatures) in the current
+theory, without duplication.
+
+ * import_sort logic_in subs
+   logic_smt * (sort_type * sort_type) list
+   Given a source and set of substitutions, add a (possibly rewritten)
+   copy of the source logic's sorts to this logic.  Logic_in is a source
+   logic class instance, and subs is a list of pairs (A,B), where every
+   instance of sort A in the source sort list is replaced with sort B.
+
+ * import_funs logic_in subs
+   logic_smt * (sort_type * sort_type) list
+   Given a source and set of substitutions, add a (possibly rewritten)
+   copy of the source logic's function signatures to this logic. Logic_in
+   is a source logic class instance, and subs is a list of pairs (A,B),
+   where every instance of sort A in the source function signature list
+   is replaced with sort B.
+
+A simple example of importing can be seen in logic_QF_UFIDL: it is
+essentially identical to logic_QF_IDL, so its initializer defines the
+default numeral type and creates an instance of logic_QF_IDL and only
+imports its sorts and funs.
+
+logic_AUFNIRA is the most complicated example of importing in the
+supplied logics.  It combines the theories of ILA, RLA, and extensible
+arrays, so it creates instances of the appropriate logics and imports
+their sorts and funs.  However, the specific theory of arrays used is the
+theory of arrays of arrays of reals (indexed by integers). Therefore we
+import from the array logic instance twice, once using the substitution:
+     Array   --> Array1
+     Index   --> Int
+     Element --> Real
+and once using the substitution
+     Array   --> Array2
+     Index   --> Int
+     Element --> Array1
+Since the substitution is applied to the sorts as well as the funs, the
+new AUFNIRA logic will not contain the Array, Index, or Element sorts.
+
+logic_QF_UFBV32 (32 bit bitvectors) demonstrates a means of extending
+an imported logic with additional funs.  It also is the only supplied
+logic to use a default numeral index (so bv2 is interpreted as bv2[32],
+of sort BitVec(1)).
+
+
+====================
+Function signature definitions:
+
+Functions (predicates are treated as function with return type Bool) can
+be defined as one of three types:
+
+ * Fun of sym_type * sort_type list * sort_type
+   Functions whose symbols and sorts do not have indices, and that have a 
+   fixed number of parameters.  For Fun(f,ps,r), f is the symbol string 
+   of the function, ps is the ordered list of parameter sorts for the 
+   function, and r is the return sort for the function.  If the parameter
+   or return sorts have indices, use a CFun definition instead.
+
+ * CFun of sym_type * (sort_type list) * sort_type * 
+     (isort_term list) * (isort_constr list) 
+   Functions with indexed symbols or indexed sorts, and a fixed number of 
+   parameters.  This definition type allows constraints on the indices of 
+   its parameter and return sorts.  For CFun(f,ps,r,rc,pc), f is the 
+   symbol string of the function, ps is the ordered list of parameter 
+   sorts for the function, and r is the return sort for the function.  rc 
+   and pc are constraints on the indexes of the symbols appearing in a 
+   function call instance and reference the function symbol's index, as 
+   well as the indices of the parameter and return sorts.  See below for 
+   more on index constraints.
+
+ * ExFun of sym_type * sort_type * sort_type
+   This allows a type of syntactic sugar: functions without indexed
+   symbols or sorts, and with a variable number of parameters.  Examples
+   are Boolean "or", as well as "+" in some logics.  For ExFun(f,p,r), f 
+   is the symbol string of the function, p is sort of all parameters of 
+   the function, and r is the return sort for the function. 
+
+Fun and ExFun definitions assume no function symbols or sorts are indexed, 
+and apply no significance to the values of any indices.
+
+
+====================
+Index Constraints
+
+Certain logics involve symbols with indices that have some interpreted
+significance.  In order to type check these logics, it is necessary to
+define constraints for these indices.
+
+These constraints are defined in types.ml as types isort_term and 
+isort_constr. Most are self explanatory once you understand how things 
+are referenced.  (Note positions begin at 0.)
+
+The function symbol itself may have indices, such as extract[8:1]. These
+indices are referred to by Fvar(x), where x is the position of the index
+in the list.  Here Fvar(0) = 8, and Fvar(1) = 1.
+
+The parameter (domain) sorts may also have indices, such as BitVec[16].
+These indices are referred to by Dvar(x,y), where x is the position of
+the parameter in the list of parameters, and y is the position of the
+index in the sort's index list.  So if we have and instance of
+bvadd(A,B), with A having sort BitVec[8] and B having Bitvec[16],
+Dvar(0,0) refers to the first index of the first parameter (A): in this
+case Dvar(0,0) = 8.  Dvar(1,0) refers to the first index of parameter B:
+here Dvar(1,0) = 16.
+
+For a function signature CFun(f,ps,r,rc,pc), the return sort of a
+function (r), may also have one or more indices.  These are defined, in
+order, by the isort_terms listed in (rc).  If (r) is a sort that contains
+indices, all index values must be specified in (rc).  If (r) is a sort
+with 0 indices, (rc) should be empty.
+
+Finally there may be certain constraints on the indices of the parameter
+sorts.  These constraints are listed in (pc), which may be empty.
+
+As an example, the logic QF_BV includes:
+
+  let zero = Const 0
+  let one = Const 1
+  let bv = ISort ("BitVec",1)
+  let m = Dvar(0,0)
+  let i = Fvar(0)
+  let j = Fvar(1)
+  ...
+  CFun(ISym ("extract",2),
+             [bv],
+             bv,
+             [Plus(Minus(i,z),one)],
+             [Geq(m,zero);Geq(i,j);Geq(j,zero)]);
+
+The signature for the function extract, then is read as:
+This is a function with a symbol containing 2 indices (extract[i:j]),
+a single parameter of sort BitVec, having 1 index, [m],
+and a return sort BitVec, having 1 index.
+The index of the return sort has a value equal to (i-j+1).
+The constraints on these indices are that m >= 0, and index i >= j >= 0.
+
+
+====================
+Adding a New Logic:
+
+First it is necessary to create a new logic_*.ml file, as described
+above.
+
+Next, a line must be added to the signature.ml source file: the new logic
+must be added to the assoc_logic_list value. This list consists of
+(string * logic_smt) pairs, where the string is the symbol for the logic 
+the parser is to recognize.  This string should be in all capitol 
+letters, and is _not_ case sensitive in the parser.  The logic_smt in the
+pair is an instance of the new logic object.
+
+Finally you should add the new class source file to the Makefiles, making
+sure it appears after any logics it imports.
+
+(Note that creation of new general classes of indexed symbols may require
+modifications to the smt_parser.mly and smt_lever.mll files as well.
+This is left as an exercise to those interested; look at how the various
+bitvector numerals such as bv45[8] and bvhex5d are defined and parsed.)
+

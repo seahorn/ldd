@@ -1,0 +1,110 @@
+SMT-LIB PARSER 3.0 OVERVIEW
+
+The SMT-LIB parser is written in Ocaml and parses benchmark files in SMT-
+LIB format, version 1.2.  It checks most of the requirements listed in
+the SMT-LIB document for the current set of SMT-LIB logics. This new
+version includes support for indexed symbols, as well as constraints
+concerning those indices, and human-readable sources describing the
+current logics supported by the SMT-LIB benchmark archive.
+
+Information and downloads concerning Ocaml can be found at
+http://www.ocaml.org
+
+Information on the SMT-LIB format and benchmarks can be found at
+http://goedel.cs.uiowa.edu/smtlib/
+
+See the logics.txt file for details concerning the logic description
+files and how to add support for new logics.
+
+===================
+
+Basic operation overview:
+
+The parser begins reading the benchmark file, storing benchmark
+attributes as it encounters them, as abstract syntax trees (assumptions
+and the formula), sort declarations, function signatures, or strings (all
+other attributes).
+
+As soon as the logic: attribute is read, the parser loads an appropriate
+logic definition (in the form of an object), containing the base sorts
+and functions of the logic. These definitions are translated into an
+internal representation and stored. As extra sorts and functions are
+declared, they are added to the existing store.
+
+Any time a sort is stored, the parser generates declarations for {=,
+distinct, ite} for that sort, and stores them.
+
+As the user declares extrasorts (in the benchmark), they are checked to
+make sure none are redeclarations.
+
+As the user declares extrafuns, they are checked to make sure that they 
+have different names or domains than any previous declared function.
+Polymorphic functions are allowed as long this requirement is met. 
+
+As formulas and assumptions are parsed, they are type checked against the
+declared functions, including any constraints on indexed symbols or
+sorts. A type mismatch or use of undeclared function symbol or signature
+will result in a parse error.
+
+As a formula or assumption is parsed and type checked, it is translated
+into an abstract syntax tree (AST).  Once the formula is completely
+parsed, it is stored.
+
+When the entire benchmark has been processed, the AST is returned.  In 
+the example application, the AST is then processed by a pretty-printer 
+that outputs it back in SMT-LIB text format.
+
+===================
+
+Modules:
+
+types.ml           -- global type definitions
+tables.ml          -- tables to store various information
+printing.ml        -- SMT-LIB pretty-printer
+eval.ml            -- index constraints
+support.ml         -- typechecking and support functions
+Logics/logic_*.ml  -- logic definitions
+signature.ml       -- functions to handle logic definitions
+smt_lexer.mll      -- lexer definition
+smt_parser.mly     -- parser definition
+readbench.ml       -- simple wrapper application
+
+===================
+
+Assumptions made by the parser:
+
+Floating point numerals (5.4 or 0.0) are always of type Real.
+
+Bare numerals and bitvector numerals have a default type defined in the 
+current logic.
+
+The logic: benchmark attribute appears before any formulas or user
+declarations in the benchmark.  Declarations occur before they are used
+in a formula.
+
+Any annotations are preserved as strings, to be passed on to an
+appropriate solver and interpreted as necessary.
+
+Predicates are functions with a return type of Bool.
+
+There is exactly 1 formula: attribute in the benchmark.
+
+One benchmark will be parsed per execution.
+
+===================
+
+Other notes:
+
+The parser does not check that the input is actually in the language of 
+the logic, rather it checks the signature (not shape) of the logic.  An 
+example of this is that the parser always accepts quantified formulas, 
+even if the logic does not.  The parser also accepts all numerals 
+(assuming a typing conflict is not encountered), even if the logic 
+specifically only accepts, say, the constants 0 and 1.
+
+Redeclaration is not allowed, and no two function declarations may have
+the same name and same domain types.
+
+===================
+
+
