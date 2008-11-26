@@ -5,9 +5,14 @@
 */
 
 %{
- #include "smt_parser.tab.h"
+  #include <string.h>
+  #include "smt_parser.tab.h"
+  
+  /** function needed by the lexer */
+  void yyerror (char*);
 
- void yyerror (char*);
+  /** buffer used to store the last token on the stack */
+  char *lastTok = NULL;
 %}
 
 %option nounput
@@ -51,15 +56,24 @@
 "language" {return LANGUAGE_TOK;}
 ";"[^"\n"]*"\n"  /* do nothing */;
 "\n"  /* do nothing */;
-[=<>&@#\\+\-*/%|~]+ {return AR_SYMB;} 
-[0-9]+"."[0-9]+ {return RATIONAL_TOK;}
-[0-9]+ {return NUMERAL_TOK;}
+"<" { return LT_TOK; }
+"<=" { return LE_TOK; }
+"*" { return STAR_TOK; }
+"~" { return NEG_TOK; }
+"+" { return PLUS_TOK; }
+"-" { return MINUS_TOK; }
+[=<>&@#\\+\-*/%|~]+ {lastTok = strdup(yytext); return AR_SYMB;} 
+[0-9]+"."[0-9]+ {lastTok = strdup(yytext); return RATIONAL_TOK;}
+[0-9]+ {lastTok = strdup(yytext); return NUMERAL_TOK;}
 "bv"[0-9]+ {return BVNUMERAL_TOK;}
 "bvbin"[0-1]+ {return BVBINNUMERAL_TOK;}
 "bvhex"[0-9A-F]+ {return BVHEXNUMERAL_TOK;}
-"?"[a-zA-Z][a-zA-Z._'0-9]* {return VAR_TOK;}
-"$"[a-zA-Z][a-zA-Z._'0-9]* {return FVAR_TOK;}
-[a-zA-Z][a-zA-Z._\\0-9]* {return SYM_TOK;}
+"?"[a-zA-Z][a-zA-Z._'0-9]* {lastTok = strdup(yytext); return VAR_TOK;}
+"$"[a-zA-Z][a-zA-Z._'0-9]* {lastTok = strdup(yytext); return FVAR_TOK;}
+"and" { return AND_TOK;}
+"or" { return OR_TOK;}
+"not" { return NOT_TOK;}
+[a-zA-Z][a-zA-Z._\\0-9]* {lastTok = strdup(yytext); return SYM_TOK;}
 [ \t\r] {};
 
 
