@@ -184,7 +184,7 @@ quant_symb:
 an_terms:
 /* base case */
 an_term {
-  $$ = malloc(2 * sizeof(char*));
+  $$ = malloc(2 * sizeof(smt_formula_t*));
   $$[0] = $1;
   $$[1] = NULL;
 }
@@ -192,7 +192,7 @@ an_term {
 | an_terms an_term {
   int i = 0,j = 0;
   while($1[i]) ++i;
-  $$ = malloc((i + 2) * sizeof(char*));
+  $$ = malloc((i + 2) * sizeof(smt_formula_t*));
   for(;j < i;++j) $$[j] = $1[j];
   $$[i] = $2;
   $$[i+1] = NULL;
@@ -210,61 +210,36 @@ an_term:
   tvpi_cons { $$ = $1; }
   /* boolean */
 | LPAREN_TOK AND_TOK an_terms RPAREN_TOK {
-  assert($3[0] && $3[1]);
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
   $$->type = AND;
-  $$->lhs = $3[0];
-  $$->rhs = $3[1];
-  int i = 2;
-  while($3[i]) {
-    smt_formula_t *x = malloc(sizeof(smt_formula_t));
-    memset(x,0,sizeof(smt_formula_t));
-    x->type = AND;
-    x->lhs = $$;
-    x->rhs = $3[i++];
-    $$ = x;
-  }
-  free($3);
+  $$->subs = $3;
 }
 | LPAREN_TOK OR_TOK an_terms RPAREN_TOK {
-  assert($3[0] && $3[1]);
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
   $$->type = OR;
-  $$->lhs = $3[0];
-  $$->rhs = $3[1];
-  int i = 2;
-  while($3[i]) {
-    smt_formula_t *x = malloc(sizeof(smt_formula_t));
-    memset(x,0,sizeof(smt_formula_t));
-    x->type = OR;
-    x->lhs = $$;
-    x->rhs = $3[i++];
-    $$ = x;
-  }
-  free($3);
+  $$->subs = $3;
 }
-| LPAREN_TOK NOT_TOK an_term RPAREN_TOK {
+| LPAREN_TOK NOT_TOK an_terms RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
   $$->type = NOT;
-  $$->lhs = $3;
-  $$->rhs = NULL;
+  $$->subs = $3;
 }
   /* quantify */
-| LPAREN_TOK quant_symb quant_vars an_term annotations RPAREN_TOK {
+| LPAREN_TOK quant_symb quant_vars an_terms annotations RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
   $$->type = $2 ? FORALL : EXISTS;
-  $$->lhs = $4;
+  $$->subs = $4;
   $$->qVars = $3;
 }
-| LPAREN_TOK quant_symb quant_vars an_term RPAREN_TOK {
+| LPAREN_TOK quant_symb quant_vars an_terms RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
   $$->type = $2 ? FORALL : EXISTS;
-  $$->lhs = $4;
+  $$->subs = $4;
   $$->qVars = $3;
 }
   /* parenthesis */

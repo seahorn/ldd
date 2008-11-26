@@ -38,8 +38,9 @@ typedef struct smt_formula
   /** constraint -- this is NULL if type is not CONS */
   smt_cons_t *cons;
 
-  /** subformulas -- rhs is NULL if type is not AND or OR */
-  struct smt_formula *lhs,*rhs;
+  /** NULL-terminated array of sub-formulas. if there are no
+      sub-formulas, then subs = NULL.*/
+  struct smt_formula **subs;
 
   /**
    * NULL-terminated array of variables quantified out -- if type is
