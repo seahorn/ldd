@@ -63,7 +63,7 @@ void print_formula(FILE *out,smt_formula_t *f)
     for(;;) { 
       if(f->subs[i]) print_formula(out,f->subs[i++]); 
       else {
-        fprintf(out,") ");
+        fprintf(out,")");
         break;
       }
       if(f->subs[i]) fprintf(out," "); 

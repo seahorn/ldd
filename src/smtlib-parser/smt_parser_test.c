@@ -7,6 +7,7 @@ int main(void)
 {
   yyparse ();
   print_formula(stdout,smtFormula);
+  printf("\n");
   destroy_formula(smtFormula);
   return 0;
 }
