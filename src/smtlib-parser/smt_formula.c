@@ -116,14 +116,10 @@ void smt_print_formula(FILE *out,smt_formula_t *f)
     break;
   case SMT_EXISTS:
   case SMT_FORALL:
-    fprintf(out,"(%s (",f->type == SMT_EXISTS ? "exists" : "forall");
+    fprintf(out,"(%s ",f->type == SMT_EXISTS ? "exists" : "forall");
     for(;;) { 
-      if(f->qVars[i]) fprintf(out,"%s",f->qVars[i++]); 
-      else {
-        fprintf(out,") ");
-        break;
-      }
-      if(f->qVars[i]) fprintf(out," "); 
+      if(f->qVars[i]) fprintf(out,"(%s Int) ",f->qVars[i++]); 
+      else break;
     }
     smt_print_formula(out,f->subs[0]);
     fprintf(out,")");
