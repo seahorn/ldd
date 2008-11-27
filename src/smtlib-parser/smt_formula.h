@@ -50,11 +50,11 @@ typedef struct smt_formula
 } smt_formula_t;
 
 /** utility routines */
-smt_formula_t *create_cons(int c1,char *v1,int c2,char *v2,int s,int b);
-void destroy_cons(smt_cons_t *c);
-void destroy_formula(smt_formula_t *f);
-void print_cons(FILE *out,smt_cons_t *c);
-void print_formula(FILE *out,smt_formula_t *f);
+smt_formula_t *smt_create_cons(int c1,char *v1,int c2,char *v2,int s,int b);
+void smt_destroy_cons(smt_cons_t *c);
+void smt_destroy_formula(smt_formula_t *f);
+void smt_print_cons(FILE *out,smt_cons_t *c);
+void smt_print_formula(FILE *out,smt_formula_t *f);
 
 #ifdef __cplusplus
 }

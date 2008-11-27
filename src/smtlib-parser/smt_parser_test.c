@@ -6,9 +6,9 @@ extern smt_formula_t *smtFormula;
 int main(void)
 {
   yyparse ();
-  print_formula(stdout,smtFormula);
+  smt_print_formula(stdout,smtFormula);
   printf("\n");
-  destroy_formula(smtFormula);
+  smt_destroy_formula(smtFormula);
   return 0;
 }
 

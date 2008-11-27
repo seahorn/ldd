@@ -294,16 +294,8 @@ LPAREN_TOK LT_TOK
   RPAREN_TOK
   numeral 
 RPAREN_TOK {
-  $$ = malloc(sizeof(smt_formula_t));
-  memset($$,0,sizeof(smt_formula_t));
-  $$->type = SMT_CONS;
-  $$->cons = malloc(sizeof(smt_cons_t));
-  $$->cons->coeffs[0] = $7;
-  $$->cons->coeffs[1] = $12;
-  $$->cons->vars[0] = $8;
-  $$->cons->vars[1] = $13;
-  $$->cons->strict = 1;
-  $$->cons->bound = $16;
+  $$ = smt_create_cons($7,$8,$12,$13,1,$16);
+  free($8); free($13);
 }
 | LPAREN_TOK LE_TOK 
     LPAREN_TOK PLUS_TOK 
@@ -312,16 +304,8 @@ RPAREN_TOK {
     RPAREN_TOK 
     numeral 
   RPAREN_TOK {
-  $$ = malloc(sizeof(smt_formula_t));
-  memset($$,0,sizeof(smt_formula_t));
-  $$->type = SMT_CONS;
-  $$->cons = malloc(sizeof(smt_cons_t));
-  $$->cons->coeffs[0] = $7;
-  $$->cons->coeffs[1] = $12;
-  $$->cons->vars[0] = $8;
-  $$->cons->vars[1] = $13;
-  $$->cons->strict = 0;
-  $$->cons->bound = $16;
+  $$ = smt_create_cons($7,$8,$12,$13,0,$16);
+  free($8); free($13);
 }
 ;
 
