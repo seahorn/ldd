@@ -71,11 +71,20 @@ void smt_destroy_formula(smt_formula_t *f)
  *********************************************************************/
 void smt_print_cons(FILE *out,smt_cons_t *c)
 {
-  fprintf(out,"((%d * %s) + (%d * %s) %s %d)",
-          c->coeffs[0],c->vars[0],
-          c->coeffs[1],c->vars[1],
+  char c1[64],c2[64],b[64];
+
+  if(c->coeffs[0] < 0) snprintf(c1,64,"(~ %d)",-(c->coeffs[0]));
+  else snprintf(c1,64,"%d",c->coeffs[0]);
+
+  if(c->coeffs[1] < 0) snprintf(c2,64,"(~ %d)",-(c->coeffs[1]));
+  else snprintf(c2,64,"%d",c->coeffs[1]);
+
+  if(c->bound < 0) snprintf(b,64,"(~ %d)",-(c->bound));
+  else snprintf(b,64,"%d",c->bound);
+
+  fprintf(out,"(%s (+ (* %s %s) (* %s %s)) %s)",
           c->strict ? "<" : "<=",
-          c->bound);
+          c1,c->vars[0],c2,c->vars[1],b);
 }
 
 /**********************************************************************
