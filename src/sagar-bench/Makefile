@@ -14,7 +14,7 @@ TESTLIBS = $(CUDD)/cudd/libcudd.a $(CUDD)/st/libst.a \
 
 all : $(BINS) 
 
-$(BINS) : $(TESTLIBS)
+$(BINS) : $(TESTLIBS) ../smtlib-parser/smt_formula.o
 
 %.d : %.c
 	$(CC) -MM $(CFLAGS) -c -o $@ $<

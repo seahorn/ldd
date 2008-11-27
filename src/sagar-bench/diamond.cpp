@@ -3,6 +3,8 @@
 #include <cstring>
 #include <cassert>
 #include <ctime>
+#include <string>
+using namespace std;
 
 //#define DEBUG
 
@@ -15,6 +17,7 @@
 #include "tdd-ddd.h"
 #include "tdd-oct.h"
 #include "tdd-tvpi.h"
+#include "smt_formula.h"
 
 /**
  * This program creates a set of constraints that correspond to a
@@ -40,7 +43,8 @@ size_t disj = 1;
 size_t varNum = 1;
 int predNum = 0;
 int randSeed = -1;
-FILE *smtOut = NULL;
+string smtOut;
+FILE *smtFile = NULL;
 bool unsat = false;
 bool qelim2 = false;
 bool compInv = false;
@@ -56,6 +60,19 @@ DdManager *cudd;
 tdd_manager *tdd;
 theory_t *theory;
 
+//we will use a pair of tdd_node and a smt_formula to compute our
+//result. if we are solving we will use the tdd_node part. otherwise,
+//if we are generating a SMT formula, we will use the smt_formula
+//part.
+class Formula
+{
+public:
+  tdd_node *node;
+  smt_formula_t *smtf;
+
+  Formula() { node = NULL; smtf = NULL; }
+};
+
 /*********************************************************************/
 //return a random integer between min (inclusive) and max (exclusive)
 /*********************************************************************/
@@ -63,7 +80,7 @@ int Rand(int min,int max)
 {
   if(min >= max) {
     printf("ERROR: can't generate a random number between %d and %d!!\n",min,max);
-    exit(0);
+    exit(1);
   }
   return min + (rand() % (max - min));
 }
@@ -140,11 +157,7 @@ void ProcessInputs(int argc,char *argv[])
       randSeed = atoi(argv[++i]);
     }
     else if(!strcmp(argv[i],"--smtOut") && i < argc-1) {
-      smtOut = fopen(argv[++i],"w");
-      if(smtOut == NULL) {
-        printf("ERROR: could not open SMT output file %s!\n",argv[i]);
-        exit(1);
-      }
+      smtOut = argv[++i];
     }
     else if(!strcmp(argv[i],"--unsat")) unsat = true;
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
@@ -240,13 +253,28 @@ void DestroyManagers()
   Cudd_Quit(cudd);
 }
 
+/*********************************************************************/
+//create the preamble for the SMT file
+/*********************************************************************/
+void CreateSMTPreamble(int argc,char *argv[])
+{
+  fprintf(smtFile,":source {\n");
+  for(int i = 0;i < argc;++i) {
+    fprintf(smtFile," %s",argv[i]);
+  }
+  fprintf(smtFile,"\n}\n:status %s\n",unsat ? "unsat" : "sat");
+  fprintf(smtFile,":category { crafted }\n:difficulty { 0 }\n");
+  fprintf(smtFile,":logic AUFLIA\n");
+}
+
 #ifdef DEBUG
 /*********************************************************************/
 //utility function to print a DD. assumes that the DD has a single
 //cube.
 /*********************************************************************/
-void PrintDD(tdd_node *node)
+void PrintDD(Formula form)
 {
+  tdd_node *node = form.node;
   Cudd_PrintMinterm (cudd, node);
   int *sup = Cudd_SupportIndex(cudd,node);
   //int ssize = Cudd_SupportSize(cudd,node);
@@ -274,28 +302,71 @@ void PrintDD(tdd_node *node)
 #endif
 
 /*********************************************************************/
+//get TRUE or FALSE formula. the argument indicates if the result is
+//TRUE. if we are generating SMT, then we return a NULL formula,
+//assuming that it will only be used as an identity later on.
+/*********************************************************************/
+Formula ConstFormula(bool isTrue)
+{
+  Formula res;
+  if(!smtFile) {
+    res.node = isTrue ? tdd_get_true(tdd) : tdd_get_false(tdd);
+    Cudd_Ref(res.node);
+  }
+  return res;
+}
+
+/*********************************************************************/
 //utility function for operating on tdd nodes. assumes that the
 //argument is refed. derefs the arguments and refs the result. if op
 //is "!", then the second argument should be NULL.
 /*********************************************************************/
-tdd_node *TddOp(tdd_node *arg1,tdd_node *arg2,char op)
+Formula FormOp(Formula arg1,Formula arg2,char op)
 {
-  tdd_node *res = NULL;
-  if(op == '&') {
-    res = tdd_and(tdd,arg1,arg2);
-  } else if(op == '|') {
-    res = tdd_or(tdd,arg1,arg2);
-  } else if(op == '^') {
-    res = tdd_xor(tdd,arg1,arg2);
-  } else if(op == '!') {
-    res = tdd_not(arg1);
-  } else {
-    printf("ERROR: illegal operator %c passed to TddOp!\n",op);
-    exit(1);
+  Formula res;
+  //if generating SMT file
+  if(smtFile) {
+    if(op == '&' || op == '|') {
+      //if arg1 is identity
+      if(!arg1.smtf) return arg2;
+      //if arg2 is identity
+      if(!arg2.smtf) return arg1;
+      //create AND or OR formula
+      res.smtf = (smt_formula_t*)malloc(sizeof(smt_formula_t));
+      memset(res.smtf,0,sizeof(smt_formula_t));
+      res.smtf->type = (op == '&') ? SMT_AND : SMT_OR;
+      res.smtf->subs = (smt_formula_t**)malloc(3 * sizeof(smt_formula_t*));
+      res.smtf->subs[0] = arg1.smtf;
+      res.smtf->subs[1] = arg2.smtf;
+      res.smtf->subs[2] = NULL;
+    } else if(op == '!') {
+      res.smtf = (smt_formula_t*)malloc(sizeof(smt_formula_t));
+      memset(res.smtf,0,sizeof(smt_formula_t));
+      res.smtf->type = SMT_NOT;
+      res.smtf->subs = (smt_formula_t**)malloc(2 * sizeof(smt_formula_t*));
+      res.smtf->subs[0] = arg1.smtf;
+      res.smtf->subs[1] = NULL;
+    } else {
+      printf("ERROR: illegal operator %c passed to FormOp!\n",op);
+      exit(1);
+    }    
   }
-  Cudd_Ref(res);  
-  Cudd_RecursiveDeref(cudd,arg1);
-  if(arg2) Cudd_RecursiveDeref(cudd,arg2);
+  //if solving formula
+  else {
+    if(op == '&') {
+      res.node = tdd_and(tdd,arg1.node,arg2.node);
+    } else if(op == '|') {
+      res.node = tdd_or(tdd,arg1.node,arg2.node);
+    } else if(op == '!') {
+      res.node = tdd_not(arg1.node);
+    } else {
+      printf("ERROR: illegal operator %c passed to FormOp!\n",op);
+      exit(1);
+    }
+    Cudd_Ref(res.node);  
+    Cudd_RecursiveDeref(cudd,arg1.node);
+    if(arg2.node) Cudd_RecursiveDeref(cudd,arg2.node);
+  }
   return res;
 }
 
@@ -303,20 +374,31 @@ tdd_node *TddOp(tdd_node *arg1,tdd_node *arg2,char op)
 //create and return the tdd_node for the constraint C1 * X + C2 * Y <=
 //K. refs the result.
 /*********************************************************************/
-tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
+Formula ConsToTdd(int c1,int x,int c2,int y,int k)
 {
 #ifdef DEBUG
   printf("adding %d * x%d + %d * x%d <= %d\n",c1,x,c2,y,k);
 #endif
-  constant_t cst = theory->create_int_cst(k);
-  memset(varSet,0,totalVarNum * sizeof(int));
-  varSet[x] = c1;
-  varSet[y] = c2;
-  linterm_t term = theory->create_linterm(varSet,totalVarNum);
-  lincons_t cons = theory->create_cons(term,0,cst);
-  tdd_node *res = to_tdd(tdd,cons);
-  theory->destroy_lincons(cons);
-  Cudd_Ref(res);
+  Formula res;
+  //if creating SMT file
+  if(smtFile) {
+    char v1[28],v2[28];
+    snprintf(v1,28,"x%d",x);
+    snprintf(v2,28,"x%d",y);
+    res.smtf = smt_create_cons(c1,v1,c2,v2,0,k);
+  }
+  //if solving
+  else {
+    constant_t cst = theory->create_int_cst(k);
+    memset(varSet,0,totalVarNum * sizeof(int));
+    varSet[x] = c1;
+    varSet[y] = c2;
+    linterm_t term = theory->create_linterm(varSet,totalVarNum);
+    lincons_t cons = theory->create_cons(term,0,cst);
+    res.node = to_tdd(tdd,cons);
+    theory->destroy_lincons(cons);
+    Cudd_Ref(res.node);
+  }
   return res;
 }
 
@@ -324,50 +406,70 @@ tdd_node *ConsToTdd(int c1,int x,int c2,int y,int k)
 //quantify out all variables from min to max-1 from node and return
 //the result. deref node.
 /*********************************************************************/
-tdd_node *Qelim(tdd_node *node,int min,int max)
+Formula Qelim(Formula form,int min,int max)
 {
-  //clear variable set
-  memset(varSet,0,totalVarNum * sizeof(int));
+  //if generating SMT file
+  if(smtFile) {
+    smt_formula_t *res = (smt_formula_t*)malloc(sizeof(smt_formula_t));
+    memset(res,0,sizeof(smt_formula_t));
+    res->type = SMT_EXISTS;
+    res->subs = (smt_formula_t**)malloc(2 * sizeof(smt_formula_t*));
+    res->subs[0] = form.smtf;
+    res->subs[1] = NULL;
+    res->qVars = (char**)malloc((max - min + 1) * sizeof(char*));
+    int i = 0;
+    char var[28];
+    for(;i < max - min;++i) {
+      snprintf(var,28,"x%d",min + i);
+      res->qVars[i] = strdup(var);
+    }
+    res->qVars[max - min] = NULL;
+    form.smtf = res;
+  }
+  else {
+    //clear variable set
+    memset(varSet,0,totalVarNum * sizeof(int));
 
-  //now quantify out elements if using qelim1, or set the elements of
-  //varSet to 1 if using qelim2
-  for(int i = min;i < max;++i) {
-    if(qelim2) varSet[i] = 1;
-    else {
+    //now quantify out elements if using qelim1, or set the elements of
+    //varSet to 1 if using qelim2
+    for(int i = min;i < max;++i) {
+      if(qelim2) varSet[i] = 1;
+      else {
 #ifdef DEBUG
-      printf("***** eliminating numeric variable %d ...\n",i);
+        printf("***** eliminating numeric variable %d ...\n",i);
 #endif
-      tdd_node *tmp = tdd_exist_abstract (tdd, node, i);
+        tdd_node *tmp = tdd_exist_abstract (tdd, form.node, i);
+        Cudd_Ref (tmp);
+        Cudd_RecursiveDeref (cudd, form.node);
+        form.node = tmp;
+#ifdef DEBUG
+        printf ("node is:\n");
+        PrintDD (form);
+#endif
+      }
+    }
+
+    //quantify, if using qelim2
+    if(qelim2) {
+      tdd_node *tmp = tdd_exist_abstract_v2 (tdd, form.node, varSet);
       Cudd_Ref (tmp);
-      Cudd_RecursiveDeref (cudd, node);
-      node = tmp;
-#ifdef DEBUG
-      printf ("node is:\n");
-      PrintDD (node);
-#endif
+      Cudd_RecursiveDeref (cudd, form.node);
+      form.node = tmp;
     }
   }
 
-  //quantify, if using qelim2
-  if(qelim2) {
-    tdd_node *tmp = tdd_exist_abstract_v2 (tdd, node, varSet);
-    Cudd_Ref (tmp);
-    Cudd_RecursiveDeref (cudd, node);
-    node = tmp;
-  }
-
-  //cleanup and return
-  return node;
+  //all done
+  return form;
 }
 
 /*********************************************************************/
 //create a tdd for X = Y
 /*********************************************************************/
-tdd_node *VarEq(int x,int y)
+Formula VarEq(int x,int y)
 {
-  tdd_node *node1 = ConsToTdd(1,x,-1,y,0);
-  tdd_node *node2 = ConsToTdd(1,y,-1,x,0);
-  return TddOp(node1,node2,'&');
+  Formula form1 = ConsToTdd(1,x,-1,y,0);
+  Formula form2 = ConsToTdd(1,y,-1,x,0);
+  return FormOp(form1,form2,'&');
 }
 
 /*********************************************************************/
@@ -451,7 +553,7 @@ int *Coeffs()
 //generate constraints that relate initial state variables or
 //predicates to initial transition relation variables
 /*********************************************************************/
-tdd_node *InitCons(int *preds)
+Formula InitCons(int *preds)
 {
 #ifdef DEBUG
   printf("generating INIT constraints ...\n");
@@ -461,8 +563,7 @@ tdd_node *InitCons(int *preds)
   int maxTransVar = 2 * varNum * depth;
 
   //the result to be computed
-  tdd_node *node = tdd_get_true(tdd);
-  Cudd_Ref(node);
+  Formula form = ConstFormula(true);
   
   //if we are using predicate abstraction -- this implies summary or
   //image computation
@@ -470,49 +571,58 @@ tdd_node *InitCons(int *preds)
     //generate predicate constraints
     for(int i = 0;i < predNum;++i) {
       int id = 5 * i;
-      tdd_node *pred1 = ConsToTdd(preds[id],preds[id + 1],preds[id + 2],
-                                  preds[id + 3],preds[id + 4]);
+      Formula pred11 = ConsToTdd(preds[id],preds[id + 1],preds[id + 2],
+                                 preds[id + 3],preds[id + 4]);
+      Formula pred12 = ConsToTdd(preds[id],preds[id + 1],preds[id + 2],
+                                 preds[id + 3],preds[id + 4]);
+      pred12 = FormOp(pred12,Formula(),'!');
       
       int v1 = maxTransVar + 2 * i;
       int v2 = v1 + 1;
-      tdd_node *pred2 = ConsToTdd(1,v1,-1,v2,0);
-      tdd_node *eq = TddOp(TddOp(pred1,pred2,'^'),NULL,'!');
-      node = TddOp(node,eq,'&');
+      Formula pred21 = ConsToTdd(1,v1,-1,v2,0);
+      Formula pred22 = ConsToTdd(1,v1,-1,v2,0);
+      pred22 = FormOp(pred22,Formula(),'!');
+
+      Formula eq = FormOp(FormOp(pred11,pred21,'&'),FormOp(pred12,pred22,'&'),'|');
+      form = FormOp(form,eq,'&');
     }
   }
   
 #ifdef DEBUG
   printf ("INIT node is:\n");
-  PrintDD(node);
+  PrintDD(form);
 #endif
 
   //all done
-  return node;
+  return form;
 }
 
 /*********************************************************************/
 //generate constraints that make the transition relation UNSAT
 /*********************************************************************/
-tdd_node *Unsat(int **bounds,int *coeffs,int d)
+Formula Unsat(int **bounds,int *coeffs,int d)
 {
 #ifdef DEBUG
   printf("generating UNSAT constraints ...\n");
 #endif
 
-  tdd_node *choice = tdd_get_false(tdd);
-  Cudd_Ref(choice);
+  Formula choice = ConstFormula(false);
+
   for(size_t vn1 = 0;vn1 < varNum;++vn1) {
     int v1 = 2 * (varNum * d + vn1);
     int v2 = v1 + 1;
-    tdd_node *unsat = tdd_get_true(tdd);
-    Cudd_Ref(unsat);
+
+    Formula unsat = ConstFormula(true);
+
     for(size_t vn2 = 0;vn2 < varNum;++vn2) {
       for(size_t i = 0;i < disj;++i) {
-        tdd_node *node1 = ConsToTdd(-coeffs[2 * vn2 + 1],v2,-coeffs[2 * vn2],v1,-bounds[vn2][i]-1);
-        unsat = TddOp(unsat,node1,'&');
+        Formula node1 = ConsToTdd(-coeffs[2 * vn2 + 1],v2,-coeffs[2 * vn2],v1,-bounds[vn2][i]-1);
+        unsat = FormOp(unsat,node1,'&');
       }
     }
-    choice = TddOp(choice,unsat,'|');
+
+    choice = FormOp(choice,unsat,'|');
+
   }
 
 #ifdef DEBUG
@@ -527,26 +637,24 @@ tdd_node *Unsat(int **bounds,int *coeffs,int d)
 //generate constraints that enforce the invariant at the start of the
 //transition relation
 /*********************************************************************/
-tdd_node *InitInv(int **bounds,int *coeffs,int d)
+Formula InitInv(int **bounds,int *coeffs,int d)
 {
-  tdd_node *node = tdd_get_true(tdd);
-  Cudd_Ref(node);
+  Formula node = ConstFormula(true);
 
   for(size_t vn = 0;vn < varNum;++vn) {
     int v1 = 2 * (varNum * d + vn);
     int v2 = v1 + 1;
 
     //generate the top-level disjunctive invariant 
-    tdd_node *choice = tdd_get_false(tdd);
-    Cudd_Ref(choice);
+    Formula choice = ConstFormula(false);
 
     for(size_t i = 0;i < disj;++i) {
       //create constraint v1 - v2 <= bound
-      tdd_node *node1 = ConsToTdd(coeffs[v1],v1,coeffs[v2],v2,bounds[vn][i]);
-      choice = TddOp(choice,node1,'|');
+      Formula node1 = ConsToTdd(coeffs[v1],v1,coeffs[v2],v2,bounds[vn][i]);
+      choice = FormOp(choice,node1,'|');
     }
 
-    node = TddOp(node,choice,'&');
+    node = FormOp(node,choice,'&');
   }
 #ifdef DEBUG
   printf ("INIT Invariant node is:\n");
@@ -560,10 +668,9 @@ tdd_node *InitInv(int **bounds,int *coeffs,int d)
 //unwind the transition relation by relating variables at step d to
 //those at step d-1 such that the invariant is maintained
 /*********************************************************************/
-tdd_node *Unwind(int d)
+Formula Unwind(int d)
 {
-  tdd_node *node = tdd_get_true(tdd);
-  Cudd_Ref(node);
+  Formula node = ConstFormula(true);
 
   for(size_t vn = 0;vn < varNum;++vn) {
     int v1 = 2 * (varNum * d + vn);
@@ -581,8 +688,7 @@ tdd_node *Unwind(int d)
     int pv2 = pv1 + 1;
 
     //disjunctive choices at the start of this diamond
-    tdd_node *choice = tdd_get_false(tdd);
-    Cudd_Ref(choice);
+    Formula choice = ConstFormula(false);
 
     //for DDD constraints
     if(consType == DIA_DDD) {
@@ -594,9 +700,9 @@ tdd_node *Unwind(int d)
         //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
         //slip. together with the previous invariant pv1 - pv2 <= bound,
         //this ensures the new invariant v1 - v2 <= bound.
-        tdd_node *node1 = ConsToTdd(1,v1,-1,pv1,-slip);
-        tdd_node *node2 = ConsToTdd(1,pv2,-1,v2,-slip);
-        choice = TddOp(choice,TddOp(node1,node2,'&'),'|');
+        Formula node1 = ConsToTdd(1,v1,-1,pv1,-slip);
+        Formula node2 = ConsToTdd(1,pv2,-1,v2,-slip);
+        choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
       }
     }
     //for non-DDD constraints
@@ -604,9 +710,9 @@ tdd_node *Unwind(int d)
       //create constraints v1 = pv1 and v2 = pv2. together with
       //the previous invariant c1*pv1 + c2*pv2 <= bound, this
       //ensures the new invariant c1*v1 + c2*v2 <= bound.
-      tdd_node *node1 = VarEq(v1,pv1);
-      tdd_node *node2 = VarEq(v2,pv2);
-      choice = TddOp(choice,TddOp(node1,node2,'&'),'|');
+      Formula node1 = VarEq(v1,pv1);
+      Formula node2 = VarEq(v2,pv2);
+      choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
     }
 
 #ifdef DEBUG
@@ -615,7 +721,7 @@ tdd_node *Unwind(int d)
 #endif
 
     //add the choice
-    node = TddOp(node,choice,'&');
+    node = FormOp(node,choice,'&');
   }
 
 #ifdef DEBUG
@@ -630,7 +736,7 @@ tdd_node *Unwind(int d)
 //generate constraints that relate final state variables or predicates
 //to final transition relation variables
 /*********************************************************************/
-tdd_node *FinalCons(int *preds)
+Formula FinalCons(int *preds)
 {
 #ifdef DEBUG
   printf("generating FINAL constraints ...\n");
@@ -640,8 +746,7 @@ tdd_node *FinalCons(int *preds)
   int maxTransVar = 2 * varNum * depth;
 
   //the result to be computed
-  tdd_node *node = tdd_get_true(tdd);
-  Cudd_Ref(node);
+  Formula node = ConstFormula(true);
 
   //if we are using predicate abstraction -- this implies summary or
   //image computation
@@ -650,14 +755,23 @@ tdd_node *FinalCons(int *preds)
     for(int i = 0;i < predNum;++i) {
       int id = 5 * i;
       int baseVar = 2 * varNum * (depth - 1);
-      tdd_node *pred1 = ConsToTdd(preds[id],baseVar + preds[id + 1],
-                                  preds[id + 2],baseVar + preds[id + 3],
-                                  preds[id + 4]);      
+      Formula pred11 = ConsToTdd(preds[id],baseVar + preds[id + 1],
+                                 preds[id + 2],baseVar + preds[id + 3],
+                                 preds[id + 4]);      
+      Formula pred12 = ConsToTdd(preds[id],baseVar + preds[id + 1],
+                                 preds[id + 2],baseVar + preds[id + 3],
+                                 preds[id + 4]);      
+      pred12 = FormOp(pred12,Formula(),'!');
+
       int v1 = maxTransVar + 2 * (predNum + i);
       int v2 = v1 + 1;
-      tdd_node *pred2 = ConsToTdd(1,v1,-1,v2,0);
-      tdd_node *eq = TddOp(TddOp(pred1,pred2,'^'),NULL,'!');
-      node = TddOp(node,eq,'&');
+
+      Formula pred21 = ConsToTdd(1,v1,-1,v2,0);
+      Formula pred22 = ConsToTdd(1,v1,-1,v2,0);
+      pred22 = FormOp(pred22,Formula(),'!');
+
+      Formula eq = FormOp(FormOp(pred11,pred21,'&'),FormOp(pred12,pred22,'&'),'|');
+      node = FormOp(node,eq,'&');
     }
   }
   
@@ -732,57 +846,57 @@ void GenAndSolve()
 #endif
 
   //the overall tdd
-  tdd_node *node = tdd_get_true(tdd);
-  Cudd_Ref(node);
+  Formula form = ConstFormula(true);
 
   //create transition relation
   for(int d = 0;d < depth;++d) {
     //generate a constraint that makes the whole system unsatisfiable,
     //if needed
     if(unsat && d == target) 
-      node = TddOp(node,Unsat(bounds,coeffs,d),'&');
+      form = FormOp(form,Unsat(bounds,coeffs,d),'&');
 
     //if at the start of the program
     if(d == 0) {
-      node = TddOp(node,InitInv(bounds,coeffs,d),'&');      
+      form = FormOp(form,InitInv(bounds,coeffs,d),'&');      
       continue;
     }
 
     //not at the start of the program -- generate constraints that
     //preserve the invariant by relating fresh variables with the
     //variables from the previous step
-    node = TddOp(node,Unwind(d),'&');      
+    form = FormOp(form,Unwind(d),'&');      
   }
 
   //if not computing image or summary
-  if(!summary && !image) node = Qelim(node,minTransVar,maxTransVar);
+  if(!summary && !image) form = Qelim(form,minTransVar,maxTransVar);
 
   //if doing predicate abstraction
   else if(preds) {
     //generate initial and final constraints
-    node = TddOp(node,InitCons(preds),'&');
-    node = TddOp(node,FinalCons(preds),'&');
+    form = FormOp(form,InitCons(preds),'&');
+    form = FormOp(form,FinalCons(preds),'&');
     
     //compute image or summary
-    if(summary) node = Qelim(node,minTransVar,maxTransVar);
-    else node = Qelim(node,minTransVar,maxTransVar + 2 * predNum);
+    if(summary) form = Qelim(form,minTransVar,maxTransVar);
+    else form = Qelim(form,minTransVar,maxTransVar + 2 * predNum);
   }
 
   //if computing summary without predicate abstraction
   else if(summary) {
-    node = Qelim(node,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
+    form = Qelim(form,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
   }
 
   //if computing image without predicate abstraction
   else {
-    node = Qelim(node,minTransVar,maxTransVar - 2 * varNum);
+    form = Qelim(form,minTransVar,maxTransVar - 2 * varNum);
   }
 
   //check if the result is correct
-  CheckResult(node);
+  if(!smtFile) CheckResult(form.node);
 
   //cleanup
-  Cudd_RecursiveDeref(cudd,node);
+  if(smtFile) smt_destroy_formula(form.smtf);
+  else Cudd_RecursiveDeref(cudd,form.node);
   for(size_t i = 0;i < varNum;++i) delete [] bounds[i];
   if(preds) delete [] preds;
   delete [] bounds;
@@ -797,9 +911,27 @@ int main(int argc,char *argv[])
   ProcessInputs(argc,argv);
   srand(randSeed < 0 ? time(NULL) : randSeed);
   for(size_t i = 0;i < repeat;++i) {
+    //open SMT file
+    if(!smtOut.empty()) {
+      char fileName[256];
+      snprintf(fileName,256,"%s.%d.smt",smtOut.c_str(),i);
+      smtFile = fopen(fileName,"w");
+      if(smtFile == NULL) {
+        printf("ERROR: cannot open SMT file %s!\n",fileName);
+        exit(1);        
+      }
+      //create SMT file preamble
+      CreateSMTPreamble(argc,argv);      
+    }
+
     CreateManagers();
     GenAndSolve();
     DestroyManagers();
+
+    //close SMT file
+    if(!smtOut.empty()) {
+      fclose(smtFile);
+    }
   }
   delete [] varSet;
   return 0;
