@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "smt_qelim_solver.h"
 #include "smt_formula.h"
+#include "tdd.h"
 
 extern int yyparse(void);
 extern smt_formula_t *smtFormula;
