@@ -16,6 +16,7 @@
 %}
 
 %option nounput
+%option noyywrap
 
 %%
 

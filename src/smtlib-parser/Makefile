@@ -7,7 +7,7 @@ AR = ar -rcs
 OBJS = smt_lexer.yy.o smt_parser.tab.o smt_formula.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
 LIB = libsmtlib-parser.a
-LDLIBS = -lfl
+LDLIBS =
 
 all : test
 
