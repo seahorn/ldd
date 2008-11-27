@@ -6,10 +6,10 @@ CFLAGS = -Wall -I$(CUDD)/include -I../include -g  -mtune=pentium4 -malign-double
 AR = ar -rcs
 OBJS = smt_lexer.yy.o smt_parser.tab.o smt_formula.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
-LIB = libtdd.a
+LIB = libsmtlib-parser.a
 LDLIBS = -lfl
 
-all : $(LIB)
+all : test
 
 $(LIB) : $(OBJS)
 	$(AR) $@ $(OBJS)
@@ -17,8 +17,8 @@ $(LIB) : $(OBJS)
 test: smt_parser_test
 	./smt_parser_test < queen3-1.smt
 
-smt_parser_test: $(OBJS) smt_parser_test.o
-	$(CC) -o $@ $(OBJS) smt_parser_test.o  $(LDLIBS)
+smt_parser_test: smt_parser_test.c $(LIB)
+	$(CC) -o $@ $(OBJS) smt_parser_test.c $(LIB) $(LDLIBS)
 
 smt_lexer.yy.c: smt_lexer.lex
 	$(FLEX) -t $< > $@
