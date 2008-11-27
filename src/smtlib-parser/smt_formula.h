@@ -24,9 +24,9 @@ typedef struct smt_cons
 
 /** top-level SMT formula type */
 typedef enum smt_type {
-  CONS,         //constraint
-  AND,OR,NOT,   //boolean
-  EXISTS,FORALL //quantification
+  SMT_CONS,               //constraint
+  SMT_AND,SMT_OR,SMT_NOT, //boolean
+  SMT_EXISTS,SMT_FORALL   //quantification
 } smt_type_t;
 
 /** SMT formula */
@@ -50,6 +50,7 @@ typedef struct smt_formula
 } smt_formula_t;
 
 /** utility routines */
+smt_formula_t *create_cons(int c1,char *v1,int c2,char *v2,int s,int b);
 void destroy_cons(smt_cons_t *c);
 void destroy_formula(smt_formula_t *f);
 void print_cons(FILE *out,smt_cons_t *c);

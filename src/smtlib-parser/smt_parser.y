@@ -212,33 +212,33 @@ an_term:
 | LPAREN_TOK AND_TOK an_terms RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
-  $$->type = AND;
+  $$->type = SMT_AND;
   $$->subs = $3;
 }
 | LPAREN_TOK OR_TOK an_terms RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
-  $$->type = OR;
+  $$->type = SMT_OR;
   $$->subs = $3;
 }
 | LPAREN_TOK NOT_TOK an_terms RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
-  $$->type = NOT;
+  $$->type = SMT_NOT;
   $$->subs = $3;
 }
   /* quantify */
 | LPAREN_TOK quant_symb quant_vars an_terms annotations RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
-  $$->type = $2 ? FORALL : EXISTS;
+  $$->type = $2 ? SMT_FORALL : SMT_EXISTS;
   $$->subs = $4;
   $$->qVars = $3;
 }
 | LPAREN_TOK quant_symb quant_vars an_terms RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
-  $$->type = $2 ? FORALL : EXISTS;
+  $$->type = $2 ? SMT_FORALL : SMT_EXISTS;
   $$->subs = $4;
   $$->qVars = $3;
 }
@@ -296,7 +296,7 @@ LPAREN_TOK LT_TOK
 RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
-  $$->type = CONS;
+  $$->type = SMT_CONS;
   $$->cons = malloc(sizeof(smt_cons_t));
   $$->cons->coeffs[0] = $7;
   $$->cons->coeffs[1] = $12;
@@ -314,7 +314,7 @@ RPAREN_TOK {
   RPAREN_TOK {
   $$ = malloc(sizeof(smt_formula_t));
   memset($$,0,sizeof(smt_formula_t));
-  $$->type = CONS;
+  $$->type = SMT_CONS;
   $$->cons = malloc(sizeof(smt_cons_t));
   $$->cons->coeffs[0] = $7;
   $$->cons->coeffs[1] = $12;

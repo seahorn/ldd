@@ -5,7 +5,23 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "smt_formula.h"
+
+smt_formula_t *create_cons(int c1,char *v1,int c2,char *v2,int s,int b)
+{
+  smt_formula_t *res = malloc(sizeof(smt_formula_t));
+  memset(res,0,sizeof(smt_formula_t));
+  res->type = SMT_CONS;
+  res->cons = malloc(sizeof(smt_cons_t));
+  res->cons->coeffs[0] = c1;
+  res->cons->coeffs[1] = c2;
+  res->cons->vars[0] = strdup(v1);
+  res->cons->vars[1] = strdup(v2);
+  res->cons->strict = s;
+  res->cons->bound = b;
+  return res;
+}
 
 void destroy_cons(smt_cons_t *c)
 {
@@ -17,18 +33,18 @@ void destroy_formula(smt_formula_t *f)
 {
   int i = 0;
   switch(f->type) {
-  case CONS:
+  case SMT_CONS:
     destroy_cons(f->cons);
     free(f->cons);
     break;
-  case AND:
-  case OR:
-  case NOT:
+  case SMT_AND:
+  case SMT_OR:
+  case SMT_NOT:
     while(f->subs[i]) destroy_formula(f->subs[i++]);
     free(f->subs);
     break;
-  case EXISTS:
-  case FORALL:
+  case SMT_EXISTS:
+  case SMT_FORALL:
     destroy_formula(f->subs[0]);
     free(f->subs);
     while(f->qVars[i]) free(f->qVars[i++]);
@@ -54,12 +70,12 @@ void print_formula(FILE *out,smt_formula_t *f)
 {
   int i = 0;
   switch(f->type) {
-  case CONS:
+  case SMT_CONS:
     print_cons(out,f->cons);
     break;
-  case AND:
-  case OR:
-    fprintf(out,"(%s ",f->type == AND ? "and" : "or");
+  case SMT_AND:
+  case SMT_OR:
+    fprintf(out,"(%s ",f->type == SMT_AND ? "and" : "or");
     for(;;) { 
       if(f->subs[i]) print_formula(out,f->subs[i++]); 
       else {
@@ -69,14 +85,14 @@ void print_formula(FILE *out,smt_formula_t *f)
       if(f->subs[i]) fprintf(out," "); 
     }
     break;
-  case NOT:
+  case SMT_NOT:
     fprintf(out,"(not ");
     print_formula(out,f->subs[0]);
     fprintf(out,")");
     break;
-  case EXISTS:
-  case FORALL:
-    fprintf(out,"(%s (",f->type == EXISTS ? "exists" : "forall");
+  case SMT_EXISTS:
+  case SMT_FORALL:
+    fprintf(out,"(%s (",f->type == SMT_EXISTS ? "exists" : "forall");
     for(;;) { 
       if(f->qVars[i]) fprintf(out,"%s",f->qVars[i++]); 
       else {
