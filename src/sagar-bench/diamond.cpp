@@ -4,6 +4,7 @@
 #include <cassert>
 #include <ctime>
 #include <string>
+#include <set>
 using namespace std;
 
 //#define DEBUG
@@ -256,8 +257,9 @@ void DestroyManagers()
 /*********************************************************************/
 //create the preamble for the SMT file
 /*********************************************************************/
-void CreateSMTPreamble(int argc,char *argv[])
+void CreateSMTPreamble(int argc,char *argv[],char *fileName)
 {
+  fprintf(smtFile,"(benchmark %s\n",fileName);
   fprintf(smtFile,":source {\n");
   for(int i = 0;i < argc;++i) {
     fprintf(smtFile," %s",argv[i]);
@@ -274,30 +276,35 @@ void CreateSMTPreamble(int argc,char *argv[])
 /*********************************************************************/
 void PrintDD(Formula form)
 {
-  tdd_node *node = form.node;
-  Cudd_PrintMinterm (cudd, node);
-  int *sup = Cudd_SupportIndex(cudd,node);
-  //int ssize = Cudd_SupportSize(cudd,node);
-  for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
-    if(sup[i]) {
-      if(Cudd_bddAnd(cudd,node,Cudd_bddIthVar(cudd,i)) != Cudd_ReadLogicZero(cudd)) {
-        theory->print_lincons(stdout,tdd->ddVars[i]);
-        printf(" && ");
-      }
-      if(Cudd_bddAnd(cudd,node,Cudd_Not(Cudd_bddIthVar(cudd,i))) != Cudd_ReadLogicZero(cudd)) {
-        theory->print_lincons(stdout,theory->negate_cons(tdd->ddVars[i]));
-        printf(" && ");
+  if(smtFile) {
+    smt_print_formula(stdout,form.smtf);
+    printf("\n");
+  } else {
+    tdd_node *node = form.node;
+    Cudd_PrintMinterm (cudd, node);
+    int *sup = Cudd_SupportIndex(cudd,node);
+    //int ssize = Cudd_SupportSize(cudd,node);
+    for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
+      if(sup[i]) {
+        if(Cudd_bddAnd(cudd,node,Cudd_bddIthVar(cudd,i)) != Cudd_ReadLogicZero(cudd)) {
+          theory->print_lincons(stdout,tdd->ddVars[i]);
+          printf(" && ");
+        }
+        if(Cudd_bddAnd(cudd,node,Cudd_Not(Cudd_bddIthVar(cudd,i))) != Cudd_ReadLogicZero(cudd)) {
+          theory->print_lincons(stdout,theory->negate_cons(tdd->ddVars[i]));
+          printf(" && ");
+        }
       }
     }
-  }
-  printf("\n");
-  for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
-    if(sup[i]) {
-      printf("level of %d is %d\n",i,cuddI(cudd,i));
+    printf("\n");
+    for(size_t i = 0;i < tdd->varsSize && tdd->ddVars[i] && Cudd_ReadVars(cudd,i);++i) {
+      if(sup[i]) {
+        printf("level of %d is %d\n",i,cuddI(cudd,i));
+      }
     }
+    printf("\n");
+    free(sup);
   }
-  printf("\n");
-  free(sup);
 }
 #endif
 
@@ -410,6 +417,7 @@ Formula Qelim(Formula form,int min,int max)
 {
   //if generating SMT file
   if(smtFile) {
+    //create EXISTS formula
     smt_formula_t *res = (smt_formula_t*)malloc(sizeof(smt_formula_t));
     memset(res,0,sizeof(smt_formula_t));
     res->type = SMT_EXISTS;
@@ -424,6 +432,15 @@ Formula Qelim(Formula form,int min,int max)
       res->qVars[i] = strdup(var);
     }
     res->qVars[max - min] = NULL;
+    //rename each quantified variable "x" to "?x". this seems to be
+    //the SMT convention.
+    for(i = 0;i < max - min;++i) {
+      snprintf(var,28,"x%d",min + i);
+      string old = var;
+      string sub = "?" + old;
+      smt_rename_var(res,(char*)old.c_str(),(char*)sub.c_str());
+    }
+    //all done
     form.smtf = res;
   }
   else {
@@ -811,6 +828,51 @@ void CheckResult(tdd_node *node)
 }
 
 /*********************************************************************/
+//declare free variables
+/*********************************************************************/
+void DeclFreeVars(smt_formula_t *f,set<string> &fv)
+{
+  int i = 0;
+  switch(f->type) {
+  case SMT_CONS:
+    for(;i < 2;++i) {
+      if(f->cons->vars[i][0] != '?') {
+        if(fv.insert(f->cons->vars[i]).second) {
+          fprintf(smtFile,":extrafuns ((%s Int))\n",f->cons->vars[i]);
+        }
+      }
+    }
+    break;
+  case SMT_AND:
+  case SMT_OR:
+  case SMT_NOT:
+    while(f->subs[i]) DeclFreeVars(f->subs[i++],fv);
+    break;
+  case SMT_EXISTS:
+  case SMT_FORALL:    
+    DeclFreeVars(f->subs[0],fv);
+    break;
+  default:
+    printf("ERROR: illegal SMT formula type %d!\n",f->type);
+    exit(1);
+  }
+}
+
+/*********************************************************************/
+//print SMT formula
+/*********************************************************************/
+void PrintSmt(smt_formula_t *smtf)
+{
+  //declare free variables
+  set<string> fv;
+  DeclFreeVars(smtf,fv);
+  //print the formula
+  fprintf(smtFile,":formula\n");
+  smt_print_formula(smtFile,smtf);
+  fprintf(smtFile,")\n");
+}
+
+/*********************************************************************/
 //generate constraints and then quantify out all transition relation
 //variables. each step of the transition relation introduces 2 *
 //varNum fresh variables. therefore, total number of variables in the
@@ -891,8 +953,9 @@ void GenAndSolve()
     form = Qelim(form,minTransVar,maxTransVar - 2 * varNum);
   }
 
-  //check if the result is correct
-  if(!smtFile) CheckResult(form.node);
+  //print SMT formula or check if the result is correct
+  if(smtFile) PrintSmt(form.smtf);
+  else CheckResult(form.node);
 
   //cleanup
   if(smtFile) smt_destroy_formula(form.smtf);
@@ -921,7 +984,7 @@ int main(int argc,char *argv[])
         exit(1);        
       }
       //create SMT file preamble
-      CreateSMTPreamble(argc,argv);      
+      CreateSMTPreamble(argc,argv,fileName);      
     }
 
     CreateManagers();
