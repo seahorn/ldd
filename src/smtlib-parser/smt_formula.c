@@ -8,6 +8,9 @@
 #include <string.h>
 #include "smt_formula.h"
 
+/**********************************************************************
+ * create an atomic constraint formula
+ *********************************************************************/
 smt_formula_t *smt_create_cons(int c1,char *v1,int c2,char *v2,int s,int b)
 {
   smt_formula_t *res = malloc(sizeof(smt_formula_t));
@@ -23,12 +26,18 @@ smt_formula_t *smt_create_cons(int c1,char *v1,int c2,char *v2,int s,int b)
   return res;
 }
 
+/**********************************************************************
+ * destroy a constraint
+ *********************************************************************/
 void smt_destroy_cons(smt_cons_t *c)
 {
   free(c->vars[0]);
   free(c->vars[1]);
 }
 
+/**********************************************************************
+ * destroy a formula
+ *********************************************************************/
 void smt_destroy_formula(smt_formula_t *f)
 {
   int i = 0;
@@ -57,6 +66,9 @@ void smt_destroy_formula(smt_formula_t *f)
   free(f);
 }
 
+/**********************************************************************
+ * print a constraint
+ *********************************************************************/
 void smt_print_cons(FILE *out,smt_cons_t *c)
 {
   fprintf(out,"((%d * %s) + (%d * %s) %s %d)",
@@ -66,6 +78,9 @@ void smt_print_cons(FILE *out,smt_cons_t *c)
           c->bound);
 }
 
+/**********************************************************************
+ * print a formula
+ *********************************************************************/
 void smt_print_formula(FILE *out,smt_formula_t *f)
 {
   int i = 0;
@@ -109,3 +124,44 @@ void smt_print_formula(FILE *out,smt_formula_t *f)
     exit(1);
   }
 }
+
+/**********************************************************************
+ * renames old with new in f in-place
+ *********************************************************************/
+void smt_rename_var(smt_formula_t *f,char *old,char *sub)
+{
+  int i = 0;
+  switch(f->type) {
+  case SMT_CONS:
+    for(;i < 2;++i) {
+      if(!strcmp(f->cons->vars[i],old)) {
+        free(f->cons->vars[i]);
+        f->cons->vars[i] = strdup(sub);
+      }
+    }
+    break;
+  case SMT_AND:
+  case SMT_OR:
+  case SMT_NOT:
+    while(f->subs[i]) smt_rename_var(f->subs[i++],old,sub);
+    break;
+  case SMT_EXISTS:
+  case SMT_FORALL:    
+    while(f->qVars[i]) { 
+      if(!strcmp(f->qVars[i],old)) {
+        free(f->qVars[i]);
+        f->qVars[i] = strdup(sub);
+      }
+      ++i;
+    }
+    smt_rename_var(f->subs[0],old,sub);
+    break;
+  default:
+    printf("ERROR: illegal SMT formula type %d!\n",f->type);
+    exit(1);
+  }
+}
+
+/**********************************************************************
+ * end of smt_formula.c
+ *********************************************************************/

@@ -55,9 +55,14 @@ void smt_destroy_cons(smt_cons_t *c);
 void smt_destroy_formula(smt_formula_t *f);
 void smt_print_cons(FILE *out,smt_cons_t *c);
 void smt_print_formula(FILE *out,smt_formula_t *f);
+void smt_rename_var(smt_formula_t *f,char *old,char *sub);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif //__SMT_FORMULA_H__
+
+/**********************************************************************
+ * end of smt_formula.h
+ *********************************************************************/
