@@ -57,9 +57,9 @@ bool image = false;
 //other data structures
 int totalVarNum = 0;
 int *varSet = NULL;
-DdManager *cudd;
-tdd_manager *tdd;
-theory_t *theory;
+DdManager *cudd = NULL;
+tdd_manager *tdd = NULL;
+theory_t *theory = NULL;
 
 //we will use a pair of tdd_node and a smt_formula to compute our
 //result. if we are solving we will use the tdd_node part. otherwise,
