@@ -53,6 +53,7 @@ enum TddType { DIA_DDD, DIA_OCT, DIA_TVPI }
   tddType = DIA_DDD,consType = DIA_DDD;
 bool summary = false;
 bool image = false;
+bool eagerElim = false;
 
 //other data structures
 int totalVarNum = 0;
@@ -111,6 +112,7 @@ void Usage(char *cmd)
   printf("\t--compInv : enable propositionally complex invariants\n");
   printf("\t--summary : whether to compute summaries\n");
   printf("\t--image : whether to do image computation\n");
+  printf("\t--eagerElim : whether to do eager quantifier elimination\n");
 }
 
 /*********************************************************************/
@@ -169,6 +171,7 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--compInv")) compInv = true;
     else if(!strcmp(argv[i],"--summary")) summary = true;
     else if(!strcmp(argv[i],"--image")) image = true;
+    else if(!strcmp(argv[i],"--eagerElim")) eagerElim = true;
     else {
       Usage(argv[0]);
       exit(1);
@@ -873,6 +876,47 @@ void PrintSmt(smt_formula_t *smtf)
 }
 
 /*********************************************************************/
+//do final quantifier elimination
+/*********************************************************************/
+Formula FinalQelim(Formula form)
+{
+  //the minimum and maximum variables for the transition relation
+  int minTransVar = 0;
+  int maxTransVar = 2 * varNum * depth;
+
+  //generate constants and coefficients for predicates
+  int *preds = Preds();
+
+  //if not computing image or summary
+  if(!summary && !image) form = Qelim(form,minTransVar,maxTransVar);
+
+  //if doing predicate abstraction
+  else if(preds) {
+    //generate initial and final constraints
+    form = FormOp(form,InitCons(preds),'&');
+    form = FormOp(form,FinalCons(preds),'&');
+    
+    //compute image or summary
+    if(summary) form = Qelim(form,minTransVar,maxTransVar);
+    else form = Qelim(form,minTransVar,maxTransVar + 2 * predNum);
+  }
+
+  //if computing summary without predicate abstraction
+  else if(summary) {
+    form = Qelim(form,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
+  }
+
+  //if computing image without predicate abstraction
+  else {
+    form = Qelim(form,minTransVar,maxTransVar - 2 * varNum);
+  }
+
+  //cleanup and return
+  if(preds) delete [] preds;
+  return form;
+}
+
+/*********************************************************************/
 //generate constraints and then quantify out all transition relation
 //variables. each step of the transition relation introduces 2 *
 //varNum fresh variables. therefore, total number of variables in the
@@ -889,13 +933,6 @@ void PrintSmt(smt_formula_t *smtf)
 /*********************************************************************/
 void GenAndSolve()
 {
-  //the minimum and maximum variables for the transition relation
-  int minTransVar = 0;
-  int maxTransVar = 2 * varNum * depth;
-
-  //generate constants and coefficients for predicates
-  int *preds = Preds();
-
   //generate bounds and coefficients for transition relation invariant
   int **bounds = Bounds();
   int *coeffs = Coeffs();
@@ -929,29 +966,8 @@ void GenAndSolve()
     form = FormOp(form,Unwind(d),'&');      
   }
 
-  //if not computing image or summary
-  if(!summary && !image) form = Qelim(form,minTransVar,maxTransVar);
-
-  //if doing predicate abstraction
-  else if(preds) {
-    //generate initial and final constraints
-    form = FormOp(form,InitCons(preds),'&');
-    form = FormOp(form,FinalCons(preds),'&');
-    
-    //compute image or summary
-    if(summary) form = Qelim(form,minTransVar,maxTransVar);
-    else form = Qelim(form,minTransVar,maxTransVar + 2 * predNum);
-  }
-
-  //if computing summary without predicate abstraction
-  else if(summary) {
-    form = Qelim(form,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
-  }
-
-  //if computing image without predicate abstraction
-  else {
-    form = Qelim(form,minTransVar,maxTransVar - 2 * varNum);
-  }
+  //do final quantifier elimination
+  form = FinalQelim(form);
 
   //print SMT formula or check if the result is correct
   if(smtFile) PrintSmt(form.smtf);
@@ -961,7 +977,6 @@ void GenAndSolve()
   if(smtFile) smt_destroy_formula(form.smtf);
   else Cudd_RecursiveDeref(cudd,form.node);
   for(size_t i = 0;i < varNum;++i) delete [] bounds[i];
-  if(preds) delete [] preds;
   delete [] bounds;
   delete [] coeffs;
 }
