@@ -696,6 +696,11 @@ Formula Unwind(int d,int **bounds,int *coeffs,int unsatTarget)
   //if we have exceeded the depth
   if(d >= depth) return node;
 
+  //generate a constraint that makes the whole system unsatisfiable,
+  //if needed
+  if(unsat && d == unsatTarget) 
+    node = FormOp(node,Unsat(bounds,coeffs,d),'&');  
+
   //for the first step, just initialize
   if(d == 0) {
     node = FormOp(node,InitInv(bounds,coeffs,0),'&');      
@@ -760,13 +765,14 @@ Formula Unwind(int d,int **bounds,int *coeffs,int unsatTarget)
   PrintDD(node);
 #endif
 
-  //generate a constraint that makes the whole system unsatisfiable,
-  //if needed
-  if(unsat && d == unsatTarget) 
-    node = FormOp(node,Unsat(bounds,coeffs,d),'&');  
-
   //recurse
   node = FormOp(node,Unwind(d + 1,bounds,coeffs,unsatTarget),'&');
+
+  //if doing eager QELIM, quantify the latest fresh variables, unless
+  //these are the last set of numeric variables.
+  if(eagerElim && (d != depth - 1)) {
+    node = Qelim(node,2 * varNum * d,2 * varNum * (d + 1));
+  }
 
   //all done
   return node;
