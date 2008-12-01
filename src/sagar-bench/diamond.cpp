@@ -688,60 +688,71 @@ Formula InitInv(int **bounds,int *coeffs,int d)
 //unwind the transition relation by relating variables at step d to
 //those at step d-1 such that the invariant is maintained
 /*********************************************************************/
-Formula Unwind(int d)
+Formula Unwind(int d,int **bounds,int *coeffs,int unsatTarget)
 {
+  //initialize result
   Formula node = ConstFormula(true);
 
-  for(size_t vn = 0;vn < varNum;++vn) {
-    int v1 = 2 * (varNum * d + vn);
-    int v2 = v1 + 1;
+  //if we have exceeded the depth
+  if(d >= depth) return node;
 
-    //get the branching factor
-    int bfac = Rand(1,branch + 1);
+  //for the first step, just initialize
+  if(d == 0) {
+    node = FormOp(node,InitInv(bounds,coeffs,0),'&');      
+  }
+  //otherwise relate variables of this step with previous step
+  else {
+    for(size_t vn = 0;vn < varNum;++vn) {
+      int v1 = 2 * (varNum * d + vn);
+      int v2 = v1 + 1;
+
+      //get the branching factor
+      int bfac = Rand(1,branch + 1);
 #ifdef DEBUG
-    printf("level = %d\tbranching = %d\n",d,bfac);
+      printf("level = %d\tbranching = %d\n",d,bfac);
 #endif
 
-    //get the previous variables to relate to v1 and v2
-    int pv1 = compInv ? 
-      (2 * (varNum * (d - 1) + Rand(0,varNum))) : (v1 - 2 * varNum);
-    int pv2 = pv1 + 1;
+      //get the previous variables to relate to v1 and v2
+      int pv1 = compInv ? 
+        (2 * (varNum * (d - 1) + Rand(0,varNum))) : (v1 - 2 * varNum);
+      int pv2 = pv1 + 1;
 
-    //disjunctive choices at the start of this diamond
-    Formula choice = ConstFormula(false);
+      //disjunctive choices at the start of this diamond
+      Formula choice = ConstFormula(false);
 
-    //for DDD constraints
-    if(consType == DIA_DDD) {
-      //create branches
-      for(int i = 0;i < bfac;++i) {
-        //create a random positive slippage
-        int slip = Rand(0,1000);
+      //for DDD constraints
+      if(consType == DIA_DDD) {
+        //create branches
+        for(int i = 0;i < bfac;++i) {
+          //create a random positive slippage
+          int slip = Rand(0,1000);
 
-        //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
-        //slip. together with the previous invariant pv1 - pv2 <= bound,
-        //this ensures the new invariant v1 - v2 <= bound.
-        Formula node1 = ConsToTdd(1,v1,-1,pv1,-slip);
-        Formula node2 = ConsToTdd(1,pv2,-1,v2,-slip);
+          //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
+          //slip. together with the previous invariant pv1 - pv2 <= bound,
+          //this ensures the new invariant v1 - v2 <= bound.
+          Formula node1 = ConsToTdd(1,v1,-1,pv1,-slip);
+          Formula node2 = ConsToTdd(1,pv2,-1,v2,-slip);
+          choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
+        }
+      }
+      //for non-DDD constraints
+      else {
+        //create constraints v1 = pv1 and v2 = pv2. together with
+        //the previous invariant c1*pv1 + c2*pv2 <= bound, this
+        //ensures the new invariant c1*v1 + c2*v2 <= bound.
+        Formula node1 = VarEq(v1,pv1);
+        Formula node2 = VarEq(v2,pv2);
         choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
       }
-    }
-    //for non-DDD constraints
-    else {
-      //create constraints v1 = pv1 and v2 = pv2. together with
-      //the previous invariant c1*pv1 + c2*pv2 <= bound, this
-      //ensures the new invariant c1*v1 + c2*v2 <= bound.
-      Formula node1 = VarEq(v1,pv1);
-      Formula node2 = VarEq(v2,pv2);
-      choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
-    }
 
 #ifdef DEBUG
-    printf ("choice is:\n");
-    PrintDD(choice);
+      printf ("choice is:\n");
+      PrintDD(choice);
 #endif
 
-    //add the choice
-    node = FormOp(node,choice,'&');
+      //add the choice
+      node = FormOp(node,choice,'&');
+    }
   }
 
 #ifdef DEBUG
@@ -749,6 +760,15 @@ Formula Unwind(int d)
   PrintDD(node);
 #endif
 
+  //generate a constraint that makes the whole system unsatisfiable,
+  //if needed
+  if(unsat && d == unsatTarget) 
+    node = FormOp(node,Unsat(bounds,coeffs,d),'&');  
+
+  //recurse
+  node = FormOp(node,Unwind(d + 1,bounds,coeffs,unsatTarget),'&');
+
+  //all done
   return node;
 }
 
@@ -938,33 +958,14 @@ void GenAndSolve()
   int *coeffs = Coeffs();
 
   //the depth at which we are going to generate the UNSAT clause
-  int target = Rand(0,depth);
+  int unsatTarget = Rand(0,depth);
 
 #ifdef DEBUG
-  printf("target = %d\n",target);
+  printf("UNSAT target = %d\n",unsatTarget);
 #endif
 
-  //the overall tdd
-  Formula form = ConstFormula(true);
-
-  //create transition relation
-  for(int d = 0;d < depth;++d) {
-    //generate a constraint that makes the whole system unsatisfiable,
-    //if needed
-    if(unsat && d == target) 
-      form = FormOp(form,Unsat(bounds,coeffs,d),'&');
-
-    //if at the start of the program
-    if(d == 0) {
-      form = FormOp(form,InitInv(bounds,coeffs,d),'&');      
-      continue;
-    }
-
-    //not at the start of the program -- generate constraints that
-    //preserve the invariant by relating fresh variables with the
-    //variables from the previous step
-    form = FormOp(form,Unwind(d),'&');      
-  }
+  //unwind transition relation and conjoin
+  Formula form = Unwind(0,bounds,coeffs,unsatTarget);      
 
   //do final quantifier elimination
   form = FinalQelim(form);
