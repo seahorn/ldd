@@ -267,7 +267,8 @@ void CreateSMTPreamble(int argc,char *argv[],char *fileName)
   for(int i = 0;i < argc;++i) {
     fprintf(smtFile," %s",argv[i]);
   }
-  fprintf(smtFile,"\n}\n:status %s\n",unsat ? "unsat" : "sat");
+  fprintf(smtFile,"\n random seed = %d\n}\n",randSeed);
+  fprintf(smtFile,":status %s\n",unsat ? "unsat" : "sat");
   fprintf(smtFile,":category { crafted }\n:difficulty { 0 }\n");
   fprintf(smtFile,":logic AUFLIA\n");
 }
@@ -1003,7 +1004,8 @@ void GenAndSolve()
 int main(int argc,char *argv[])
 {
   ProcessInputs(argc,argv);
-  srand(randSeed < 0 ? time(NULL) : randSeed);
+  randSeed = (randSeed < 0) ? time(NULL) : randSeed;
+  srand(randSeed);
   for(size_t i = 0;i < repeat;++i) {
     //open SMT file
     if(!smtOut.empty()) {
