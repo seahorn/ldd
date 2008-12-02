@@ -1,0 +1,6 @@
+Filenames are indicative of the arguments passed to "diamond" to
+generate them. In general, a filename beginning with "diamond.X.Y.Z"
+means that it was generated with "--branch X --depth Y --vars
+Z". Further components of the filename indicate other options to
+"diamond". For example, a filename starting with "diamond.X.Y.Z.tvpi"
+means that it was generated with the "--tvpiCons" option.
