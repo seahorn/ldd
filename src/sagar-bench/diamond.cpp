@@ -914,7 +914,12 @@ Formula FinalQelim(Formula form)
   int *preds = Preds();
 
   //if not computing image or summary
-  if(!summary && !image) form = Qelim(form,minTransVar,maxTransVar);
+  if(!summary && !image) {
+    if(eagerElim) {
+      form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
+      form = Qelim(form,maxTransVar - 2 * varNum,maxTransVar);
+    } else form = Qelim(form,minTransVar,maxTransVar);
+  }
 
   //if doing predicate abstraction
   else if(preds) {
@@ -923,18 +928,22 @@ Formula FinalQelim(Formula form)
     form = FormOp(form,FinalCons(preds),'&');
     
     //compute image or summary
-    if(summary) form = Qelim(form,minTransVar,maxTransVar);
-    else form = Qelim(form,minTransVar,maxTransVar + 2 * predNum);
-  }
-
-  //if computing summary without predicate abstraction
-  else if(summary) {
-    form = Qelim(form,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
+    if(summary) {
+      if(eagerElim) {
+        form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
+        form = Qelim(form,maxTransVar - 2 * varNum,maxTransVar);
+      } else form = Qelim(form,minTransVar,maxTransVar);
+    } else {
+      if(eagerElim) {
+        form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
+        form = Qelim(form,maxTransVar - 2 * varNum,maxTransVar + 2 * predNum);
+      } else form = Qelim(form,minTransVar,maxTransVar + 2 * predNum);
+    }
   }
 
   //if computing image without predicate abstraction
-  else {
-    form = Qelim(form,minTransVar,maxTransVar - 2 * varNum);
+  else if(image) {
+    form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
   }
 
   //cleanup and return
