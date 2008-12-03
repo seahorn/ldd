@@ -1,6 +1,5 @@
-Filenames are indicative of the arguments passed to "diamond" to
-generate them. In general, a filename beginning with "diamond.X.Y.Z"
-means that it was generated with "--branch X --depth Y --vars
-Z". Further components of the filename indicate other options to
-"diamond". For example, a filename starting with "diamond.X.Y.Z.tvpi"
-means that it was generated with the "--tvpiCons" option.
+To run the benchmarks, run the script "run_tests". You will need
+"/bin/tcsh" installed. Also, the tools "diamond" and "smt_qelim_solve"
+are assumed to be available in the parent directory. Change the
+"run_tests" script if your installation is different.
+

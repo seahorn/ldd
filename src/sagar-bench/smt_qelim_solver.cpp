@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <string>
+#include <list>
 #include <set>
 using namespace std;
 
@@ -25,7 +26,7 @@ extern "C" {
 /*********************************************************************/
 //global variables -- store command line options
 /*********************************************************************/
-char *fileName = NULL;
+list<string> fileNames;
 bool qelim2 = false;
 enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
@@ -44,10 +45,9 @@ theory_t *theory = NULL;
 /*********************************************************************/
 void Usage(char *cmd)
 {
-  printf("Usage : %s <options>\n",cmd);
+  printf("Usage : %s <option|filename> <option|filename> ...\n",cmd);
   printf("Options:\n");
   printf("\t--help|-h : display usage and exit\n");
-  printf("\t--smt <K> : input SMT formula from file K\n");
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
   printf("\t--oct : use octagon theory\n");
   printf("\t--tvpi : use TVPI theory\n");
@@ -77,12 +77,10 @@ void ProcessInputs(int argc,char *argv[])
       Usage(argv[0]);
       exit(0);
     }
-    else if(!strcmp(argv[i],"--smt") && i < argc-1) {
-      fileName = argv[++i];
-    }
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
     else if(!strcmp(argv[i],"--oct")) tddType = QSLV_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = QSLV_TVPI;
+    else if(strstr(argv[i],".smt") == (argv[i] + strlen(argv[i]) - 4)) fileNames.push_back(argv[i]);
     else {
       Usage(argv[0]);
       exit(1);
@@ -284,34 +282,37 @@ void FindVars(smt_formula_t *f,set<string> &vars)
  *********************************************************************/
 void Solve()
 {
-  //parse SMT file. the AST will be stored in smtFormula
-  yyin = fopen(fileName,"r");
-  if(!yyin) {
-    fprintf(stderr,"ERROR: could not open SMT file %s for parsing!\n",fileName);
-    exit(1);
-  }
-  yyparse();
-  fclose(yyin);
+  //process each file
+  for(list<string>::const_iterator it = fileNames.begin();it != fileNames.end();++it) {
+    //parse SMT file. the AST will be stored in smtFormula
+    yyin = fopen(it->c_str(),"r");
+    if(!yyin) {
+      fprintf(stderr,"ERROR: could not open SMT file %s for parsing!\n",it->c_str());
+      exit(1);
+    }
+    yyparse();
+    fclose(yyin);
   
-  //find total number of variables in formula
-  set<string> vars;
-  FindVars(smtFormula,vars);
-  totalVarNum = vars.size();
-  varSet = new int [totalVarNum];
+    //find total number of variables in formula
+    set<string> vars;
+    FindVars(smtFormula,vars);
+    totalVarNum = vars.size();
+    varSet = new int [totalVarNum];
  
-  //solve the formula
-  CreateManagers();
-  tdd_node *node = ToTdd(smtFormula);
+    //solve the formula
+    CreateManagers();
+    tdd_node *node = ToTdd(smtFormula);
   
-  //check result
-  if(node == ConstFormula(true)) printf("TRUE!\n");
-  else if(node == ConstFormula(false)) printf("FALSE!\n");
-  else printf("UNKNOWN!\n");
+    //check result
+    if(node == ConstFormula(true)) printf("TRUE!\n");
+    else if(node == ConstFormula(false)) printf("FALSE!\n");
+    else printf("UNKNOWN!\n");
 
-  //cleanup
-  smt_destroy_formula(smtFormula);
-  delete [] varSet;
-  DestroyManagers();
+    //cleanup
+    smt_destroy_formula(smtFormula);
+    delete [] varSet;
+    DestroyManagers();
+  }
 }
 
 /**********************************************************************
