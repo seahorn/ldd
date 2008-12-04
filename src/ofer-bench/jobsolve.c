@@ -176,9 +176,9 @@ int main (int argc, char** argv)
   
   if (verbose)
     {
-      /*       printf ("Writing initial diagram:\n"); */
+      printf ("Writing initial diagram:\n");
       /*       Cudd_PrintMinterm (cudd, bench); */
-      /*       write_tdd ("initial.dot", cudd, bench, NULL); */
+      write_tdd ("initial.dot", cudd, bench, NULL);
     }
   
 
@@ -321,8 +321,8 @@ qelim1 ()
 	    printf ("false\n");
 	  else
 	    {
-	      printf ("\n");
-	      Cudd_PrintMinterm (cudd, res);
+	      printf ("NON-EMPTY\n");
+/* 	      Cudd_PrintMinterm (cudd, res); */
 	    }
 	}
     }
@@ -452,8 +452,7 @@ qelim3 ()
 	    printf ("false\n");
 	  else
 	    {
-	      printf ("\n");
-	      Cudd_PrintMinterm (cudd, res);
+	      printf ("NON-EMPTY\n");
 	    }
 	}
     }
