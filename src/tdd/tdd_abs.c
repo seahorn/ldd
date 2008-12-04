@@ -2,7 +2,8 @@
 #include "tddInt.h"
 
 
-tdd_node *tdd_exist_abstract (tdd_manager * tdd,
+tdd_node *
+tdd_exist_abstract (tdd_manager * tdd,
 			      tdd_node * f,
 			      int var)
 {
@@ -799,7 +800,8 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
   if (f == one)
     {
       tdd_node *sol;
-
+      
+      printf ("QELIM TERMINATION:\n");
       sol = THEORY->qelim_solve (qelimCtx);
       return sol;
     }
@@ -809,7 +811,12 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
 
   /* XXX uqly way to check for satisfiability */
   res = THEORY->qelim_solve (qelimCtx);
-  if (res == zero) return zero;
+  if (res == zero) 
+    {
+      printf ("EARLY TERMINATION:\n");
+      return zero;
+    }
+  
   
   /* if res is not zero, need to clean it properly by first 
      getting a reference to it, and then dropping it */

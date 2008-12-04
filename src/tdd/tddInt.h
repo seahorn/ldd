@@ -52,4 +52,7 @@ tdd_node* tdd_exist_abstract_v2_recur (tdd_manager*, tdd_node*, bool*,
 				       qelim_context_t *,
 				       DdHashTable*);
 
+tdd_node* tdd_sat_reduce_recur (tdd_manager*, tdd_node*, 
+				qelim_context_t*, int);
+
 #endif
