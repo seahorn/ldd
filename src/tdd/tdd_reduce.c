@@ -2,7 +2,11 @@
 #include "tddInt.h"
 
 
-/* depth < 0 means no depth limit */
+/**
+ * Reduces a TDD by removing all unsatisfiable paths of length less
+ * than or equal to 'depth'. When depth is less than 0, removes paths
+ * of arbitrary length.
+ */
 tdd_node *
 tdd_sat_reduce (tdd_manager *tdd, 
 		tdd_node *f,
