@@ -527,6 +527,8 @@ qelim4 ()
       /* Only run quantification when needed */
       if (Cudd_IsConstant (res)) break;
 
+/*       printf ("Is SAT: %d\n", tdd_is_sat (tdd, res)); */
+/*       printf ("UNSAT size: %d\n", tdd_unsat_size (tdd, res)); */
 
       szBefore = Cudd_DagSize (res);
       tmp = tdd_sat_reduce (tdd, res, -1);
@@ -536,7 +538,7 @@ qelim4 ()
       szAfter = Cudd_DagSize (res);
       if (szBefore != szAfter)
 	printf ("\tReduced from %d to %d\n", szBefore, szAfter);
-
+      
 
       tmp = tdd_exist_abstract (tdd, res, i);
       Cudd_Ref (tmp);
