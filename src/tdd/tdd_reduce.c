@@ -67,7 +67,7 @@ tdd_sat_reduce_recur (tdd_manager *tdd,
 		      qelim_context_t * ctx,
 		      int depth)
 {
-  tdd_node *F, *T, *E;
+  tdd_node *F, *t, *e;
 
   tdd_node *fv, *fnv;
   
@@ -80,15 +80,15 @@ tdd_sat_reduce_recur (tdd_manager *tdd,
   tdd_node *res;
 
   tdd_node *zero;
-  
 
-  /* reached our limit */
+/* reached our limit */
   if (depth == 0) return f;
   
   F = Cudd_Regular (f);
   
   /* terminal constant */
   if (F == DD_ONE(CUDD)) return f;
+
 
   zero = Cudd_Not (DD_ONE (CUDD));
   v = F->index;
@@ -97,7 +97,7 @@ tdd_sat_reduce_recur (tdd_manager *tdd,
   fv = Cudd_NotCond (cuddT (F), f != F);
   fnv = Cudd_NotCond (cuddE (F), f != F);
 
-  T = E = NULL;
+  t = e = NULL;
 
 
   THEORY->qelim_push (ctx, vCons);
@@ -110,23 +110,28 @@ tdd_sat_reduce_recur (tdd_manager *tdd,
       cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, tmp);
 
-      T = tdd_sat_reduce_recur (tdd, fv, ctx, depth - 1);
+      t = tdd_sat_reduce_recur (tdd, fv, ctx, depth - 1);
       
-      if (T == NULL)
+      if (t == NULL)
 	return NULL;
-      cuddRef (T);
-    }
 
-  tmp = NULL;
+      cuddRef (t);
+    }
+/*   else */
+/*     printf ("INCONSISTENT THEN\n"); */
+
   THEORY->qelim_pop (ctx);
+  tmp = NULL;
+  
+
   nvCons = THEORY->negate_cons (vCons);
   THEORY->qelim_push (ctx, nvCons);
-  
   tmp = THEORY->qelim_solve (ctx);
-  THEORY->destroy_lincons (THEORY->qelim_pop (ctx));
+
   if (tmp == NULL)
     {
-      Cudd_IterDerefBdd (CUDD, T);
+      Cudd_IterDerefBdd (CUDD, t);
+      THEORY->destroy_lincons (THEORY->qelim_pop (ctx));
       return NULL;
     }
 
@@ -135,37 +140,53 @@ tdd_sat_reduce_recur (tdd_manager *tdd,
       cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, tmp);
       
-      E = tdd_sat_reduce_recur (tdd, fnv, ctx, depth - 1);
+      e = tdd_sat_reduce_recur (tdd, fnv, ctx, depth - 1);
       
-      if (E == NULL)
+      if (e == NULL)
 	{
-	  Cudd_IterDerefBdd (CUDD, T);
+	  Cudd_IterDerefBdd (CUDD, t);
+	  THEORY->destroy_lincons (THEORY->qelim_pop (ctx));
 	  return NULL;
 	}
-      cuddRef (E);
+      cuddRef (e);
     }
+/*   else */
+/*     printf ("INCONSISTENT ELSE\n"); */
+
+  THEORY->destroy_lincons (THEORY->qelim_pop (ctx));
   
+  /* only one of T and E can be NULL */
+  if (t == NULL || e == NULL)
+    res = (t != NULL) ? t : e;
   
-  if (T == NULL || E == NULL)
-    res = T != NULL ? T : E;
-  else
+  else if (t == e)
     {
+      res = t;
+
+      cuddDeref (e);  
+      e = NULL;
+    }
+  else
+    {      
       root = Cudd_bddIthVar (CUDD, v);
 
       if (root == NULL)
 	{
-	  Cudd_IterDerefBdd (CUDD, T);
-	  Cudd_IterDerefBdd (CUDD, E);
+	  Cudd_IterDerefBdd (CUDD, t);
+	  Cudd_IterDerefBdd (CUDD, e);
 	  return NULL;
 	}
+      cuddRef (root);
 
-      res = tdd_ite_recur (tdd, root, T, E);
+      res = tdd_ite_recur (tdd, root, t, e);
 
       if (res != NULL)
 	cuddRef (res);
 
-      Cudd_IterDerefBdd (CUDD, T);
-      Cudd_IterDerefBdd (CUDD, E);
+      Cudd_IterDerefBdd (CUDD, t);
+      t = NULL;
+      Cudd_IterDerefBdd (CUDD, e);
+      e = NULL;
       Cudd_IterDerefBdd (CUDD, root);
       root = NULL;
     }
