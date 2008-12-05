@@ -224,8 +224,8 @@ ddd_qelim_solve (qelim_context_t* context)
 	  }
       }
 
-	cuddDeref (res);
-	return res;
+    cuddDeref (res);
+    return res;
   }
 }
 
