@@ -358,9 +358,10 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
 
 
 
-tdd_node * tdd_and_recur (tdd_manager * tdd,
-			  tdd_node *f,
-			  tdd_node *g)
+tdd_node * 
+tdd_and_recur (tdd_manager * tdd,
+	       tdd_node *f,
+	       tdd_node *g)
 {
   DdManager * manager;
   DdNode *F, *fv, *fnv, *G, *gv, *gnv;
@@ -492,7 +493,7 @@ tdd_node * tdd_and_recur (tdd_manager * tdd,
   e = tdd_and_recur(tdd, fnv, gnv);
   if (e == NULL) {
     Cudd_IterDerefBdd(manager, t);
-	return(NULL);
+    return(NULL);
   }
   cuddRef(e);
 
