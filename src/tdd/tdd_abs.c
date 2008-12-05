@@ -4,8 +4,8 @@
 
 tdd_node *
 tdd_exist_abstract (tdd_manager * tdd,
-			      tdd_node * f,
-			      int var)
+		    tdd_node * f,
+		    int var)
 {
   tdd_node *res;
   DdHashTable *table;
@@ -157,10 +157,11 @@ tdd_node * tdd_resolve_elim_inter (tdd_manager * tdd, tdd_node * f,
 }
 
 
-tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd, 
-				     tdd_node * f, 
-				     int var, 
-				     DdHashTable * table)
+tdd_node * 
+tdd_exist_abstract_recur (tdd_manager * tdd, 
+			  tdd_node * f, 
+			  int var, 
+			  DdHashTable * table)
 {
   DdNode *F, *T, *E;
   
@@ -184,7 +185,7 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
   F = Cudd_Regular (f);
   
   /* base case */
-  if (cuddIsConstant (F)) return f;
+  if (F == DD_ONE(CUDD)) return f;
 
   /* check cache */
   if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, f)) != NULL))
@@ -213,12 +214,6 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
       /* grab extra references to simplify dereferencing later */
       cuddRef (fv);
       cuddRef (fnv);
-#ifdef DEBUG_FINE
-      fprintf (stderr, "exist_abstract: skipping constraint: ");
-      THEORY->print_lincons (stderr, vCons);
-      fprintf (stderr, "\n");
-#endif
-
     }
   else
     {
@@ -228,46 +223,19 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
       /* root constraint is eliminated */
       fElimRoot = 1;
 
-#ifdef DEBUG
-      fprintf (stderr, "exist_abstract: eliminating vCons: ");
-      THEORY->print_lincons (stderr, vCons);
-      fprintf (stderr, " ... ");
-      fflush (stderr);
-#endif
-
       /* resolve root constraint with THEN branch */
       tmp = tdd_resolve_elim_inter (tdd, fv, vTerm, vCons, var);
       if (tmp == NULL)
 	{
 	  return NULL;
-	}
-
-      
+	}      
       cuddRef (tmp);
 
-#ifdef DEBUG
-      fprintf (stderr, "done\n");
-      fflush (stderr);
-#endif
-
-
-#ifdef DEBUG_FINE
-      if (Cudd_DagSize (fv) + 200 <= Cudd_DagSize (tmp))
-	fprintf (stderr, "fv:Before resolve_elim %d, after %d\n", 
-		 Cudd_DagSize (fv), Cudd_DagSize (tmp));
-#endif
       fv = tmp;
+      
       
       /* resolve negation of the root constraint with ELSE branch */
       nvCons = THEORY->negate_cons (vCons);
-
-#ifdef DEBUG
-      fprintf (stderr, "exist_abstract: eliminating nvCons: ");
-      THEORY->print_lincons (stderr, nvCons);
-      fprintf (stderr, " ... ");
-      fflush (stderr);
-#endif
-
       tmp = tdd_resolve_elim_inter (tdd, fnv, vTerm, nvCons, var);
       THEORY->destroy_lincons (nvCons);
       
@@ -277,18 +245,6 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
 	  return NULL;
 	}
       cuddRef (tmp);
-
-#ifdef DEBUG
-      fprintf (stderr, "done\n");
-      fflush (stderr);
-#endif
-
-
-#ifdef DEBUG_FINE
-      if (Cudd_DagSize (fnv) + 200 <= Cudd_DagSize (tmp))
-      fprintf (stderr, "fnv:Before resolve_elim %d, after %d\n", 
-	       Cudd_DagSize (fnv), Cudd_DagSize (tmp));
-#endif
       fnv = tmp;
     }
   
@@ -372,13 +328,6 @@ tdd_node * tdd_exist_abstract_recur (tdd_manager * tdd,
     }
   
   cuddDeref (res);
-
-#ifdef DEBUG_FINE
-  fprintf (stderr, "\t exist_abstract: DONE with: ");
-  THEORY->print_lincons (stderr, vCons);
-  fprintf (stderr, "\n");
-#endif
-
   return res;
   
 }
@@ -427,7 +376,7 @@ tdd_node *tdd_resolve_elim_recur (tdd_manager * tdd,
   manager = CUDD;
   F = Cudd_Regular (f);
   
-  if (cuddIsConstant (F)) return (f);
+  if (F == DD_ONE(CUDD)) return (f);
   
   if (negCons == NULL && posCons == NULL) return (f);
 
@@ -801,7 +750,7 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
     {
       tdd_node *sol;
       
-      printf ("QELIM TERMINATION:\n");
+/*       printf ("QELIM TERMINATION:\n"); */
       sol = THEORY->qelim_solve (qelimCtx);
       return sol;
     }
@@ -813,7 +762,7 @@ tdd_node * tdd_exist_abstract_v2_recur (tdd_manager * tdd,
   res = THEORY->qelim_solve (qelimCtx);
   if (res == zero) 
     {
-      printf ("EARLY TERMINATION:\n");
+/*       printf ("EARLY TERMINATION:\n"); */
       return zero;
     }
   
