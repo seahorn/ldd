@@ -239,6 +239,8 @@ int tdd_path_size (tdd_manager*, tdd_node*);
   void tdd_node_sanity_check (tdd_manager*, tdd_node*);
 
   tdd_node *tdd_sat_reduce (tdd_manager *, tdd_node*, int);
+  bool tdd_is_sat (tdd_manager *, tdd_node*);
+  int tdd_unsat_size (tdd_manager *, tdd_node*);
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 

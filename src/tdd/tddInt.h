@@ -54,5 +54,8 @@ tdd_node* tdd_exist_abstract_v2_recur (tdd_manager*, tdd_node*, bool*,
 
 tdd_node* tdd_sat_reduce_recur (tdd_manager*, tdd_node*, 
 				qelim_context_t*, int);
+bool tdd_is_sat_recur (tdd_manager*, tdd_node*, 
+				qelim_context_t*);
+
 
 #endif

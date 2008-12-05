@@ -2,6 +2,10 @@
 #include "tddInt.h"
 
 
+static int tdd_unsat_size_recur (tdd_manager *tdd, tdd_node *f);
+static void tddClearFlag (tdd_node *f);
+
+
 /**
  * Reduces a TDD by removing all unsatisfiable paths of length less
  * than or equal to 'depth'. When depth is less than 0, removes paths
@@ -42,22 +46,55 @@ tdd_sat_reduce (tdd_manager *tdd,
   } while (CUDD->reordered == 1);
 
 
-  if (ctx)
-    {
-      THEORY->qelim_destroy_context (ctx);
-      ctx = NULL;
-    }
-
-  if (vars)
-    {
-      FREE (vars);
-      vars = NULL;
-    }
+  THEORY->qelim_destroy_context (ctx);
+  ctx = NULL;
+  FREE (vars);
+  vars = NULL;
   
 
   if (res != NULL)
     cuddDeref (res);
   return res;
+}
+
+
+/**
+   returns true if f is satisfiable, false if it isn't */
+bool
+tdd_is_sat (tdd_manager *tdd,
+	    tdd_node *f)
+{
+  bool res;
+  qelim_context_t *ctx;
+  bool * vars;
+  int i, n;
+  
+
+  n = THEORY->num_of_vars (THEORY);
+  vars = ALLOC (bool, n);
+  if (vars == NULL) return 0;
+  
+  for (i = 0; i < n; i++)
+    vars [i] = 1;
+  
+  
+  ctx = THEORY->qelim_init (tdd, vars);
+
+  if (ctx == NULL)
+    {
+      FREE (vars);
+      return 0;
+    }
+
+  res = tdd_is_sat_recur (tdd, f, ctx);
+  
+  THEORY->qelim_destroy_context (ctx);
+  ctx = NULL;
+  FREE (vars);
+  vars = NULL;
+
+  return res;
+  
 }
 
 
@@ -197,3 +234,120 @@ tdd_sat_reduce_recur (tdd_manager *tdd,
   
 }
 
+bool
+tdd_is_sat_recur (tdd_manager *tdd, 
+		  tdd_node *f, 
+		  qelim_context_t * ctx)
+{
+
+  tdd_node *zero;
+
+  
+  tdd_node *F, *fnv, *fv;
+  tdd_node *tmp;
+  
+  unsigned int v;
+  lincons_t vCons, nvCons;
+  int res;
+
+  
+  zero = Cudd_Not (DD_ONE(CUDD));
+
+  if (Cudd_IsConstant (f)) return f == DD_ONE (CUDD);
+
+  F = Cudd_Regular (f);
+  v = F->index;
+  vCons = tdd->ddVars [v];
+  
+
+  fv = Cudd_NotCond (cuddT (F), f != F);
+  fnv = Cudd_NotCond (cuddE (F), f != F);
+  
+  THEORY->qelim_push (ctx, vCons);
+  tmp = THEORY->qelim_solve (ctx);
+  
+
+  /* if ctx && vCons is UNSAT. Then ctx implies !vCons. Hence, don't
+     need to add !vCons to the context, and only need to explore the
+     ELSE branch */
+  if (tmp == zero)
+    {
+      THEORY->qelim_pop (ctx);
+      return tdd_is_sat_recur (tdd, fnv, ctx);
+    }
+
+  assert (tmp == DD_ONE (CUDD));
+
+  res = tdd_is_sat_recur (tdd, fv, ctx);
+  THEORY->qelim_pop (ctx);
+  
+  /* THEN branch is SAT, we are done */
+  if (res) return res;
+  
+  /* check ELSE branch */
+  nvCons = THEORY->negate_cons (vCons);
+  THEORY->qelim_push (ctx, nvCons);
+  tmp = THEORY->qelim_solve (ctx);
+
+  /* !vCons contradicts with the context */
+  if (tmp == zero) 
+    {
+      THEORY->qelim_pop (ctx);
+      THEORY->destroy_lincons (nvCons);
+      return 0;
+    }
+  
+  assert (tmp == DD_ONE(CUDD));
+  
+  res = tdd_is_sat_recur (tdd, fnv, ctx);
+  THEORY->qelim_pop (ctx);
+  THEORY->destroy_lincons (nvCons);
+
+  return res;
+}
+
+int
+tdd_unsat_size (tdd_manager *tdd, 
+		tdd_node *f)
+{
+  int i;
+  
+  i = tdd_unsat_size_recur (tdd, Cudd_Regular (f));
+  tddClearFlag (Cudd_Regular (f));
+  return i;
+}
+
+
+static int
+tdd_unsat_size_recur (tdd_manager *tdd, 
+		      tdd_node *f)
+{
+  int tval, eval;
+  int r;
+  
+  if (Cudd_IsComplement (f->next)) return 0;
+  
+  f->next = Cudd_Not (f->next);
+  
+  if (cuddIsConstant (f)) return 0;
+  
+  tval = tdd_unsat_size_recur (tdd, cuddT (f));
+  eval = tdd_unsat_size_recur (tdd, Cudd_Regular (cuddE (f)));
+  
+  r = tdd_is_sat (tdd, f) ? 0 : 1;
+  return  r + tval + eval;
+}
+
+
+static void 
+tddClearFlag (tdd_node *f)
+{
+  if (!Cudd_IsComplement (f->next)) return;
+  
+  f->next = Cudd_Regular (f->next);
+  
+  if (cuddIsConstant (f)) return;
+
+  tddClearFlag (cuddT(f));
+  tddClearFlag (Cudd_Regular (cuddE (f)));
+}
