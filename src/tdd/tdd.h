@@ -241,6 +241,7 @@ int tdd_path_size (tdd_manager*, tdd_node*);
   tdd_node *tdd_sat_reduce (tdd_manager *, tdd_node*, int);
   bool tdd_is_sat (tdd_manager *, tdd_node*);
   int tdd_unsat_size (tdd_manager *, tdd_node*);
+  theory_t *tdd_syntactic_implication_theory (theory_t *t);
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 

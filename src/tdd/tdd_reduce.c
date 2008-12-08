@@ -312,7 +312,7 @@ tdd_unsat_size (tdd_manager *tdd,
 {
   int i;
   
-  i = tdd_unsat_size_recur (tdd, Cudd_Regular (f));
+  i = tdd_unsat_size_recur (tdd, f);
   tddClearFlag (Cudd_Regular (f));
   return i;
 }
@@ -322,19 +322,35 @@ static int
 tdd_unsat_size_recur (tdd_manager *tdd, 
 		      tdd_node *f)
 {
+  tdd_node *F;
   int tval, eval;
   int r;
+
+  F = Cudd_Regular (f);
+
+  if (Cudd_IsComplement (F->next)) return 0;
   
-  if (Cudd_IsComplement (f->next)) return 0;
+  F->next = Cudd_Not (F->next);
   
-  f->next = Cudd_Not (f->next);
+  if (cuddIsConstant (F)) return 0;
   
-  if (cuddIsConstant (f)) return 0;
-  
-  tval = tdd_unsat_size_recur (tdd, cuddT (f));
-  eval = tdd_unsat_size_recur (tdd, Cudd_Regular (cuddE (f)));
+  tval = tdd_unsat_size_recur (tdd, Cudd_NotCond (cuddT (F), f != F));
+  eval = tdd_unsat_size_recur (tdd, Cudd_NotCond (cuddE (F), f != F));
   
   r = tdd_is_sat (tdd, f) ? 0 : 1;
+
+  if (r == 1) 
+    {
+      fprintf (stdout, "UNSAT SUBTREE\n");
+      fflush (stdout);
+    }
+/*   else */
+/*     { */
+/*       fprintf (stdout, "SAT SUBTREE\n"); */
+/*       fflush (stdout); */
+/*     } */
+  
+  
   return  r + tval + eval;
 }
 

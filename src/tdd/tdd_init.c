@@ -1,8 +1,10 @@
 #include "util.h"
 #include "tddInt.h"
 
+static int bin_false (lincons_t, lincons_t);
 
-tdd_manager * tdd_init (DdManager *cudd, theory_t * t)
+tdd_manager * 
+tdd_init (DdManager *cudd, theory_t * t)
 {
   tdd_manager* tdd;
   int i;
@@ -53,3 +55,20 @@ tdd_node* to_tdd (tdd_manager *tdd, lincons_t l)
   return THEORY->to_tdd(tdd, l);
 }
 
+
+/**
+ * Converts a given theory t into a theory in which all implications
+ * are syntactic.
+ */
+theory_t *
+tdd_syntactic_implication_theory (theory_t *t)
+{
+  t->is_stronger_cons = bin_false;
+  return t;
+}
+
+static int 
+bin_false (lincons_t l1, lincons_t l2)
+{
+  return 0;
+}
