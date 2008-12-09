@@ -619,6 +619,58 @@ Formula InitCons(int *preds)
 }
 
 /*********************************************************************/
+//generate constraints that relate final state variables or predicates
+//to final transition relation variables
+/*********************************************************************/
+Formula FinalCons(int *preds)
+{
+#ifdef DEBUG
+  printf("generating FINAL constraints ...\n");
+#endif
+
+  //the largest transition relation variable (+1)
+  int maxTransVar = 2 * varNum * depth;
+
+  //the result to be computed
+  Formula node = ConstFormula(true);
+
+  //if we are using predicate abstraction -- this implies summary or
+  //image computation
+  if(preds) {
+    //generate predicate constraints
+    for(int i = 0;i < predNum;++i) {
+      int id = 5 * i;
+      int baseVar = 2 * varNum * (depth - 1);
+      Formula pred11 = ConsToTdd(preds[id],baseVar + preds[id + 1],
+                                 preds[id + 2],baseVar + preds[id + 3],
+                                 preds[id + 4]);      
+      Formula pred12 = ConsToTdd(preds[id],baseVar + preds[id + 1],
+                                 preds[id + 2],baseVar + preds[id + 3],
+                                 preds[id + 4]);      
+      pred12 = FormOp(pred12,Formula(),'!');
+
+      int v1 = maxTransVar + 2 * (predNum + i);
+      int v2 = v1 + 1;
+
+      Formula pred21 = ConsToTdd(1,v1,-1,v2,0);
+      Formula pred22 = ConsToTdd(1,v1,-1,v2,0);
+      pred22 = FormOp(pred22,Formula(),'!');
+
+      Formula eq = FormOp(FormOp(pred11,pred21,'&'),FormOp(pred12,pred22,'&'),'|');
+      node = FormOp(node,eq,'&');
+    }
+  }
+  
+#ifdef DEBUG
+  printf ("FINAL node is:\n");
+  PrintDD(node);
+#endif
+
+  //all done
+  return node;
+}
+
+/*********************************************************************/
 //generate constraints that make the transition relation UNSAT
 /*********************************************************************/
 Formula Unsat(int **bounds,int *coeffs,int d)
@@ -686,146 +738,130 @@ Formula InitInv(int **bounds,int *coeffs,int d)
 }
 
 /*********************************************************************/
+//do eager QELIM
+/*********************************************************************/
+Formula EagerQelim(Formula form,int d,int *preds)
+{
+  //if not computing image or summary
+  if(!summary && !image) {
+    if(d == depth - 1) form = Qelim(form,2 * varNum * (d - 1),2 * varNum * (d + 1));
+    else form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
+  }
+  //if doing predicate abstraction
+  else if(preds) {
+    //if computing summary
+    if(summary) {
+      if(d == depth - 1) form = Qelim(form,2 * varNum * (d - 1),2 * varNum * (d + 1));
+      else form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
+    }
+    //otherwise, must be computing image
+    else {
+      if(d == depth - 1) form = Qelim(form,2 * varNum * (d - 1),2 * varNum * (d + 1) + 2 * predNum);
+      else form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
+    }
+  }
+  //if computing summary without predicates
+  else if(summary) {
+    if(d > 0) form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
+  }
+  //must be computing image without predicates
+  else form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
+
+  //all done
+  return form;
+}
+
+
+/*********************************************************************/
 //unwind the transition relation by relating variables at step d to
 //those at step d-1 such that the invariant is maintained
 /*********************************************************************/
-Formula Unwind(int d,int **bounds,int *coeffs,int unsatTarget)
+Formula Unwind(int **bounds,int *coeffs,int *preds,int unsatTarget)
 {
   //initialize result
   Formula node = ConstFormula(true);
 
-  //if we have exceeded the depth
-  if(d >= depth) return node;
+  //unwind from start to finish
+  for(int d = 0;d < depth;++d) {
 
-  //generate a constraint that makes the whole system unsatisfiable,
-  //if needed
-  if(unsat && d == unsatTarget) 
-    node = FormOp(node,Unsat(bounds,coeffs,d),'&');  
+    //generate a constraint that makes the whole system unsatisfiable,
+    //if needed
+    if(unsat && d == unsatTarget) 
+      node = FormOp(node,Unsat(bounds,coeffs,d),'&');  
 
-  //for the first step, just initialize
-  if(d == 0) {
-    node = FormOp(node,InitInv(bounds,coeffs,0),'&');      
-  }
-  //otherwise relate variables of this step with previous step
-  else {
-    for(size_t vn = 0;vn < varNum;++vn) {
-      int v1 = 2 * (varNum * d + vn);
-      int v2 = v1 + 1;
+    //for the first step, just initialize
+    if(d == 0) {
+      node = FormOp(node,InitInv(bounds,coeffs,0),'&');      
+    }
+    //otherwise relate variables of this step with previous step
+    else {
+      for(size_t vn = 0;vn < varNum;++vn) {
+        int v1 = 2 * (varNum * d + vn);
+        int v2 = v1 + 1;
 
-      //get the branching factor
-      int bfac = Rand(1,branch + 1);
+        //get the branching factor
+        int bfac = Rand(1,branch + 1);
 #ifdef DEBUG
-      printf("level = %d\tbranching = %d\n",d,bfac);
+        printf("level = %d\tbranching = %d\n",d,bfac);
 #endif
 
-      //get the previous variables to relate to v1 and v2
-      int pv1 = compInv ? 
-        (2 * (varNum * (d - 1) + Rand(0,varNum))) : (v1 - 2 * varNum);
-      int pv2 = pv1 + 1;
+        //get the previous variables to relate to v1 and v2
+        int pv1 = compInv ? 
+          (2 * (varNum * (d - 1) + Rand(0,varNum))) : (v1 - 2 * varNum);
+        int pv2 = pv1 + 1;
 
-      //disjunctive choices at the start of this diamond
-      Formula choice = ConstFormula(false);
+        //disjunctive choices at the start of this diamond
+        Formula choice = ConstFormula(false);
 
-      //for DDD constraints
-      if(consType == DIA_DDD) {
-        //create branches
-        for(int i = 0;i < bfac;++i) {
-          //create a random positive slippage
-          int slip = Rand(0,1000);
+        //for DDD constraints
+        if(consType == DIA_DDD) {
+          //create branches
+          for(int i = 0;i < bfac;++i) {
+            //create a random positive slippage
+            int slip = Rand(0,1000);
 
-          //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
-          //slip. together with the previous invariant pv1 - pv2 <= bound,
-          //this ensures the new invariant v1 - v2 <= bound.
-          Formula node1 = ConsToTdd(1,v1,-1,pv1,-slip);
-          Formula node2 = ConsToTdd(1,pv2,-1,v2,-slip);
+            //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
+            //slip. together with the previous invariant pv1 - pv2 <= bound,
+            //this ensures the new invariant v1 - v2 <= bound.
+            Formula node1 = ConsToTdd(1,v1,-1,pv1,-slip);
+            Formula node2 = ConsToTdd(1,pv2,-1,v2,-slip);
+            choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
+          }
+        }
+        //for non-DDD constraints
+        else {
+          //create constraints v1 = pv1 and v2 = pv2. together with
+          //the previous invariant c1*pv1 + c2*pv2 <= bound, this
+          //ensures the new invariant c1*v1 + c2*v2 <= bound.
+          Formula node1 = VarEq(v1,pv1);
+          Formula node2 = VarEq(v2,pv2);
           choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
         }
+
+#ifdef DEBUG
+        printf ("choice is:\n");
+        PrintDD(choice);
+#endif
+
+        //add the choice
+        node = FormOp(node,choice,'&');
       }
-      //for non-DDD constraints
-      else {
-        //create constraints v1 = pv1 and v2 = pv2. together with
-        //the previous invariant c1*pv1 + c2*pv2 <= bound, this
-        //ensures the new invariant c1*v1 + c2*v2 <= bound.
-        Formula node1 = VarEq(v1,pv1);
-        Formula node2 = VarEq(v2,pv2);
-        choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
+
+      //create equivalences between predicates and numeric variables
+      if(preds) {
+        if(d == 0) node = FormOp(node,InitCons(preds),'&');
+        else if(d == depth - 1) node = FormOp(node,FinalCons(preds),'&');
       }
 
-#ifdef DEBUG
-      printf ("choice is:\n");
-      PrintDD(choice);
-#endif
-
-      //add the choice
-      node = FormOp(node,choice,'&');
+      //eager QELIM
+      if(eagerElim) node = EagerQelim(node,d,preds);
     }
-  }
 
 #ifdef DEBUG
-  printf ("node is:\n");
-  PrintDD(node);
+    printf ("node is:\n");
+    PrintDD(node);
 #endif
-
-  //recurse
-  node = FormOp(node,Unwind(d + 1,bounds,coeffs,unsatTarget),'&');
-
-  //if doing eager QELIM, quantify the latest fresh variables, unless
-  //these are the last set of numeric variables.
-  if(eagerElim && (d != depth - 1)) {
-    node = Qelim(node,2 * varNum * d,2 * varNum * (d + 1));
   }
-
-  //all done
-  return node;
-}
-
-/*********************************************************************/
-//generate constraints that relate final state variables or predicates
-//to final transition relation variables
-/*********************************************************************/
-Formula FinalCons(int *preds)
-{
-#ifdef DEBUG
-  printf("generating FINAL constraints ...\n");
-#endif
-
-  //the largest transition relation variable (+1)
-  int maxTransVar = 2 * varNum * depth;
-
-  //the result to be computed
-  Formula node = ConstFormula(true);
-
-  //if we are using predicate abstraction -- this implies summary or
-  //image computation
-  if(preds) {
-    //generate predicate constraints
-    for(int i = 0;i < predNum;++i) {
-      int id = 5 * i;
-      int baseVar = 2 * varNum * (depth - 1);
-      Formula pred11 = ConsToTdd(preds[id],baseVar + preds[id + 1],
-                                 preds[id + 2],baseVar + preds[id + 3],
-                                 preds[id + 4]);      
-      Formula pred12 = ConsToTdd(preds[id],baseVar + preds[id + 1],
-                                 preds[id + 2],baseVar + preds[id + 3],
-                                 preds[id + 4]);      
-      pred12 = FormOp(pred12,Formula(),'!');
-
-      int v1 = maxTransVar + 2 * (predNum + i);
-      int v2 = v1 + 1;
-
-      Formula pred21 = ConsToTdd(1,v1,-1,v2,0);
-      Formula pred22 = ConsToTdd(1,v1,-1,v2,0);
-      pred22 = FormOp(pred22,Formula(),'!');
-
-      Formula eq = FormOp(FormOp(pred11,pred21,'&'),FormOp(pred12,pred22,'&'),'|');
-      node = FormOp(node,eq,'&');
-    }
-  }
-  
-#ifdef DEBUG
-  printf ("FINAL node is:\n");
-  PrintDD(node);
-#endif
 
   //all done
   return node;
@@ -905,50 +941,28 @@ void PrintSmt(smt_formula_t *smtf)
 /*********************************************************************/
 //do final quantifier elimination
 /*********************************************************************/
-Formula FinalQelim(Formula form)
+Formula LazyQelim(Formula form,int *preds)
 {
   //the minimum and maximum variables for the transition relation
   int minTransVar = 0;
   int maxTransVar = 2 * varNum * depth;
 
-  //generate constants and coefficients for predicates
-  int *preds = Preds();
-
   //if not computing image or summary
-  if(!summary && !image) {
-    if(eagerElim) {
-      form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
-      form = Qelim(form,maxTransVar - 2 * varNum,maxTransVar);
-    } else form = Qelim(form,minTransVar,maxTransVar);
-  }
+  if(!summary && !image) form = Qelim(form,minTransVar,maxTransVar);
 
   //if doing predicate abstraction
   else if(preds) {
-    //generate initial and final constraints
-    form = FormOp(form,InitCons(preds),'&');
-    form = FormOp(form,FinalCons(preds),'&');
-    
-    //compute image or summary
-    if(summary) {
-      if(eagerElim) {
-        form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
-        form = Qelim(form,maxTransVar - 2 * varNum,maxTransVar);
-      } else form = Qelim(form,minTransVar,maxTransVar);
-    } else {
-      if(eagerElim) {
-        form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
-        form = Qelim(form,maxTransVar - 2 * varNum,maxTransVar + 2 * predNum);
-      } else form = Qelim(form,minTransVar,maxTransVar + 2 * predNum);
-    }
+    //compute image
+    if(summary) form = Qelim(form,minTransVar,maxTransVar);
+    //compute summary
+    else form = Qelim(form,minTransVar,maxTransVar + 2 * predNum);
   }
-
+  //if computing summary without predicate abstraction
+  else if(summary) form = Qelim(form,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
   //if computing image without predicate abstraction
-  else if(image) {
-    form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
-  }
+  else form = Qelim(form,minTransVar,maxTransVar - 2 * varNum);
 
   //cleanup and return
-  if(preds) delete [] preds;
   return form;
 }
 
@@ -973,6 +987,9 @@ void GenAndSolve()
   int **bounds = Bounds();
   int *coeffs = Coeffs();
 
+  //generate constants and coefficients for predicates
+  int *preds = Preds();
+
   //the depth at which we are going to generate the UNSAT clause
   int unsatTarget = Rand(0,depth);
 
@@ -981,10 +998,10 @@ void GenAndSolve()
 #endif
 
   //unwind transition relation and conjoin
-  Formula form = Unwind(0,bounds,coeffs,unsatTarget);      
+  Formula form = Unwind(bounds,coeffs,preds,unsatTarget);      
 
-  //do final quantifier elimination
-  form = FinalQelim(form);
+  //do lazy quantifier elimination
+  if(!eagerElim) form = LazyQelim(form,preds);
 
   //print SMT formula or check if the result is correct
   if(smtFile) PrintSmt(form.smtf);
@@ -996,6 +1013,7 @@ void GenAndSolve()
   for(size_t i = 0;i < varNum;++i) delete [] bounds[i];
   delete [] bounds;
   delete [] coeffs;
+  if(preds) delete [] preds;
 }
 
 /*********************************************************************/
