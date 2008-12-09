@@ -54,6 +54,7 @@ enum TddType { DIA_DDD, DIA_OCT, DIA_TVPI }
 bool summary = false;
 bool image = false;
 bool eagerElim = false;
+bool satReduce = false;
 
 //other data structures
 int totalVarNum = 0;
@@ -113,6 +114,7 @@ void Usage(char *cmd)
   printf("\t--summary : whether to compute summaries\n");
   printf("\t--image : whether to do image computation\n");
   printf("\t--eagerElim : whether to do eager quantifier elimination\n");
+  printf("\t--satReduce : whether to eliminate UNSAT sub-trees\n");
 }
 
 /*********************************************************************/
@@ -172,6 +174,7 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--summary")) summary = true;
     else if(!strcmp(argv[i],"--image")) image = true;
     else if(!strcmp(argv[i],"--eagerElim")) eagerElim = true;
+    else if(!strcmp(argv[i],"--satReduce")) satReduce = true;
     else {
       Usage(argv[0]);
       exit(1);
@@ -414,6 +417,20 @@ Formula ConsToTdd(int c1,int x,int c2,int y,int k)
 }
 
 /*********************************************************************/
+//remove UNSAT subtrees from a TDD
+/*********************************************************************/
+Formula SatReduce(Formula form)
+{
+  if(satReduce) {
+    tdd_node *tmp = tdd_sat_reduce (tdd, form.node, -1);
+    Cudd_Ref (tmp);
+    Cudd_RecursiveDeref (cudd, form.node);
+    form.node = tmp;
+  }
+  return form;
+}
+
+/*********************************************************************/
 //quantify out all variables from min to max-1 from node and return
 //the result. deref node.
 /*********************************************************************/
@@ -447,6 +464,13 @@ Formula Qelim(Formula form,int min,int max)
     //all done
     form.smtf = res;
   }
+  //if using QELIM2, quantifying out all variables, and not doing
+  //eager QELIM, replace QELIM with a SAT check
+  else if(qelim2 && !summary && !image && satReduce) {
+    Formula tmp = tdd_is_sat(tdd,form.node) ? ConstFormula(true) : ConstFormula(false);
+    Cudd_RecursiveDeref(cudd,form.node);
+    form = tmp;
+  }
   else {
     //clear variable set
     memset(varSet,0,totalVarNum * sizeof(int));
@@ -459,6 +483,7 @@ Formula Qelim(Formula form,int min,int max)
 #ifdef DEBUG
         printf("***** eliminating numeric variable %d ...\n",i);
 #endif
+        form = SatReduce(form);
         tdd_node *tmp = tdd_exist_abstract (tdd, form.node, i);
         Cudd_Ref (tmp);
         Cudd_RecursiveDeref (cudd, form.node);
@@ -472,6 +497,7 @@ Formula Qelim(Formula form,int min,int max)
 
     //quantify, if using qelim2
     if(qelim2) {
+      form = SatReduce(form);
       tdd_node *tmp = tdd_exist_abstract_v2 (tdd, form.node, varSet);
       Cudd_Ref (tmp);
       Cudd_RecursiveDeref (cudd, form.node);
@@ -949,7 +975,6 @@ Formula LazyQelim(Formula form,int *preds)
 
   //if not computing image or summary
   if(!summary && !image) form = Qelim(form,minTransVar,maxTransVar);
-
   //if doing predicate abstraction
   else if(preds) {
     //compute image

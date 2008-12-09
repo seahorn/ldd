@@ -2,7 +2,7 @@
 
 if ($1 == "--noPreds") then
   echo "===== no predicate abstraction ====="
-  set BASECMD="./diamond --branch 5 --depth 5 --repeat 25 --vars 5"
+  set BASECMD="./diamond --branch 4 --depth 4 --repeat 25 --vars 4"
   foreach I ("" "--qelim2" "--oct" "--oct --octCons" "--tvpi" "--tvpi --tvpiCons")
     foreach J ("" "--summary" "--image")
       foreach K ("" "--eagerElim")
