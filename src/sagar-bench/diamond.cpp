@@ -770,8 +770,13 @@ Formula EagerQelim(Formula form,int d,int *preds)
 {
   //if not computing image or summary
   if(!summary && !image) {
-    if(d == depth - 1) form = Qelim(form,2 * varNum * (d - 1),2 * varNum * (d + 1));
-    else form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
+    if(d > 0) {
+      form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
+      if(d == depth - 1) {
+        form = Qelim(form,0,2 * varNum);
+        form = Qelim(form,2 * varNum * d,2 * varNum * (d + 1));
+      }
+    }
   }
   //if doing predicate abstraction
   else if(preds) {
@@ -791,8 +796,10 @@ Formula EagerQelim(Formula form,int d,int *preds)
     if(d > 0) form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
   }
   //must be computing image without predicates
-  else form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
-
+  else if(d > 0) {
+    form = Qelim(form,2 * varNum * (d - 1),2 * varNum * d);
+    if(d == depth - 1) form = Qelim(form,0,2 * varNum);
+  }
   //all done
   return form;
 }
@@ -818,6 +825,7 @@ Formula Unwind(int **bounds,int *coeffs,int *preds,int unsatTarget)
     //for the first step, just initialize
     if(d == 0) {
       node = FormOp(node,InitInv(bounds,coeffs,0),'&');      
+      if(preds) node = FormOp(node,InitCons(preds),'&');
     }
     //otherwise relate variables of this step with previous step
     else {
@@ -874,10 +882,7 @@ Formula Unwind(int **bounds,int *coeffs,int *preds,int unsatTarget)
       }
 
       //create equivalences between predicates and numeric variables
-      if(preds) {
-        if(d == 0) node = FormOp(node,InitCons(preds),'&');
-        else if(d == depth - 1) node = FormOp(node,FinalCons(preds),'&');
-      }
+      if(preds && d == depth - 1) node = FormOp(node,FinalCons(preds),'&');
 
       //eager QELIM
       if(eagerElim) node = EagerQelim(node,d,preds);
