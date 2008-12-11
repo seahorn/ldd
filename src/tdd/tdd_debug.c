@@ -48,8 +48,8 @@ tdd_path_size (tdd_manager * tdd, tdd_node * n)
   
   
   N = Cudd_Regular (n);
-  t = cuddT (N);
-  e = cuddE (N);
+  t = Cudd_NotCond (cuddT (N), n != N);
+  e = Cudd_NotCond (cuddE (N), n != N);
 
   return tdd_path_size (tdd, t) + tdd_path_size (tdd, e);  
 }
