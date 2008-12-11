@@ -851,14 +851,15 @@ Formula Unwind(int **bounds,int *coeffs,int *preds,int unsatTarget)
         if(consType == DIA_DDD) {
           //create branches
           for(int i = 0;i < bfac;++i) {
-            //create a random positive slippage
-            int slip = Rand(0,1000);
+            //create two random slips s1 and s2, such that s1 + s2 >= 0
+            int s1 = Rand(-1000,1000);
+            int s2 = -s1 + Rand(0,1000);
 
-            //create two constraints v1 <= pv1 - slip and v2 >= pv2 +
-            //slip. together with the previous invariant pv1 - pv2 <= bound,
+            //create two constraints v1 <= pv1 - s1 and v2 >= pv2 +
+            //s2. together with the previous invariant pv1 - pv2 <= bound,
             //this ensures the new invariant v1 - v2 <= bound.
-            Formula node1 = ConsToTdd(1,v1,-1,pv1,-slip);
-            Formula node2 = ConsToTdd(1,pv2,-1,v2,-slip);
+            Formula node1 = ConsToTdd(1,v1,-1,pv1,-s1);
+            Formula node2 = ConsToTdd(1,pv2,-1,v2,-s2);
             choice = FormOp(choice,FormOp(node1,node2,'&'),'|');
           }
         }
@@ -979,7 +980,11 @@ Formula LazyQelim(Formula form,int *preds)
   int maxTransVar = 2 * varNum * depth;
 
   //if not computing image or summary
-  if(!summary && !image) form = Qelim(form,minTransVar,maxTransVar);
+  if(!summary && !image) {
+    form = Qelim(form,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
+    form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
+    form = Qelim(form,maxTransVar - 2 * varNum,maxTransVar);
+  }
   //if doing predicate abstraction
   else if(preds) {
     //compute image
@@ -990,8 +995,10 @@ Formula LazyQelim(Formula form,int *preds)
   //if computing summary without predicate abstraction
   else if(summary) form = Qelim(form,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
   //if computing image without predicate abstraction
-  else form = Qelim(form,minTransVar,maxTransVar - 2 * varNum);
-
+  else {
+    form = Qelim(form,minTransVar + 2 * varNum,maxTransVar - 2 * varNum);
+    form = Qelim(form,minTransVar,minTransVar + 2 * varNum);
+  }
   //cleanup and return
   return form;
 }
