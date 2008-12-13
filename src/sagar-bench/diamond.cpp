@@ -852,8 +852,8 @@ Formula Unwind(int **bounds,int *coeffs,int *preds,int unsatTarget)
           //create branches
           for(int i = 0;i < bfac;++i) {
             //create two random slips s1 and s2, such that s1 + s2 >= 0
-            int s1 = Rand(-1000,1000);
-            int s2 = -s1 + Rand(0,1000);
+            int s1 = Rand(-10000,10000);
+            int s2 = -s1 + Rand(0,10000);
 
             //create two constraints v1 <= pv1 - s1 and v2 >= pv2 +
             //s2. together with the previous invariant pv1 - pv2 <= bound,
