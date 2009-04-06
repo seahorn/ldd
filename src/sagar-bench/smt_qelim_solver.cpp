@@ -154,6 +154,7 @@ tdd_node * FormOp(tdd_node * arg1,tdd_node * arg2,char op)
 /*********************************************************************/
 tdd_node * ConsToTdd(int c1,int x,int c2,int y,int k)
 {
+  assert (x != y);
   tdd_node * res;
   constant_t cst = theory->create_int_cst(k);
   memset(varSet,0,totalVarNum * sizeof(int));
@@ -296,6 +297,7 @@ void Solve()
     //find total number of variables in formula
     set<string> vars;
     FindVars(smtFormula,vars);
+
     totalVarNum = vars.size();
     varSet = new int [totalVarNum];
  
