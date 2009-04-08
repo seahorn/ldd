@@ -28,6 +28,8 @@ extern "C" {
 /*********************************************************************/
 list<string> fileNames;
 bool qelim2 = false;
+bool qelim_occur = false;
+bool verbose = false;
 enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
 
@@ -51,6 +53,8 @@ void Usage(char *cmd)
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
   printf("\t--oct : use octagon theory\n");
   printf("\t--tvpi : use TVPI theory\n");
+  printf("\t--qelim-occur: use Least Occurrences First Quantified heuristic\n");
+  printf("\t--verbose: be verbose\n");
 }
 
 /*********************************************************************/
@@ -78,6 +82,8 @@ void ProcessInputs(int argc,char *argv[])
       exit(0);
     }
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
+    else if(!strcmp(argv[i],"--verbose")) verbose = true;
+    else if(!strcmp(argv[i],"--qelim-occur")) qelim_occur=true;
     else if(!strcmp(argv[i],"--oct")) tddType = QSLV_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = QSLV_TVPI;
     else if(strstr(argv[i],".smt") == (argv[i] + strlen(argv[i]) - 4)) fileNames.push_back(argv[i]);
@@ -155,6 +161,7 @@ tdd_node * FormOp(tdd_node * arg1,tdd_node * arg2,char op)
 tdd_node * ConsToTdd(int c1,int x,int c2,int y,int k)
 {
   assert (x != y);
+  assert (c1 == -1 || c2 == -1);
   tdd_node * res;
   constant_t cst = theory->create_int_cst(k);
   memset(varSet,0,totalVarNum * sizeof(int));
@@ -179,24 +186,72 @@ int VarId(char *var)
   else return atoi(var + 1);
 }
 
+int* occurrences;
+// -- sort first by occurrences, then by variable number
+int qcompare (const void * o1, const void * o2)
+{
+  int v1 = *(int*)o1;
+  int v2 = *(int*)o2;
+  
+  int r = occurrences [v1] - occurrences [v2];
+  
+  return r == 0 ? v1 - v2 : r;
+}
+
+
 /*********************************************************************/
 //quantify out all variables from min to max-1 from node and return
 //the result. deref node.
 /*********************************************************************/
 tdd_node * Qelim(tdd_node * form,int min,int max)
 {
+  size_t theoryVarSize = theory->num_of_vars (theory);
+
+  occurrences = NULL;
+  
+  printf ("QELIM: Initial size in nodes: %d\n", Cudd_DagSize (form));
+  
+  if (qelim_occur)
+    {
+      occurrences = (int*)malloc (sizeof (int) * theoryVarSize);
+      memset (occurrences, 0, sizeof (int) * theoryVarSize);
+      tdd_var_occurrences (tdd, form, occurrences);
+
+      if (verbose)
+	for (size_t i = 0; i < theoryVarSize; i++)
+	  if (occurrences [i] != 0)
+	    printf ("var %d occurs %d\n", i, occurrences [i]);
+    }
+
+
+  // -- number of variables to quantify out
+  int qsize = max - min;
+  int * qvars = (int*) malloc (sizeof (int) * qsize);
+  
+  // create an array with all variables that need to be quantified out
+  for (int i = 0; i < qsize; i++)
+    qvars [i] = min + i;
+
+  if (qelim_occur)
+    qsort (qvars, qsize, sizeof(int), qcompare);
+  
+  
+  //printf ("QELIM: Initial size in paths: %d\n", tdd_path_size (tdd, form));
+
   //clear variable set
   memset(varSet,0,totalVarNum * sizeof(int));
 
   //now quantify out elements if using qelim1, or set the elements of
   //varSet to 1 if using qelim2
-  for(int i = min;i < max;++i) {
-    if(qelim2) varSet[i] = 1;
+  for(int i = 0; i < qsize; i++) {
+    if(qelim2) varSet[qvars [i]] = 1;
     else {
-      tdd_node *tmp = tdd_exist_abstract (tdd, form, i);
+      printf ("QELIM of var: %d", qvars [i]);
+      tdd_node *tmp = tdd_exist_abstract (tdd, form, qvars [i]);
       Cudd_Ref (tmp);
       Cudd_RecursiveDeref (cudd, form);
       form = tmp;
+      printf (" size: %d\n", Cudd_DagSize (form));
     }
   }
 
@@ -207,6 +262,20 @@ tdd_node * Qelim(tdd_node * form,int min,int max)
     Cudd_RecursiveDeref (cudd, form);
     form = tmp;
   }
+
+  free (qvars); qvars = NULL;
+
+  if (occurrences != NULL)
+    {
+      free (occurrences); 
+      occurrences = NULL;
+    }
+  
+      
+
+  printf ("QELIM: Final size in nodes: %d\n", Cudd_DagSize (form));
+  //printf ("QELIM: Final size in paths: %d\n", tdd_path_size (tdd, form));
+
 
   //all done
   return form;
