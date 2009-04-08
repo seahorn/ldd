@@ -115,7 +115,10 @@ ddd_qelim_push(qelim_context_t* context, lincons_t l)
   
 
   /* if current context is unsat, record what was pushed and terminate */
-  if (ctx->stack && ctx->stack->dbm->unsat)
+  /* current context is unsat if ctx->stack->dbm->unsat is set or
+     ctx->stack->dbm is NULL 
+  */
+  if (ctx->stack && (ctx->stack->dbm == NULL || ctx->stack->dbm->unsat))
     {
       new_stack->dbm = NULL;
       new_stack->next = ctx->stack;
