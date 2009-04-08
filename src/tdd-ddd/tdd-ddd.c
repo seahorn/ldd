@@ -293,6 +293,14 @@ bool ddd_term_has_vars (linterm_t t,bool *vars)
   return vars[x->var1] || vars[x->var2];
 }
 
+void ddd_var_occurrences (lincons_t l, int *occurs)
+{
+  ddd_cons_t *cons = (ddd_cons_t*) l;
+  occurs [cons->term.var1]++;
+  occurs [cons->term.var2]++;
+}
+
+
 /**********************************************************************
  * Returns the number of variables of the theory
  *********************************************************************/
@@ -907,6 +915,7 @@ ddd_theory_t *ddd_create_theory_common(size_t vn)
   res->base.term_has_var = ddd_term_has_var;
   res->base.term_has_vars = ddd_term_has_vars;
   res->base.num_of_vars = ddd_num_of_vars;
+  res->base.var_occurrences = ddd_var_occurrences;
   res->base.terms_have_resolvent = ddd_terms_have_resolvent;
   res->base.negate_term = ddd_negate_term;
   res->base.pick_var = ddd_pick_var;
