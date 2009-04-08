@@ -115,6 +115,13 @@ struct theory
   int (*is_strict)(lincons_t l);
 
   /**
+   * For each variable x_i that has a non-zero coefficient in the
+   * constraint l, increments occurs[i]. occurs must be large enough
+   * to accommodate all variables in l.
+   */
+  void (*var_occurrences)(lincons_t l, int* occurs);
+
+  /**
    * get the term corresponding to the argument constraint
    */
   linterm_t (*get_term)(lincons_t l);
@@ -195,7 +202,9 @@ struct theory
   lincons_t (*qelim_pop)(qelim_context_t* ctx);
   tdd_node* (*qelim_solve)(qelim_context_t* ctx);
   void (*qelim_destroy_context)(qelim_context_t* ctx);
-  
+
+
+
 };
 
 
@@ -233,8 +242,8 @@ tdd_node* tdd_resolve (tdd_manager*, tdd_node*,
 tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, int*);
 
 void tdd_manager_debug_dump (tdd_manager*);
-int tdd_path_size (tdd_manager*, tdd_node*);
-
+  int tdd_path_size (tdd_manager*, tdd_node*);
+  
   void tdd_sanity_check (tdd_manager*);
   void tdd_node_sanity_check (tdd_manager*, tdd_node*);
 
@@ -242,6 +251,8 @@ int tdd_path_size (tdd_manager*, tdd_node*);
   bool tdd_is_sat (tdd_manager *, tdd_node*);
   int tdd_unsat_size (tdd_manager *, tdd_node*);
   theory_t *tdd_syntactic_implication_theory (theory_t *t);
+  void tdd_var_occurrences (tdd_manager *, tdd_node *, int*);
+  
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 

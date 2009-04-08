@@ -3,6 +3,9 @@
 #include "util.h"
 #include "tddInt.h"
 
+static void ddClearFlag(tdd_node * n);
+static void ddOccurCount (tdd_manager *tdd, tdd_node *N, int *occurrences);
+
 
 void 
 tdd_manager_debug_dump (tdd_manager* tdd)
@@ -30,24 +33,31 @@ tdd_manager_debug_dump (tdd_manager* tdd)
 /**
  * Computes the number of paths in a diagram.  Running time is linear
  * in the number of path, exponential in the size of the diagram.
+ *
+ * tdd argument is deprecated. 
  */
 int 
 tdd_path_size (tdd_manager * tdd, tdd_node * n)
 {
   tdd_node * N, *t, *e;
   
-  tdd_node *one, *zero;
+  /* tdd_node *one, *zero; */
   
   if (n == NULL) return 0;
 
-  one = tdd_get_true (tdd);
-  zero = tdd_not (one);
+  /* one = tdd_get_true (tdd); */
+  /* zero = tdd_not (one); */
   
-  if (n == one) return 1;
-  if (n == zero) return 0;
-  
-  
+  /* if (n == one) return 1; */
+  /* if (n == zero) return 0; */
+
   N = Cudd_Regular (n);
+  
+  // -- n is TRUE if it is a non-negated constant
+  // -- n is FALSE if it is a negated constant
+  if (cuddIsConstant (N))
+    return n == N ? 1 : 0;
+
   t = Cudd_NotCond (cuddT (N), n != N);
   e = Cudd_NotCond (cuddE (N), n != N);
 
@@ -129,3 +139,60 @@ tdd_node_sanity_check (tdd_manager *tdd, tdd_node *n)
   
 
 }
+
+
+/**
+ * Counts the number each variable occurs in the DAG of the first
+ * argument.
+ */
+void 
+tdd_var_occurrences (tdd_manager *tdd, tdd_node *n, int* occurrences)
+{
+  ddOccurCount (tdd, Cudd_Regular (n), occurrences);
+  ddClearFlag (Cudd_Regular (n));
+}
+
+
+/**
+ * Recursive part of tdd_var_occurrences
+ */
+static void 
+ddOccurCount (tdd_manager *tdd, tdd_node *N, int *occurrences)
+{
+  /* already been here, get out*/
+  if (Cudd_IsComplement (N->next)) return;
+
+  /* mark current node */
+  N->next = Cudd_Not (N->next);
+  
+  /* constants have no variables */
+  if (cuddIsConstant (N)) return;
+
+  ddOccurCount (tdd, cuddT(N), occurrences);
+  ddOccurCount (tdd, Cudd_Regular (cuddE (N)), occurrences);
+  
+  THEORY->var_occurrences (tdd->ddVars [N->index], occurrences);
+
+}
+
+
+/**
+ * Adapted from cuddUtil.c
+ */
+static void
+ddClearFlag(tdd_node * n)
+{
+    if (!Cudd_IsComplement(n->next)) {
+	return;
+    }
+    /* Clear visited flag. */
+    n->next = Cudd_Regular(n->next);
+    if (cuddIsConstant(n)) {
+	return;
+    }
+    ddClearFlag(cuddT(n));
+    ddClearFlag(Cudd_Regular(cuddE(n)));
+    return;
+
+}
+
