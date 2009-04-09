@@ -286,6 +286,14 @@ bool oct_term_has_var (linterm_t t,int var)
   return (x->var1 == var) || (x->var2 == var);
 }
 
+void oct_var_occurrences (lincons_t l, int*occurs)
+{
+  oct_cons_t *cons = (oct_cons_t*) l;
+  occurs [cons->term.var1]++;
+  occurs [cons->term.var2]++;
+}
+
+
 /**********************************************************************
  * Returns true if there exists a variable v in the set var whose
  * coefficient in t is non-zero.
@@ -882,6 +890,7 @@ oct_theory_t *oct_create_theory_common(size_t vn)
   res->base.term_has_var = oct_term_has_var;
   res->base.term_has_vars = oct_term_has_vars;
   res->base.num_of_vars = oct_num_of_vars;
+  res->base.var_occurrences = oct_var_occurrences;
   res->base.terms_have_resolvent = oct_terms_have_resolvent;
   res->base.negate_term = oct_negate_term;
   res->base.pick_var = oct_pick_var;
