@@ -160,8 +160,23 @@ tdd_node * FormOp(tdd_node * arg1,tdd_node * arg2,char op)
 /*********************************************************************/
 tdd_node * ConsToTdd(int c1,int x,int c2,int y,int k)
 {
-  assert (x != y);
-  assert (c1 == -1 || c2 == -1);
+  // -- allow trivial constraints where x and y are the same
+  if (x == y)
+    if (c1 + c2 == 0)
+      return 0 <= k ? ConstFormula (true) : ConstFormula (false);
+    else
+      {
+	fprintf (stderr, "Constraint %d * x%d + %d * x%d <= %d\n",
+		 c1, x, c2, y, k);
+	assert (false);
+      }
+  
+  
+
+  
+  if (tddType == QSLV_DDD)
+    assert (c1 == -1 || c2 == -1);
+
   tdd_node * res;
   constant_t cst = theory->create_int_cst(k);
   memset(varSet,0,totalVarNum * sizeof(int));
