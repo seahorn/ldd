@@ -27,8 +27,10 @@ extern "C" {
 //global variables -- store command line options
 /*********************************************************************/
 list<string> fileNames;
+bool noqelim = false;
 bool qelim2 = false;
 bool qelim_occur = false;
+bool qelim_approx = false;
 bool verbose = false;
 enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
@@ -54,6 +56,8 @@ void Usage(char *cmd)
   printf("\t--oct : use octagon theory\n");
   printf("\t--tvpi : use TVPI theory\n");
   printf("\t--qelim-occur: use Least Occurrences First Quantified heuristic\n");
+  printf("\t--noqelim: do not do quantifier elimination\n");
+  printf("\t--qelim-approx: Approximate using BDD quantification\n");
   printf("\t--verbose: be verbose\n");
 }
 
@@ -83,7 +87,11 @@ void ProcessInputs(int argc,char *argv[])
     }
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
     else if(!strcmp(argv[i],"--verbose")) verbose = true;
-    else if(!strcmp(argv[i],"--qelim-occur")) qelim_occur=true;
+    else if(!strcmp(argv[i],"--qelim-occur")) 
+      {qelim2 = false; qelim_occur=true; }
+    else if(!strcmp(argv[i],"--qelim-approx")) 
+      { qelim2 = true; qelim_approx=true; }
+    else if(!strcmp(argv[i],"--noqelim")) noqelim=true;
     else if(!strcmp(argv[i],"--oct")) tddType = QSLV_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = QSLV_TVPI;
     else if(strstr(argv[i],".smt") == (argv[i] + strlen(argv[i]) - 4)) fileNames.push_back(argv[i]);
@@ -220,6 +228,8 @@ int qcompare (const void * o1, const void * o2)
 /*********************************************************************/
 tdd_node * Qelim(tdd_node * form,int min,int max)
 {
+  if (noqelim) return form;
+  
   size_t theoryVarSize = theory->num_of_vars (theory);
 
   occurrences = NULL;
@@ -272,7 +282,12 @@ tdd_node * Qelim(tdd_node * form,int min,int max)
 
   //quantify, if using qelim2
   if(qelim2) {
-    tdd_node *tmp = tdd_exist_abstract_v2 (tdd, form, varSet);
+    tdd_node *tmp;
+
+    if (qelim_approx)
+      tmp = tdd_over_abstract (tdd, form, varSet);
+    else
+      tmp = tdd_exist_abstract_v2 (tdd, form, varSet);
     Cudd_Ref (tmp);
     Cudd_RecursiveDeref (cudd, form);
     form = tmp;
