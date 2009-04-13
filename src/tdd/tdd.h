@@ -252,6 +252,9 @@ void tdd_manager_debug_dump (tdd_manager*);
   int tdd_unsat_size (tdd_manager *, tdd_node*);
   theory_t *tdd_syntactic_implication_theory (theory_t *t);
   void tdd_var_occurrences (tdd_manager *, tdd_node *, int*);
+  tdd_node *tdd_bdd_exist_abstract (tdd_manager*,tdd_node*,tdd_node*);
+  tdd_node *tdd_terms_with_vars (tdd_manager*, int*);
+  tdd_node *tdd_over_abstract (tdd_manager *,tdd_node*,int*);
   
 
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
