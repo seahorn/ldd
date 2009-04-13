@@ -28,6 +28,7 @@ extern "C" {
 /*********************************************************************/
 list<string> fileNames;
 bool noqelim = false;
+bool qelim_sof = false;
 bool qelim2 = false;
 bool qelim_occur = false;
 bool qelim_approx = false;
@@ -58,6 +59,7 @@ void Usage(char *cmd)
   printf("\t--qelim-occur: use Least Occurrences First Quantified heuristic\n");
   printf("\t--noqelim: do not do quantifier elimination\n");
   printf("\t--qelim-approx: Approximate using BDD quantification\n");
+  printf("\t--qelim-sof: qelim with sof strategy");
   printf("\t--verbose: be verbose\n");
 }
 
@@ -91,6 +93,7 @@ void ProcessInputs(int argc,char *argv[])
       {qelim2 = false; qelim_occur=true; }
     else if(!strcmp(argv[i],"--qelim-approx")) 
       { qelim2 = true; qelim_approx=true; }
+    else if(!strcmp(argv[i],"--qelim-sof")) qelim_sof = true;
     else if(!strcmp(argv[i],"--noqelim")) noqelim=true;
     else if(!strcmp(argv[i],"--oct")) tddType = QSLV_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = QSLV_TVPI;
@@ -210,6 +213,8 @@ int VarId(char *var)
 }
 
 int* occurrences;
+int *vars;
+
 // -- sort first by occurrences, then by variable number
 int qcompare (const void * o1, const void * o2)
 {
@@ -222,6 +227,120 @@ int qcompare (const void * o1, const void * o2)
 }
 
 
+void update_occurrences (tdd_node *form)
+{
+  size_t theoryVarSize = theory->num_of_vars (theory);
+
+  memset (occurrences, 0, sizeof (int) * theoryVarSize);
+  tdd_var_occurrences (tdd, form, occurrences);
+  
+  if (verbose)
+    for (size_t i = 0; i < theoryVarSize; i++)
+      if (occurrences [i] != 0)
+	printf ("var %d occurs %d\n", i, occurrences [i]);
+}
+
+
+tdd_node * eliminate_single_occurrences (tdd_node *form, int min, int max)
+{
+  size_t theoryVarSize = theory->num_of_vars (theory);
+  
+  memset (vars, 0, sizeof (int) * theoryVarSize);
+
+  for (int i = min; i < max; i++)
+    if (occurrences [i] == 1)
+      vars [i] = 1;
+
+  return  tdd_over_abstract (tdd, form, vars);
+}
+
+
+tdd_node *qelim_sof_strategy_int (tdd_node * form, int min, int max, 
+				  int *qvars, size_t theoryVarSize)
+{
+
+  tdd_node *res;
+  tdd_node *tmp;
+
+
+  // XX extra ref res, just in case.
+  tmp = form;
+  Cudd_Ref (tmp);
+  res = form;
+  Cudd_Ref (res);
+
+  int round = 0;
+  do 
+    {
+      printf ("SO Elimination Round: %d\n", round++);
+      Cudd_RecursiveDeref (cudd, res);
+      res = tmp; tmp = NULL;
+      update_occurrences (res);
+      tmp = eliminate_single_occurrences (res, min, max);
+      Cudd_Ref (tmp);
+    }
+  while (res != tmp);
+
+  Cudd_RecursiveDeref (cudd, res);
+  res = tmp; tmp = NULL;
+  
+
+  update_occurrences (res);
+
+  // -- number of variables to quantify out
+  int qsize = max - min;
+  
+  // create an array with all variables that need to be quantified out
+  for (int i = 0; i < qsize; i++)
+    qvars [i] = min + i;
+
+  qsort (qvars, qsize, sizeof(int), qcompare);
+  
+  for(int i = 0; i < qsize; i++) {
+    if (occurrences [qvars [i]] == 0) continue;
+    printf ("QELIM_SOF of var: %d", qvars [i]);
+    tmp = tdd_exist_abstract (tdd, res, qvars [i]);
+    Cudd_Ref (tmp);
+    Cudd_RecursiveDeref (cudd, res);
+    res = tmp;
+    printf (" size: %d\n", Cudd_DagSize (res));
+    return qelim_sof_strategy_int (res, min, max, qvars, theoryVarSize);
+    }
+
+  
+  
+  return res;
+}
+
+
+tdd_node *qelim_sof_strategy (tdd_node *form, int min, int max)
+{
+  size_t theoryVarSize = theory->num_of_vars (theory);
+
+  occurrences = (int*)malloc (sizeof (int) * theoryVarSize);
+  memset (occurrences, 0, sizeof (int) * theoryVarSize);
+
+  vars = (int*)malloc (sizeof (int) * theoryVarSize);
+  memset (vars, 0, sizeof (int) * theoryVarSize);
+
+  int * qvars = (int*) malloc (sizeof (int) * (max - min));
+
+
+  tdd_node * res = 
+    qelim_sof_strategy_int (form, min, max, qvars, theoryVarSize);
+
+  free (occurrences);
+  occurrences = NULL;
+  free (vars);
+  vars = NULL;
+  free (qvars);
+  qvars = NULL;
+  
+  return res;
+  
+}
+
+
 /*********************************************************************/
 //quantify out all variables from min to max-1 from node and return
 //the result. deref node.
@@ -229,7 +348,11 @@ int qcompare (const void * o1, const void * o2)
 tdd_node * Qelim(tdd_node * form,int min,int max)
 {
   if (noqelim) return form;
+
+  if (qelim_sof)
+    return qelim_sof_strategy (form, min, max);
   
+
   size_t theoryVarSize = theory->num_of_vars (theory);
 
   occurrences = NULL;
@@ -271,6 +394,7 @@ tdd_node * Qelim(tdd_node * form,int min,int max)
   for(int i = 0; i < qsize; i++) {
     if(qelim2) varSet[qvars [i]] = 1;
     else {
+      if (occurrences && occurrences [qvars [i]] == 0) continue;
       printf ("QELIM of var: %d", qvars [i]);
       tdd_node *tmp = tdd_exist_abstract (tdd, form, qvars [i]);
       Cudd_Ref (tmp);
