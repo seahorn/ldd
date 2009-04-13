@@ -159,6 +159,9 @@ tdd_var_occurrences (tdd_manager *tdd, tdd_node *n, int* occurrences)
 static void 
 ddOccurCount (tdd_manager *tdd, tdd_node *N, int *occurrences)
 {
+
+  tdd_node *E;
+
   /* already been here, get out*/
   if (Cudd_IsComplement (N->next)) return;
 
@@ -169,9 +172,38 @@ ddOccurCount (tdd_manager *tdd, tdd_node *N, int *occurrences)
   if (cuddIsConstant (N)) return;
 
   ddOccurCount (tdd, cuddT(N), occurrences);
-  ddOccurCount (tdd, Cudd_Regular (cuddE (N)), occurrences);
+  E = Cudd_Regular (cuddE (N));
+  ddOccurCount (tdd, E, occurrences);
   
-  THEORY->var_occurrences (tdd->ddVars [N->index], occurrences);
+  /* To avoid double-counting, only count the current node N if its
+     ELSE child has a different term than N
+   */
+
+  /* case 1: ELSE child is a constant */
+  if (DD_ONE(CUDD) == E)
+    {
+      THEORY->var_occurrences (tdd->ddVars [N->index], occurrences);
+      return;
+    }
+  
+  /* case 2: ELSE child is not a constant */
+  {
+    unsigned int v, u;
+    lincons_t vCons, uCons;
+    linterm_t vTerm, uTerm;
+    
+    v = N->index;
+    vCons = tdd->ddVars [v];
+    vTerm = THEORY->get_term (vCons);
+    
+    u = E->index;
+    uCons = tdd->ddVars [u];
+    uTerm = THEORY->get_term (uCons);
+    
+    if (!THEORY->term_equals (vTerm, uTerm))
+      THEORY->var_occurrences (vCons, occurrences);      
+  }
+  
 
 }
 

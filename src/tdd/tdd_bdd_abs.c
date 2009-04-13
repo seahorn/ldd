@@ -73,7 +73,9 @@ tdd_terms_with_vars (tdd_manager *tdd,
 	{
 	  tdd_node *tmp;
 	  
-	  tmp = tdd_and (tdd, res, CUDD->vars [i]);
+	  /* MUST use Cudd_bddAnd. This constructs a cube -- a set of
+	     variables. TDD simplifications do not apply. */
+	  tmp = Cudd_bddAnd (CUDD, res, CUDD->vars [i]);
 	  if (tmp == NULL)
 	    {
 	      Cudd_IterDerefBdd (CUDD, res);
