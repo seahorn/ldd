@@ -142,8 +142,75 @@ tdd_node_sanity_check (tdd_manager *tdd, tdd_node *n)
 
 
 /**
- * Counts the number each variable occurs in the DAG of the first
- * argument.
+ * Counts the number of times each variable occurs in the support of a
+ * TDD.
+ * 
+ * The size of the occurrences array is at least the number of
+ * variables in n.
+ */
+void
+tdd_support_var_occurrences (tdd_manager *tdd, 
+			     tdd_node *n, 
+			     int* occurrences)
+{
+  DdNode *S, *N, *T;
+  
+  unsigned int v, u;
+  lincons_t vCons, uCons;
+  linterm_t vTerm, uTerm;
+  
+  /* no variables in the constant node */
+  if (Cudd_IsConstant (n)) return;
+
+  /* compute the support. 
+   * XXX This calls malloc. May be inefficient */
+  S = Cudd_Support (CUDD, n);
+
+  if (S == NULL) return;  
+  cuddRef (S);
+
+
+  /** 
+   * Iterate over the support cube. 
+   * Loop Invariants: have ref to the top of the cube, no reordering.
+   * Hence, don't need to additional references to avoid garbage collection
+   */
+
+  N = S;
+  do 
+    {
+      T = cuddT (N);
+
+      v = N->index;
+      vCons = tdd->ddVars [v];
+      vTerm = THEORY->get_term (vCons);
+      
+      uTerm = NULL;
+  
+      if (T != DD_ONE(CUDD))
+	{
+	  u = T->index;
+	  uCons = tdd->ddVars [u];
+	  uTerm = THEORY->get_term (uCons);
+	}
+
+      /** avoid double-counting a term */
+      if (uTerm == NULL || !THEORY->term_equals (vTerm, uTerm))
+	THEORY->var_occurrences (vCons, occurrences);
+
+      N = T;
+    }
+  while (N != DD_ONE (CUDD));
+  
+  Cudd_IterDerefBdd (CUDD, S);
+}
+
+
+/**
+ * Counts the number each variable occurs in the DAG of a TDD. 
+ *
+ * XXX This over-approximates occurrences: a term is double counted if
+ * it appears in THEN and ELSE sub-trees of n. 
  */
 void 
 tdd_var_occurrences (tdd_manager *tdd, tdd_node *n, int* occurrences)
