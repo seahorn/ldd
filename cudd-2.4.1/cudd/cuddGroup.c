@@ -1535,22 +1535,36 @@ ddGroupMove(
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
     initialSize = bestSize = table->keys - table->isolated;
 #endif
-    /* Sift the variables of the second group up through the first group */
-    for (i = 1; i <= ysize; i++) {
-        for (j = 1; j <= xsize; j++) {
-            size = cuddSwapInPlace(table,x,y);
-            if (size == 0) goto ddGroupMoveOutOfMem;
+    /* AG: Sift the first group down through the second group */
+
+    /* assert: x points to the bottom of xgroup
+       assert: y points to the top of ygroup
+       assert: y = x + 1
+    */
+    for (i = 1; i <= xsize; i++) {
+      for (j = 1; j <= ysize; j++) {
+	size = cuddSwapInPlace(table,x,y);
+	if (size == 0) goto ddGroupMoveOutOfMem;
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
-	    if (size < bestSize)
-		bestSize = size;
+	if (size < bestSize)
+	  bestSize = size;
 #endif
-            swapx = x; swapy = y;
-            y = x;
-            x = cuddNextLow(table,y);
-        }
-        y = ytop + i;
-        x = cuddNextLow(table,y);
+	/* XXX AG: Not sure what this variables are for.
+	   XXX AG: Not sure if I am setting them correctly.
+	*/ 
+	swapx = x; swapy = y;
+
+	/* x is now where y used to be */
+	x = y;
+	/* y is one below x */
+	y = cuddNextHigh(table,x);
+      }
+      /* repeat starting one level higher */
+      x = xbot - i;
+      y = cuddNextHigh (table, x);
     }
+	
+	  
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
     if ((bestSize < initialSize) && (bestSize < size))
 	(void) fprintf(table->out,"Missed local minimum: initialSize:%d  bestSize:%d  finalSize:%d\n",initialSize,bestSize,size);
