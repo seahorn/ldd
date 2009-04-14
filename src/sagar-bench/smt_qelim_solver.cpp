@@ -23,6 +23,7 @@ extern "C" {
   extern FILE *yyin;
 }
 
+
 /*********************************************************************/
 //global variables -- store command line options
 /*********************************************************************/
@@ -33,6 +34,9 @@ bool qelim2 = false;
 bool qelim_occur = false;
 bool qelim_approx = false;
 bool verbose = false;
+bool use_support = true;
+bool use_syntactic_theory = false;
+bool use_dyn = false;
 enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
 
@@ -59,7 +63,10 @@ void Usage(char *cmd)
   printf("\t--qelim-occur: use Least Occurrences First Quantified heuristic\n");
   printf("\t--noqelim: do not do quantifier elimination\n");
   printf("\t--qelim-approx: Approximate using BDD quantification\n");
-  printf("\t--qelim-sof: qelim with sof strategy");
+  printf("\t--qelim-sof: qelim with sof strategy\n");
+  printf("\t--qelim-sof-nosupport: use non-support-based var occurrences\n");
+  printf("\t--syntactic: use syntactic theory\n");
+  printf("\t--dyn: enable dynamic variable reordering\n");
   printf("\t--verbose: be verbose\n");
 }
 
@@ -88,12 +95,17 @@ void ProcessInputs(int argc,char *argv[])
       exit(0);
     }
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
+    else if(!strcmp(argv[i],"--syntactic")) use_syntactic_theory = true;
+    else if(!strcmp(argv[i],"--dyn")) use_dyn = true;
     else if(!strcmp(argv[i],"--verbose")) verbose = true;
     else if(!strcmp(argv[i],"--qelim-occur")) 
       {qelim2 = false; qelim_occur=true; }
     else if(!strcmp(argv[i],"--qelim-approx")) 
       { qelim2 = true; qelim_approx=true; }
     else if(!strcmp(argv[i],"--qelim-sof")) qelim_sof = true;
+    else if(!strcmp(argv[i],"--qelim-sof-nosupport")) 
+      {use_support = false; qelim_sof = true;}
+    
     else if(!strcmp(argv[i],"--noqelim")) noqelim=true;
     else if(!strcmp(argv[i],"--oct")) tddType = QSLV_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = QSLV_TVPI;
@@ -111,10 +123,24 @@ void ProcessInputs(int argc,char *argv[])
 void CreateManagers()
 {
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
+
   if(tddType == QSLV_DDD) theory = ddd_create_int_theory (totalVarNum);
   if(tddType == QSLV_OCT) theory = oct_create_int_theory (totalVarNum);
   if(tddType == QSLV_TVPI) theory = tvpi_create_int_theory (totalVarNum);
+
+  if (use_syntactic_theory)
+    theory = tdd_syntactic_implication_theory (theory);
+    
+
   tdd = tdd_init (cudd, theory);  
+
+  if (use_dyn)
+    {
+      printf ("Enabling automatic dynamic reordering\n");
+      Cudd_AutodynEnable (cudd, CUDD_REORDER_SAME);
+    }
+  
+  
 }
 
 /*********************************************************************/
@@ -232,7 +258,10 @@ void update_occurrences (tdd_node *form)
   size_t theoryVarSize = theory->num_of_vars (theory);
 
   memset (occurrences, 0, sizeof (int) * theoryVarSize);
-  tdd_var_occurrences (tdd, form, occurrences);
+  if (use_support)
+    tdd_support_var_occurrences (tdd, form, occurrences);
+  else
+    tdd_var_occurrences (tdd, form, occurrences);
   
   if (verbose)
     for (size_t i = 0; i < theoryVarSize; i++)
@@ -295,7 +324,8 @@ tdd_node *qelim_sof_strategy_int (tdd_node * form, int min, int max,
     qvars [i] = min + i;
 
   qsort (qvars, qsize, sizeof(int), qcompare);
-  
+
+  printf ("Starting quantifier elimination\n");
   for(int i = 0; i < qsize; i++) {
     if (occurrences [qvars [i]] == 0) continue;
     printf ("QELIM_SOF of var: %d", qvars [i]);
