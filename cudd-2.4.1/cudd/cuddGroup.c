@@ -1599,6 +1599,106 @@ ddGroupMoveOutOfMem:
 } /* end of ddGroupMove */
 
 
+/** AG BEGIN
+ * Copy of ddGroupMove for comparisson
+ */
+static int
+original_ddGroupMove(
+  DdManager * table,
+  int  x,
+  int  y,
+  Move ** moves)
+{
+    Move *move;
+    int  size;
+    int  i,j,xtop,xbot,xsize,ytop,ybot,ysize,newxtop;
+    int  swapx,swapy;
+#if defined(DD_DEBUG) && defined(DD_VERBOSE)
+    int  initialSize,bestSize;
+#endif
+
+#if DD_DEBUG
+    /* We assume that x < y */
+    assert(x < y);
+#endif
+    /* Find top, bottom, and size for the two groups. */
+    xbot = x;
+    xtop = table->subtables[x].next;
+    xsize = xbot - xtop + 1;
+    ybot = y;
+    while ((unsigned) ybot < table->subtables[ybot].next)
+        ybot = table->subtables[ybot].next;
+    ytop = y;
+    ysize = ybot - ytop + 1;
+
+#if defined(DD_DEBUG) && defined(DD_VERBOSE)
+    initialSize = bestSize = table->keys - table->isolated;
+#endif
+    /* Sift the variables of the second group up through the first group */
+    for (i = 1; i <= ysize; i++) {
+        for (j = 1; j <= xsize; j++) {
+            size = cuddSwapInPlace(table,x,y);
+            if (size == 0) goto ddGroupMoveOutOfMem;
+#if defined(DD_DEBUG) && defined(DD_VERBOSE)
+	    if (size < bestSize)
+		bestSize = size;
+#endif
+            swapx = x; swapy = y;
+            y = x;
+            x = cuddNextLow(table,y);
+        }
+        y = ytop + i;
+        x = cuddNextLow(table,y);
+    }
+#if defined(DD_DEBUG) && defined(DD_VERBOSE)
+    if ((bestSize < initialSize) && (bestSize < size))
+	(void) fprintf(table->out,"Missed local minimum: initialSize:%d  bestSize:%d  finalSize:%d\n",initialSize,bestSize,size);
+#endif
+
+    /* fix groups */
+    y = xtop; /* ytop is now where xtop used to be */
+    for (i = 0; i < ysize - 1; i++) {
+        table->subtables[y].next = cuddNextHigh(table,y);
+        y = cuddNextHigh(table,y);
+    }
+    table->subtables[y].next = xtop; /* y is bottom of its group, join */
+                                    /* it to top of its group */
+    x = cuddNextHigh(table,y);
+    newxtop = x;
+    for (i = 0; i < xsize - 1; i++) {
+        table->subtables[x].next = cuddNextHigh(table,x);
+        x = cuddNextHigh(table,x);
+    }
+    table->subtables[x].next = newxtop; /* x is bottom of its group, join */
+                                    /* it to top of its group */
+#ifdef DD_DEBUG
+    if (pr > 0) (void) fprintf(table->out,"ddGroupMove:\n");
+#endif
+
+    /* Store group move */
+    move = (Move *) cuddDynamicAllocNode(table);
+    if (move == NULL) goto ddGroupMoveOutOfMem;
+    move->x = swapx;
+    move->y = swapy;
+    move->flags = MTR_DEFAULT;
+    move->size = table->keys - table->isolated;
+    move->next = *moves;
+    *moves = move;
+
+    return(table->keys - table->isolated);
+
+ddGroupMoveOutOfMem:
+    while (*moves != NULL) {
+        move = (*moves)->next;
+        cuddDeallocMove(table, *moves);
+        *moves = move;
+    }
+    return(0);
+
+} /* end of ddGroupMove */
+/** AG END */
+
+
 /**Function********************************************************************
 
   Synopsis    [Undoes the swap two groups.]
