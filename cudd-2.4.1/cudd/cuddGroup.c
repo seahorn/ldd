@@ -1517,7 +1517,8 @@ ddGroupMove(
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
     int  initialSize,bestSize;
 #endif
-
+    int curYbot;
+    
 #if DD_DEBUG
     /* We assume that x < y */
     assert(x < y);
@@ -1541,9 +1542,10 @@ ddGroupMove(
        assert: y points to the top of ygroup
        assert: y = x + 1
     */
+    curYbot = ybot;
     for (i = 1; i <= xsize; i++) {
       for (j = 1; j <= ysize; j++) {
-	size = cuddSwapInPlace(table,x,y);
+	size = cuddSwapInPlaceGroup(table,x,y,curYbot);
 	if (size == 0) goto ddGroupMoveOutOfMem;
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
 	if (size < bestSize)
@@ -1562,6 +1564,8 @@ ddGroupMove(
       /* repeat starting one level higher */
       x = xbot - i;
       y = cuddNextHigh (table, x);
+      /* ybot is moved up a level at each iteration of the loop */
+      curYbot = cuddNextLow (table, curYbot);
     }
 	
 	  
