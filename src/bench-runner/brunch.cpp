@@ -27,9 +27,6 @@ list<string> onLabels;
 double totalCpu = 0.0;
 double totalMem = 0.0;
 
-//the collected stats -- map from filenames to column labels to values
-map< string,map<string,string> > stats;
-
 /*********************************************************************/
 //print usage and exit
 /*********************************************************************/
@@ -137,10 +134,33 @@ string pathToFile(const string &path)
 }
 
 /*********************************************************************/
+//print statistics
+/*********************************************************************/
+void printStats(const map<string,string> &stats)
+{
+  //open output file
+  FILE *out = outFile.empty() ? stdout : fopen(outFile.c_str(),"a");
+
+  //print the rest
+  for(list<string>::const_iterator i = onLabels.begin(),
+        e = onLabels.end();i != e;++i) {
+    if(i != onLabels.begin()) fprintf(out,",");
+    fprintf(out,"%s",stats.count(*i) ? stats.find(*i)->second.c_str() : "");
+  }
+  fprintf(out,"\n");
+
+  //close output file
+  if(!outFile.empty()) fclose(out);
+}
+
+/*********************************************************************/
 //run the parent process
 /*********************************************************************/
 void parentProcess(const string &smtFile,pid_t childPid)
 {
+  //collected statistics
+  map<string,string> stats;
+
   int status = 0;
   if(verbose)
     printf("waiting for child %d\n",childPid);
@@ -154,29 +174,32 @@ void parentProcess(const string &smtFile,pid_t childPid)
   }
 
   //add file name to stat
-  stats[smtFile]["File"] = pathToFile(smtFile);
+  stats["File"] = pathToFile(smtFile);
 
   //scratch buffer
   char buf[128];
 
-  //get child resource usage
+  //add child resource usage to stat
   struct rusage usage;
   getrusage(RUSAGE_CHILDREN,&usage);
   double cpuUsage = usage.ru_utime.tv_sec * 1.0 + 
     usage.ru_utime.tv_usec / 1000000.0 + 
     usage.ru_stime.tv_sec +
     usage.ru_stime.tv_usec / 1000000.0;
-  printf("cpu usage = %.3lf sec\n",cpuUsage - totalCpu);
+  if(verbose) printf("cpu usage = %.3lf sec\n",cpuUsage - totalCpu);
   snprintf(buf,128,"%.3lf",cpuUsage - totalCpu);
-  stats[smtFile]["Cpu"] = buf; 
+  stats["Cpu"] = buf; 
   totalCpu = cpuUsage;
 
   double memUsage = (usage.ru_maxrss + usage.ru_ixrss + 
                      usage.ru_idrss + usage.ru_isrss) * 1.0;
-  printf("mem usage = %.3lf MB\n",memUsage - totalMem);
+  if(verbose) printf("mem usage = %.3lf MB\n",memUsage - totalMem);
   snprintf(buf,128,"%.3lf",memUsage - totalMem);
-  stats[smtFile]["Mem"] = buf; 
+  stats["Mem"] = buf; 
   totalMem = memUsage;
+
+  //display statistics
+  printStats(stats);
 }
 
 /*********************************************************************/
@@ -184,8 +207,19 @@ void parentProcess(const string &smtFile,pid_t childPid)
 /*********************************************************************/
 void runExperiments()
 {
+  //print output preamble
+  FILE *out = outFile.empty() ? stdout : fopen(outFile.c_str(),"w");
+  for(list<string>::const_iterator i = onLabels.begin(),
+        e = onLabels.end();i != e;++i) {
+    if(i != onLabels.begin()) fprintf(out,",");
+    fprintf(out,"%s",i->c_str());
+  }
+  fprintf(out,"\n");  
+  if(!outFile.empty()) fclose(out);
+  
+
   for(list<string>::const_iterator i = smtFiles.begin(),e = smtFiles.end();i != e;++i) {
-    printf("=== processing %s\n",i->c_str());
+    if(verbose) printf("=== processing %s\n",i->c_str());
     pid_t childPid = fork();
 
     //child process
@@ -196,44 +230,12 @@ void runExperiments()
 }
 
 /*********************************************************************/
-//print statistics
-/*********************************************************************/
-void printStats()
-{
-  //open output file
-  FILE *out = outFile.empty() ? stdout : fopen(outFile.c_str(),"w");
-
-  //print first line
-  for(list<string>::const_iterator i = onLabels.begin(),
-        e = onLabels.end();i != e;++i) {
-    if(i != onLabels.begin()) fprintf(out,",");
-    fprintf(out,"%s",i->c_str());
-  }
-  fprintf(out,"\n");
-
-  //print the rest
-  for(map< string,map<string,string> >::const_iterator i1 = stats.begin(),
-        e1 = stats.end();i1 != e1;++i1) {
-    for(list<string>::const_iterator i2 = onLabels.begin(),
-          e2 = onLabels.end();i2 != e2;++i2) {
-      if(i2 != onLabels.begin()) fprintf(out,",");
-      fprintf(out,"%s",i1->second.count(*i2) ? i1->second.find(*i2)->second.c_str() : "");
-    }
-    fprintf(out,"\n");
-  }
-
-  //close output file
-  if(!outFile.empty()) fclose(out);
-}
-
-/*********************************************************************/
 //the main function
 /*********************************************************************/
 int main(int argc,char *argv[])
 {
   processArgs(argc,argv);
   runExperiments();
-  printStats();
   return 0;
 }
 
