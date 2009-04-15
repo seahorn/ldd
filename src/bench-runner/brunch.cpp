@@ -237,6 +237,7 @@ void runExperiments()
 void createOutFiles()
 {
   //create output folder
+  remove(outDir.c_str());
   mkdir(outDir.c_str(),S_IRWXU);
 
   //create stats file and write first line
