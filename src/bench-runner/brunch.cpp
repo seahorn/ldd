@@ -21,6 +21,7 @@ string outFile;
 bool verbose = false;
 list<string> smtFiles;
 vector<string> toolCmd;
+list<string> onLabels;
 
 //total resources usage by all experiments so far
 double totalCpu = 0.0;
@@ -40,6 +41,8 @@ void usage(char *cmd)
   printf("\t--cpu [cpu limit in seconds. default is 60.]\n");
   printf("\t--mem [memory limit in MB. default is 512.]\n");
   printf("\t--out [output stats file name. default is stdout]\n");
+  printf("\t--on [label to enable. nothing bu default.]\n");
+  printf("\t     [use File for filename and Cpu for cpu time.]\n");
   printf("\t--verbose : more output. default is off.\n");
   exit(0);
 }
@@ -59,6 +62,9 @@ void processArgs(int argc,char *argv[])
       else usage(argv[0]);
     } else if(!strcmp(argv[i],"--out")) {
       if(++i < argc) outFile = argv[i];
+      else usage(argv[0]);
+    } else if(!strcmp(argv[i],"--on")) {
+      if(++i < argc) onLabels.push_back(argv[i]);
       else usage(argv[0]);
     } else if(!strcmp(argv[i],"--verbose")) {
       verbose = true;
@@ -121,6 +127,16 @@ void childProcess(const string &smtFile)
 }
 
 /*********************************************************************/
+//given a file path name, return the trailing file name 
+/*********************************************************************/
+string pathToFile(const string &path)
+{
+  size_t pos = path.find_last_of("/");
+  if(pos == string::npos) return path;
+  return path.substr(pos + 1);
+}
+
+/*********************************************************************/
 //run the parent process
 /*********************************************************************/
 void parentProcess(const string &smtFile,pid_t childPid)
@@ -137,6 +153,9 @@ void parentProcess(const string &smtFile,pid_t childPid)
     system("cat /tmp/out");
   }
 
+  //add file name to stat
+  stats[smtFile]["File"] = pathToFile(smtFile);
+
   //scratch buffer
   char buf[128];
 
@@ -149,14 +168,14 @@ void parentProcess(const string &smtFile,pid_t childPid)
     usage.ru_stime.tv_usec / 1000000.0;
   printf("cpu usage = %.3lf sec\n",cpuUsage - totalCpu);
   snprintf(buf,128,"%.3lf",cpuUsage - totalCpu);
-  stats[smtFile]["cpu"] = buf; 
+  stats[smtFile]["Cpu"] = buf; 
   totalCpu = cpuUsage;
 
   double memUsage = (usage.ru_maxrss + usage.ru_ixrss + 
                      usage.ru_idrss + usage.ru_isrss) * 1.0;
   printf("mem usage = %.3lf MB\n",memUsage - totalMem);
   snprintf(buf,128,"%.3lf",memUsage - totalMem);
-  stats[smtFile]["mem"] = buf; 
+  stats[smtFile]["Mem"] = buf; 
   totalMem = memUsage;
 }
 
@@ -177,41 +196,29 @@ void runExperiments()
 }
 
 /*********************************************************************/
-//given a file path name, return the trailing file name 
-/*********************************************************************/
-string pathToFile(const string &path)
-{
-  size_t pos = path.find_last_of("/");
-  if(pos == string::npos) return path;
-  return path.substr(pos + 1);
-}
-
-/*********************************************************************/
 //print statistics
 /*********************************************************************/
 void printStats()
 {
-  //collect all stat labels and find largest file name size
-  set<string> statLabels;
-  for(map< string,map<string,string> >::const_iterator i1 = stats.begin(),
-        e1 = stats.end();i1 != e1;++i1) {
-    for(map<string,string>::const_iterator i2 = i1->second.begin(),
-          e2 = i1->second.end();i2 != e2;++i2) {
-      statLabels.insert(i2->first);
-    }
-  }
-
   //open output file
   FILE *out = outFile.empty() ? stdout : fopen(outFile.c_str(),"w");
 
   //print first line
-  fprintf(out,"File,Cpu,Mem\n");
+  for(list<string>::const_iterator i = onLabels.begin(),
+        e = onLabels.end();i != e;++i) {
+    if(i != onLabels.begin()) fprintf(out,",");
+    fprintf(out,"%s",i->c_str());
+  }
+  fprintf(out,"\n");
 
+  //print the rest
   for(map< string,map<string,string> >::const_iterator i1 = stats.begin(),
         e1 = stats.end();i1 != e1;++i1) {
-    fprintf(out,"%s,",pathToFile(i1->first).c_str());
-    fprintf(out,"%s,",i1->second.count("cpu") ? i1->second.find("cpu")->second.c_str() : "");
-    fprintf(out,"%s",i1->second.count("mem") ? i1->second.find("mem")->second.c_str() : "");
+    for(list<string>::const_iterator i2 = onLabels.begin(),
+          e2 = onLabels.end();i2 != e2;++i2) {
+      if(i2 != onLabels.begin()) fprintf(out,",");
+      fprintf(out,"%s",i1->second.count(*i2) ? i1->second.find(*i2)->second.c_str() : "");
+    }
     fprintf(out,"\n");
   }
 
