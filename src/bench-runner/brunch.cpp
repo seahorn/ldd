@@ -17,7 +17,7 @@ using namespace std;
 /*********************************************************************/
 size_t cpuLimit = 60;
 size_t memLimit = 512;
-string outFile;
+string outDir = "/tmp/brunch.out";
 bool verbose = false;
 list<string> smtFiles;
 vector<string> toolCmd;
@@ -26,6 +26,10 @@ list<string> onLabels;
 //total resources usage by all experiments so far
 double totalCpu = 0.0;
 double totalMem = 0.0;
+
+//macros defining various files within the output directory
+#define STATFILE (outDir + "/stats")
+#define TIMEOUTFILE (outDir + "/timeouts")
 
 /*********************************************************************/
 //print usage and exit
@@ -37,7 +41,7 @@ void usage(char *cmd)
   printf("\t--help : display usage\n");
   printf("\t--cpu [cpu limit in seconds. default is 60.]\n");
   printf("\t--mem [memory limit in MB. default is 512.]\n");
-  printf("\t--out [output stats file name. default is stdout]\n");
+  printf("\t--out [output directory. default is /tmp/brunch.out.]\n");
   printf("\t--on [label to enable. nothing bu default.]\n");
   printf("\t     [use File for filename and Cpu for cpu time.]\n");
   printf("\t--verbose : more output. default is off.\n");
@@ -58,7 +62,7 @@ void processArgs(int argc,char *argv[])
       if(++i < argc) memLimit = atoi(argv[i]);
       else usage(argv[0]);
     } else if(!strcmp(argv[i],"--out")) {
-      if(++i < argc) outFile = argv[i];
+      if(++i < argc) outDir = argv[i];
       else usage(argv[0]);
     } else if(!strcmp(argv[i],"--on")) {
       if(++i < argc) onLabels.push_back(argv[i]);
@@ -139,7 +143,7 @@ string pathToFile(const string &path)
 void printStats(const map<string,string> &stats)
 {
   //open output file
-  FILE *out = outFile.empty() ? stdout : fopen(outFile.c_str(),"a");
+  FILE *out = fopen(STATFILE.c_str(),"a");
 
   //print the rest
   for(list<string>::const_iterator i = onLabels.begin(),
@@ -150,7 +154,7 @@ void printStats(const map<string,string> &stats)
   fprintf(out,"\n");
 
   //close output file
-  if(!outFile.empty()) fclose(out);
+  fclose(out);
 }
 
 /*********************************************************************/
@@ -189,6 +193,15 @@ void parentProcess(const string &smtFile,pid_t childPid)
   if(verbose) printf("cpu usage = %.3lf sec\n",cpuUsage - totalCpu);
   snprintf(buf,128,"%.3lf",cpuUsage - totalCpu);
   stats["Cpu"] = buf; 
+
+  //check for timeouts
+  if((cpuUsage - totalCpu) >= (cpuLimit * 1.0)) {
+    FILE *out = fopen(TIMEOUTFILE.c_str(),"a");
+    fprintf(out,"%s\n",pathToFile(smtFile).c_str());
+    fclose(out);
+  }
+
+  //update total cpu usage
   totalCpu = cpuUsage;
 
   double memUsage = (usage.ru_maxrss + usage.ru_ixrss + 
@@ -206,18 +219,7 @@ void parentProcess(const string &smtFile,pid_t childPid)
 //run all experiments
 /*********************************************************************/
 void runExperiments()
-{
-  //print output preamble
-  FILE *out = outFile.empty() ? stdout : fopen(outFile.c_str(),"w");
-  for(list<string>::const_iterator i = onLabels.begin(),
-        e = onLabels.end();i != e;++i) {
-    if(i != onLabels.begin()) fprintf(out,",");
-    fprintf(out,"%s",i->c_str());
-  }
-  fprintf(out,"\n");  
-  if(!outFile.empty()) fclose(out);
-  
-
+{ 
   for(list<string>::const_iterator i = smtFiles.begin(),e = smtFiles.end();i != e;++i) {
     if(verbose) printf("=== processing %s\n",i->c_str());
     pid_t childPid = fork();
@@ -230,11 +232,35 @@ void runExperiments()
 }
 
 /*********************************************************************/
+//create output folder, stats and timeouts files
+/*********************************************************************/
+void createOutFiles()
+{
+  //create output folder
+  mkdir(outDir.c_str(),S_IRWXU);
+
+  //create stats file and write first line
+  FILE *out = fopen(STATFILE.c_str(),"w");
+  for(list<string>::const_iterator i = onLabels.begin(),
+        e = onLabels.end();i != e;++i) {
+    if(i != onLabels.begin()) fprintf(out,",");
+    fprintf(out,"%s",i->c_str());
+  }
+  fprintf(out,"\n");  
+  fclose(out);
+
+  //create timeouts file
+  out = fopen(TIMEOUTFILE.c_str(),"w");
+  fclose(out);
+}
+
+/*********************************************************************/
 //the main function
 /*********************************************************************/
 int main(int argc,char *argv[])
 {
   processArgs(argc,argv);
+  createOutFiles();
   runExperiments();
   return 0;
 }
