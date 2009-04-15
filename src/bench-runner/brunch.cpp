@@ -240,6 +240,7 @@ void createOutFiles()
   remove(outDir.c_str());
   mkdir(outDir.c_str(),S_IRWXU);
 
+
   //create stats file and write first line
   FILE *out = fopen(STATFILE.c_str(),"w");
   for(list<string>::const_iterator i = onLabels.begin(),
