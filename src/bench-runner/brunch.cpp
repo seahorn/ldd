@@ -193,28 +193,25 @@ void printStats()
 {
   //collect all stat labels and find largest file name size
   set<string> statLabels;
-  int maxSmtFile = 0;
   for(map< string,map<string,string> >::const_iterator i1 = stats.begin(),
         e1 = stats.end();i1 != e1;++i1) {
     for(map<string,string>::const_iterator i2 = i1->second.begin(),
           e2 = i1->second.end();i2 != e2;++i2) {
       statLabels.insert(i2->first);
     }
-    int len = pathToFile(i1->first).size();
-    if(len > maxSmtFile) maxSmtFile = len;
   }
 
   //open output file
   FILE *out = outFile.empty() ? stdout : fopen(outFile.c_str(),"w");
 
   //print first line
-  fprintf(out,"%*s\tCpu\tMem\n",maxSmtFile + 2,"File");
+  fprintf(out,"File,Cpu,Mem\n");
 
   for(map< string,map<string,string> >::const_iterator i1 = stats.begin(),
         e1 = stats.end();i1 != e1;++i1) {
-    fprintf(out,"%*s",maxSmtFile + 2,pathToFile(i1->first).c_str());
-    fprintf(out,"\t%s",i1->second.count("cpu") ? i1->second.find("cpu")->second.c_str() : "");
-    fprintf(out,"\t%s",i1->second.count("mem") ? i1->second.find("mem")->second.c_str() : "");
+    fprintf(out,"%s,",pathToFile(i1->first).c_str());
+    fprintf(out,"%s,",i1->second.count("cpu") ? i1->second.find("cpu")->second.c_str() : "");
+    fprintf(out,"%s",i1->second.count("mem") ? i1->second.find("mem")->second.c_str() : "");
     fprintf(out,"\n");
   }
 
