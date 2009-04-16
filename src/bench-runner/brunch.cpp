@@ -22,6 +22,7 @@ bool verbose = false;
 list<string> smtFiles;
 vector<string> toolCmd;
 list<string> onLabels;
+string labPref;
 
 //total resources usage by all experiments so far
 double totalCpu = 0.0;
@@ -43,6 +44,7 @@ void usage(char *cmd)
   printf("\t--out       [output directory. default is /tmp/brunch.out.]\n");
   printf("\t--format    [output format of colon separated labels for which stats are to be printed]\n");
   printf("\t            [use File for filename and Cpu for cpu time.]\n");
+  printf("\t--labPref   [prefix of every label when printing]\n");
   printf("\t--verbose : more output. default is off.\n");
   exit(0);
 }
@@ -80,6 +82,9 @@ void processArgs(int argc,char *argv[])
           }
         }
       } else usage(argv[0]);
+    } else if(!strcmp(argv[i],"--labPref")) {
+      if(++i < argc) labPref = argv[i];
+      else usage(argv[0]);
     } else if(!strcmp(argv[i],"--verbose")) {
       verbose = true;
     } else if(strstr(argv[i],".smt") == (argv[i] + (strlen(argv[i]) - 4))) {
@@ -280,7 +285,7 @@ void createOutFiles()
   for(list<string>::const_iterator i = onLabels.begin(),
         e = onLabels.end();i != e;++i) {
     if(i != onLabels.begin()) fprintf(out,",");
-    fprintf(out,"%s",i->c_str());
+    fprintf(out,"%s%s",labPref.c_str(),i->c_str());
   }
   fprintf(out,"\n");  
   fclose(out);
