@@ -311,6 +311,9 @@ int pick_qelim_var (tdd_node * form, int* qvars, int qsize)
 }
 
 
+int qelimSize;
+
+
 tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max, 
 				 int *qvars, size_t theoryVarSize)
 {
@@ -407,6 +410,7 @@ tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max,
   
   if (idx >= 0)
     {
+      qelimSize++;
       printf ("QELIM_SOF of var: %d", qvars [idx]);
       tmp = tdd_exist_abstract (tdd, res, qvars [idx]);
       Cudd_Ref (tmp);
@@ -424,9 +428,12 @@ tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max,
 }
 
 
+
 tdd_node *qelim_sof_strategy (tdd_node *form, int min, int max)
 {
   size_t theoryVarSize = theory->num_of_vars (theory);
+
+  qelimSize = 0;
 
   occurrences = (int*)malloc (sizeof (int) * theoryVarSize);
   memset (occurrences, 0, sizeof (int) * theoryVarSize);
@@ -446,6 +453,8 @@ tdd_node *qelim_sof_strategy (tdd_node *form, int min, int max)
 
   tdd_node * res = 
     qelim_sof_strategy_int (form, min, max, qvars, theoryVarSize);
+
+  printf ("BRUNCH_STAT Qelim %d\n", qelimSize);
 
   free (occurrences);
   occurrences = NULL;
@@ -469,6 +478,8 @@ tdd_node * Qelim(tdd_node * form,int min,int max)
 
   printf ("BRUNCH_STAT Initial %d\n", Cudd_DagSize (form));
 
+  /* number of variables quantified */
+  printf ("BRUNCH_STAT Qsize %d\n", (max - min));
 
   if (qelim_sof)
     return qelim_sof_strategy (form, min, max);
