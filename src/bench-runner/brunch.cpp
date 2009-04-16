@@ -38,12 +38,12 @@ void usage(char *cmd)
 {
   printf("Usage : %s <options> <smt file list> <-- tool command>\n",cmd);
   printf("Options:\n");
-  printf("\t--help : display usage\n");
-  printf("\t--cpu [cpu limit in seconds. default is 60.]\n");
-  printf("\t--mem [memory limit in MB. default is 512.]\n");
-  printf("\t--out [output directory. default is /tmp/brunch.out.]\n");
-  printf("\t--on [label to enable. nothing bu default.]\n");
-  printf("\t     [use File for filename and Cpu for cpu time.]\n");
+  printf("\t--help    : display usage and exit\n");
+  printf("\t--cpu       [cpu limit in seconds. default is 60.]\n");
+  printf("\t--mem       [memory limit in MB. default is 512.]\n");
+  printf("\t--out       [output directory. default is /tmp/brunch.out.]\n");
+  printf("\t--format    [output format of colon separated labels for which stats are to be printed]\n");
+  printf("\t            [use File for filename and Cpu for cpu time.]\n");
   printf("\t--verbose : more output. default is off.\n");
   exit(0);
 }
@@ -64,9 +64,23 @@ void processArgs(int argc,char *argv[])
     } else if(!strcmp(argv[i],"--out")) {
       if(++i < argc) outDir = argv[i];
       else usage(argv[0]);
-    } else if(!strcmp(argv[i],"--on")) {
-      if(++i < argc) onLabels.push_back(argv[i]);
-      else usage(argv[0]);
+    } else if(!strcmp(argv[i],"--format")) {
+      if(++i < argc) {
+        string format = argv[i];
+        size_t pos = 0;
+        for(;;) {
+          size_t newPos = format.find(":",pos);
+          if(newPos == string::npos) {
+            onLabels.push_back(format.substr(pos));
+            if(verbose) printf("on label : %s\n",onLabels.back().c_str());
+            break;
+          } else {
+            onLabels.push_back(format.substr(pos,newPos - pos));
+            if(verbose) printf("on label : %s\n",onLabels.back().c_str());
+            pos = newPos + 1;
+          }
+        }
+      } else usage(argv[0]);
     } else if(!strcmp(argv[i],"--verbose")) {
       verbose = true;
     } else if(strstr(argv[i],".smt") == (argv[i] + (strlen(argv[i]) - 4))) {
@@ -239,7 +253,6 @@ void createOutFiles()
   //create output folder
   remove(outDir.c_str());
   mkdir(outDir.c_str(),S_IRWXU);
-
 
   //create stats file and write first line
   FILE *out = fopen(STATFILE.c_str(),"w");
