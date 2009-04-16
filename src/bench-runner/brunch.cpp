@@ -109,6 +109,16 @@ void processArgs(int argc,char *argv[])
 }
 
 /*********************************************************************/
+//given a file path name, return the trailing file name 
+/*********************************************************************/
+string pathToFile(const string &path)
+{
+  size_t pos = path.find_last_of("/");
+  if(pos == string::npos) return path;
+  return path.substr(pos + 1);
+}
+
+/*********************************************************************/
 //child process
 /*********************************************************************/
 void childProcess(const string &smtFile)
@@ -132,23 +142,20 @@ void childProcess(const string &smtFile)
   cmd[toolCmd.size()] = strdup(smtFile.c_str());
   cmd[toolCmd.size() + 1] = NULL;
 
-  //redirect stdout to /dev/out
-  int fd = creat("/tmp/out",S_IRWXU);
+  //redirect stdout
+  string fname = outDir + "/" + pathToFile(smtFile) + ".stdout";
+  int fd = creat(fname.c_str(),S_IRWXU);
   close(1);
+  dup(fd);
+
+  //redirect stderr
+  fname = outDir + "/" + pathToFile(smtFile) + ".stderr";
+  fd = creat(fname.c_str(),S_IRWXU);
+  close(2);
   dup(fd);
 
   //invoke tool
   execv(toolCmd[0].c_str(),cmd);
-}
-
-/*********************************************************************/
-//given a file path name, return the trailing file name 
-/*********************************************************************/
-string pathToFile(const string &path)
-{
-  size_t pos = path.find_last_of("/");
-  if(pos == string::npos) return path;
-  return path.substr(pos + 1);
 }
 
 /*********************************************************************/
