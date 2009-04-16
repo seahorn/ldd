@@ -195,7 +195,17 @@ void parentProcess(const string &smtFile,pid_t childPid)
 
   if(verbose) {
     printf("child %d exited with status %d\n",childPid,status);
-    system("cat /tmp/out");
+    printf("########################################################\n");
+    printf("########################## STDOUT ######################\n");
+    printf("########################################################\n");
+    string cmd = "cat " + outDir + "/" + pathToFile(smtFile) + ".stdout";
+    system(cmd.c_str());
+    printf("########################################################\n");
+    printf("########################## STDERR ######################\n");
+    printf("########################################################\n");
+    cmd = "cat " + outDir + "/" + pathToFile(smtFile) + ".stderr";
+    system(cmd.c_str());
+    printf("########################################################\n");
   }
 
   //add file name to stat
