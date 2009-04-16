@@ -25,7 +25,6 @@ list<string> onLabels;
 
 //total resources usage by all experiments so far
 double totalCpu = 0.0;
-double totalMem = 0.0;
 
 //macros defining various files within the output directory
 #define STATFILE (outDir + "/stats")
@@ -208,13 +207,7 @@ void parentProcess(const string &smtFile,pid_t childPid)
     printf("########################################################\n");
   }
 
-  //add file name to stat
-  stats["File"] = pathToFile(smtFile);
-
-  //scratch buffer
-  char buf[256];
-
-  //add child resource usage to stat
+  //get cpu usage
   struct rusage usage;
   getrusage(RUSAGE_CHILDREN,&usage);
   double cpuUsage = usage.ru_utime.tv_sec * 1.0 + 
@@ -222,25 +215,23 @@ void parentProcess(const string &smtFile,pid_t childPid)
     usage.ru_stime.tv_sec +
     usage.ru_stime.tv_usec / 1000000.0;
   if(verbose) printf("cpu usage = %.3lf sec\n",cpuUsage - totalCpu);
-  snprintf(buf,256,"%.3lf",cpuUsage - totalCpu);
-  stats["Cpu"] = buf; 
 
   //check for timeouts
   if((cpuUsage - totalCpu) >= (cpuLimit * 1.0)) {
     FILE *out = fopen(TIMEOUTFILE.c_str(),"a");
     fprintf(out,"%s\n",pathToFile(smtFile).c_str());
     fclose(out);
+    return;
   }
 
-  //update total cpu usage
-  totalCpu = cpuUsage;
+  //add file name to stat
+  stats["File"] = pathToFile(smtFile);
 
-  double memUsage = (usage.ru_maxrss + usage.ru_ixrss + 
-                     usage.ru_idrss + usage.ru_isrss) * 1.0;
-  if(verbose) printf("mem usage = %.3lf MB\n",memUsage - totalMem);
-  snprintf(buf,256,"%.3lf",memUsage - totalMem);
-  stats["Mem"] = buf; 
-  totalMem = memUsage;
+  //add child resource usage to stat
+  char buf[256];
+  snprintf(buf,256,"%.3lf",cpuUsage - totalCpu);
+  stats["Cpu"] = buf; 
+  totalCpu = cpuUsage;
 
   //scan output for custom statistics
   string fname = outDir + "/" + pathToFile(smtFile) + ".stdout";
