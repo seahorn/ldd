@@ -279,13 +279,40 @@ tdd_node * eliminate_single_occurrences (tdd_node *form, int min, int max)
   for (int i = min; i < max; i++)
     if (occurrences [i] == 1)
       vars [i] = 1;
+  
 
   return  tdd_over_abstract (tdd, form, vars);
 }
 
+/**
+ * Pick a variable from the array qvars to eliminate next. Returns an
+ * index into qvars or -1 if no variable was selected.
+ *
+ * form -- the DD for quantification
+ * qvars -- array of variables
+ * qsize -- size of qvars
+ */
+int pick_qelim_var (tdd_node * form, int* qvars, int qsize)
+{
+  int idx = -1;
+  int minOccur = INT_MAX;
 
-tdd_node *qelim_sof_strategy_int (tdd_node * form, int min, int max, 
-				  int *qvars, size_t theoryVarSize)
+  update_occurrences (form);
+
+  for (int i = 0; i < qsize; i++)
+    if (occurrences [qvars [i]] < 2) continue;
+    else if (occurrences [qvars [i]] < minOccur)
+      {
+	idx = i;
+	minOccur = occurrences [qvars [i]];
+      }
+  
+  return idx;
+}
+
+
+tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max, 
+				 int *qvars, size_t theoryVarSize)
 {
 
   tdd_node *res;
@@ -314,30 +341,84 @@ tdd_node *qelim_sof_strategy_int (tdd_node * form, int min, int max,
   res = tmp; tmp = NULL;
   
 
-  update_occurrences (res);
-
   // -- number of variables to quantify out
   int qsize = max - min;
+
+
+  if (0 == 1 && !Cudd_IsConstant (res))
+    {
+      int idxT = pick_qelim_var (Cudd_T(res), qvars, qsize);
+      int idxE = pick_qelim_var (Cudd_E(res), qvars, qsize);
+
+      if (idxT != idxE && idxT >= 0 && idxE >= 0)
+	printf ("varT=%d, varE=%d\n", idxT >= 0 ? qvars[idxT] : -1, 
+		idxE >= 0 ? qvars [idxE] : -1);
+
+
+      // for now, this is turned off
+      if (idxT != idxE && idxT >= 0 && idxE >= 0 && idxT < 0)
+	{
+	  tdd_node *tRes;
+	  tdd_node *eRes;
+
+	  unsigned int index;
+	  
+	  index = Cudd_NodeReadIndex (res);
+	  tdd_node * v = Cudd_bddIthVar (cudd, index);
+
+	  tdd_node * f = tdd_and (tdd, v, 
+				  Cudd_NotCond (Cudd_T(res), 
+						res != Cudd_Regular (res)));
+	  Cudd_Ref (f);
+	  tdd_node * g = tdd_and (tdd,
+				  Cudd_Not(v),
+				  Cudd_NotCond (Cudd_E(res),
+						res != Cudd_Regular (res)));
+	  Cudd_Ref (g);
+	  
+	  tRes = qelim_sof_strategy_int (f, min, max, qvars, theoryVarSize);
+	  Cudd_Ref (tRes);
+	  Cudd_RecursiveDeref (cudd, f);
+	  f = NULL;
+	  
+	  eRes = qelim_sof_strategy_int (g, min, max, qvars, theoryVarSize);
+	  Cudd_Ref (eRes);
+	  Cudd_RecursiveDeref (cudd, g);
+	  g = NULL;
+	  
+
+	  tmp = tdd_or (tdd, tRes, eRes);
+	  Cudd_Ref (tmp);
+	  Cudd_RecursiveDeref (cudd, tRes);
+	  tRes = NULL;
+	  Cudd_RecursiveDeref (cudd, eRes);
+	  eRes = NULL;
+	  Cudd_RecursiveDeref (cudd, res);
+	  res = tmp;
+
+	  return res;
+	}
+      
+      
+    }
   
-  // create an array with all variables that need to be quantified out
-  for (int i = 0; i < qsize; i++)
-    qvars [i] = min + i;
 
-  qsort (qvars, qsize, sizeof(int), qcompare);
+  int idx = pick_qelim_var (res, qvars, qsize);
+  
+  if (idx >= 0)
+    {
+      printf ("QELIM_SOF of var: %d", qvars [idx]);
+      tmp = tdd_exist_abstract (tdd, res, qvars [idx]);
+      Cudd_Ref (tmp);
+      Cudd_RecursiveDeref (cudd, res);
+      res = tmp;
+      printf (" size: %d\n", Cudd_DagSize (res));
+      return qelim_sof_strategy_int (res, min, max, qvars, theoryVarSize);
 
-  printf ("Starting quantifier elimination\n");
-  for(int i = 0; i < qsize; i++) {
-    if (occurrences [qvars [i]] == 0) continue;
-    printf ("QELIM_SOF of var: %d", qvars [i]);
-    tmp = tdd_exist_abstract (tdd, res, qvars [i]);
-    Cudd_Ref (tmp);
-    Cudd_RecursiveDeref (cudd, res);
-    res = tmp;
-    printf (" size: %d\n", Cudd_DagSize (res));
-    return qelim_sof_strategy_int (res, min, max, qvars, theoryVarSize);
     }
 
-  
+
+  printf ("BRUNCH_STAT Final %d\n", Cudd_DagSize (res));
   
   return res;
 }
@@ -354,6 +435,13 @@ tdd_node *qelim_sof_strategy (tdd_node *form, int min, int max)
   memset (vars, 0, sizeof (int) * theoryVarSize);
 
   int * qvars = (int*) malloc (sizeof (int) * (max - min));
+
+  // -- number of variables to quantify out
+  int qsize = max - min;
+  
+  // create an array with all variables that need to be quantified out
+  for (int i = 0; i < qsize; i++)
+    qvars [i] = min + i;
 
 
   tdd_node * res = 
@@ -378,6 +466,9 @@ tdd_node *qelim_sof_strategy (tdd_node *form, int min, int max)
 tdd_node * Qelim(tdd_node * form,int min,int max)
 {
   if (noqelim) return form;
+
+  printf ("BRUNCH_STAT Initial %d\n", Cudd_DagSize (form));
+
 
   if (qelim_sof)
     return qelim_sof_strategy (form, min, max);
