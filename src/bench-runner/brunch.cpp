@@ -212,7 +212,7 @@ void parentProcess(const string &smtFile,pid_t childPid)
   stats["File"] = pathToFile(smtFile);
 
   //scratch buffer
-  char buf[128];
+  char buf[256];
 
   //add child resource usage to stat
   struct rusage usage;
@@ -222,7 +222,7 @@ void parentProcess(const string &smtFile,pid_t childPid)
     usage.ru_stime.tv_sec +
     usage.ru_stime.tv_usec / 1000000.0;
   if(verbose) printf("cpu usage = %.3lf sec\n",cpuUsage - totalCpu);
-  snprintf(buf,128,"%.3lf",cpuUsage - totalCpu);
+  snprintf(buf,256,"%.3lf",cpuUsage - totalCpu);
   stats["Cpu"] = buf; 
 
   //check for timeouts
@@ -238,9 +238,23 @@ void parentProcess(const string &smtFile,pid_t childPid)
   double memUsage = (usage.ru_maxrss + usage.ru_ixrss + 
                      usage.ru_idrss + usage.ru_isrss) * 1.0;
   if(verbose) printf("mem usage = %.3lf MB\n",memUsage - totalMem);
-  snprintf(buf,128,"%.3lf",memUsage - totalMem);
+  snprintf(buf,256,"%.3lf",memUsage - totalMem);
   stats["Mem"] = buf; 
   totalMem = memUsage;
+
+  //scan output for custom statistics
+  string fname = outDir + "/" + pathToFile(smtFile) + ".stdout";
+  FILE *toolOut = fopen(fname.c_str(),"r");
+  while(fscanf(toolOut,"%200s",buf) != EOF) {
+    if(!strcmp(buf,"BRUNCH_STAT")) {
+      if(fscanf(toolOut,"%200s",buf) == EOF) break;
+      string str = buf;
+      if(fscanf(toolOut,"%200s",buf) == EOF) break;
+      if(verbose) printf("setting stat[%s] = %s\n",str.c_str(),buf);
+      stats[str] = buf;
+    }
+  }
+  fclose(toolOut);
 
   //display statistics
   printStats(stats);
