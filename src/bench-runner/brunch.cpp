@@ -221,7 +221,6 @@ void parentProcess(const string &smtFile,pid_t childPid)
     FILE *out = fopen(TIMEOUTFILE.c_str(),"a");
     fprintf(out,"%s\n",pathToFile(smtFile).c_str());
     fclose(out);
-    return;
   }
 
   //add file name to stat
