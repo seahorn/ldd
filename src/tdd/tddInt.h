@@ -29,6 +29,9 @@ struct tdd_manager
   /** size of ddVars array */
   size_t varsSize;
 
+  /** be like a BDD */
+  bool be_bddlike;
+
   theory_t* theory;
 };
 

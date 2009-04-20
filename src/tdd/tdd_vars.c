@@ -50,11 +50,15 @@ tdd_node* tdd_new_var (tdd_manager * tdd, lincons_t l)
 }
 
 
-tdd_node * tdd_new_var_before (tdd_manager * tdd, tdd_node * v, lincons_t l)
+tdd_node * 
+tdd_new_var_before (tdd_manager * tdd, tdd_node * v, lincons_t l)
 {
 
   tdd_node * n;
   unsigned int vLevel;
+
+  if (tdd->be_bddlike)
+    return tdd_new_var (tdd, l);
   
   vLevel = cuddI (CUDD, v->index);
 
@@ -73,11 +77,16 @@ tdd_node * tdd_new_var_before (tdd_manager * tdd, tdd_node * v, lincons_t l)
   
 }
 
-tdd_node * tdd_new_var_after (tdd_manager * tdd, tdd_node *v, lincons_t l)
+tdd_node * 
+tdd_new_var_after (tdd_manager * tdd, tdd_node *v, lincons_t l)
 {
   
   tdd_node * n;
   unsigned int vLevel;
+
+  if (tdd->be_bddlike)
+    return tdd_new_var (tdd, l);
+
   
   vLevel = cuddI (CUDD, v->index);
 
@@ -98,7 +107,8 @@ tdd_node * tdd_new_var_after (tdd_manager * tdd, tdd_node *v, lincons_t l)
 }
 
 
-tdd_node * tdd_assoc_node (tdd_manager * tdd, tdd_node *n, lincons_t l)
+tdd_node * 
+tdd_assoc_node (tdd_manager * tdd, tdd_node *n, lincons_t l)
 {
   int idx;
   int i;
@@ -130,7 +140,8 @@ tdd_node * tdd_assoc_node (tdd_manager * tdd, tdd_node *n, lincons_t l)
  * Updates the group tree corresponding to addition of n into the
  * same group as v
  */
-void tdd_update_cudd_mtr_tree (DdManager *cudd, tdd_node *v, tdd_node *n)
+void 
+tdd_update_cudd_mtr_tree (DdManager *cudd, tdd_node *v, tdd_node *n)
 {
   MtrNode *tree;
   MtrNode *group;
@@ -206,7 +217,8 @@ void tdd_update_cudd_mtr_tree (DdManager *cudd, tdd_node *v, tdd_node *n)
 
 #ifdef MTR_DEBUG_FINE
 
-void tdd_debug_print_mtr (MtrNode * tree)
+void 
+tdd_debug_print_mtr (MtrNode * tree)
 {
   MtrNode *group;
   

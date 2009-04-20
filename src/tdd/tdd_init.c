@@ -17,6 +17,8 @@ tdd_init (DdManager *cudd, theory_t * t)
   tdd->cudd = cudd;
   tdd->theory = t;
 
+  tdd->be_bddlike = 0;
+
   /* allocate the map from DD nodes to linear constraints*/
   tdd->varsSize = cudd->maxSize;
   tdd->ddVars = ALLOC(lincons_t,tdd->varsSize);
@@ -31,7 +33,8 @@ tdd_init (DdManager *cudd, theory_t * t)
   return tdd;
 }
 
-void tdd_quit (tdd_manager * tdd)
+void 
+tdd_quit (tdd_manager * tdd)
 {
   if (tdd->ddVars != NULL)
     {
@@ -50,7 +53,8 @@ void tdd_quit (tdd_manager * tdd)
 }
 
 
-tdd_node* to_tdd (tdd_manager *tdd, lincons_t l)
+tdd_node* 
+to_tdd (tdd_manager *tdd, lincons_t l)
 {
   return THEORY->to_tdd(tdd, l);
 }
@@ -66,6 +70,14 @@ tdd_syntactic_implication_theory (theory_t *t)
   t->is_stronger_cons = bin_false;
   return t;
 }
+
+tdd_manager *
+tdd_bddlike_manager (tdd_manager *tdd)
+{
+  tdd->be_bddlike = 1;
+  return tdd;
+}
+
 
 static int 
 bin_false (lincons_t l1, lincons_t l2)
