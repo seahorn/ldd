@@ -36,6 +36,7 @@ bool qelim_approx = false;
 bool verbose = false;
 bool use_support = true;
 bool use_syntactic_theory = false;
+bool use_bddlike_manager = false;
 bool use_dyn = false;
 enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
@@ -66,6 +67,7 @@ void Usage(char *cmd)
   printf("\t--qelim-sof: qelim with sof strategy\n");
   printf("\t--qelim-sof-nosupport: use non-support-based var occurrences\n");
   printf("\t--syntactic: use syntactic theory\n");
+  printf("\t--bdd: behave like a BDD. Only safe with --syntactic\n");
   printf("\t--dyn: enable dynamic variable reordering\n");
   printf("\t--verbose: be verbose\n");
 }
@@ -96,6 +98,7 @@ void ProcessInputs(int argc,char *argv[])
     }
     else if(!strcmp(argv[i],"--qelim2")) qelim2 = true;
     else if(!strcmp(argv[i],"--syntactic")) use_syntactic_theory = true;
+    else if(!strcmp(argv[i],"--bdd")) use_bddlike_manager = true;
     else if(!strcmp(argv[i],"--dyn")) use_dyn = true;
     else if(!strcmp(argv[i],"--verbose")) verbose = true;
     else if(!strcmp(argv[i],"--qelim-occur")) 
@@ -129,10 +132,12 @@ void CreateManagers()
   if(tddType == QSLV_TVPI) theory = tvpi_create_int_theory (totalVarNum);
 
   if (use_syntactic_theory)
-    theory = tdd_syntactic_implication_theory (theory);
-    
+    theory = tdd_syntactic_implication_theory (theory);    
 
   tdd = tdd_init (cudd, theory);  
+
+  if (use_bddlike_manager)
+    tdd = tdd_bddlike_manager (tdd);
 
   if (use_dyn)
     {
