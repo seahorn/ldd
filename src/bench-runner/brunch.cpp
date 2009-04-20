@@ -10,6 +10,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <sstream>
 using namespace std;
 
 /*********************************************************************/
@@ -195,7 +196,14 @@ void parentProcess(const string &smtFile,pid_t childPid)
     printf("waiting for child %d\n",childPid);
 
   //wait for tool invocation to terminate
-  waitpid(childPid,&status,0);
+  if (waitpid(childPid,&status,0) == -1)
+    stats["Status"] = "-1";
+  else
+    {
+      std::ostringstream o;
+      o << status;
+      stats["Status"] = o.str ();
+    }
 
   if(verbose) {
     printf("child %d exited with status %d\n",childPid,status);
@@ -232,7 +240,7 @@ void parentProcess(const string &smtFile,pid_t childPid)
   stats["File"] = pathToFile(smtFile);
 
   //add child resource usage to stat
-  char buf[256];
+  char buf[256];  
   snprintf(buf,256,"%.3lf",cpuUsage - totalCpu);
   stats["Cpu"] = buf; 
   totalCpu = cpuUsage;
