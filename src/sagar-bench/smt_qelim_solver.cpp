@@ -342,13 +342,28 @@ tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max,
 
   Cudd_RecursiveDeref (cudd, res);
   res = tmp; tmp = NULL;
-  
 
   // -- number of variables to quantify out
   int qsize = max - min;
 
 
-  if (0 == 1 && !Cudd_IsConstant (res))
+  // -- diabled
+  if (1 == 0 && !Cudd_IsConstant (res))
+    {
+      int sharedSize = Cudd_DagSize (res);
+      int commonNodes = 
+	Cudd_DagSize (Cudd_T(res)) + Cudd_DagSize (Cudd_E(res)) - sharedSize;
+      
+
+      printf ("Sharing ratio %f, common=%d, size=%d\n", 
+	      ((double)commonNodes)/sharedSize, commonNodes, sharedSize);
+
+    }
+  
+
+
+  // -- disabled
+  if (1 == 0 && !Cudd_IsConstant (res))
     {
       int idxT = pick_qelim_var (Cudd_T(res), qvars, qsize);
       int idxE = pick_qelim_var (Cudd_E(res), qvars, qsize);
@@ -359,7 +374,7 @@ tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max,
 
 
       // for now, this is turned off
-      if (idxT != idxE && idxT >= 0 && idxE >= 0 && idxT < 0)
+      if (idxT != idxE && idxT >= 0 && idxE >= 0)
 	{
 	  tdd_node *tRes;
 	  tdd_node *eRes;
@@ -405,12 +420,14 @@ tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max,
       
     }
   
-
+      
   int idx = pick_qelim_var (res, qvars, qsize);
   
   if (idx >= 0)
     {
       qelimSize++;
+      printf ("QELIM_SOF of var: %d with %d occurrences\n", qvars [idx], 
+	      occurrences [qvars [idx]]);
       printf ("QELIM_SOF of var: %d", qvars [idx]);
       tmp = tdd_exist_abstract (tdd, res, qvars [idx]);
       Cudd_Ref (tmp);
@@ -474,12 +491,14 @@ tdd_node *qelim_sof_strategy (tdd_node *form, int min, int max)
 /*********************************************************************/
 tdd_node * Qelim(tdd_node * form,int min,int max)
 {
-  if (noqelim) return form;
-
+  /* Initial size */
   printf ("BRUNCH_STAT Initial %d\n", Cudd_DagSize (form));
-
   /* number of variables quantified */
   printf ("BRUNCH_STAT Qsize %d\n", (max - min));
+
+  if (noqelim) return form;
+
+
 
   if (qelim_sof)
     return qelim_sof_strategy (form, min, max);
