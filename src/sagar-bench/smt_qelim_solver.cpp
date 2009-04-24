@@ -38,6 +38,8 @@ bool use_support = true;
 bool use_syntactic_theory = false;
 bool use_bddlike_manager = false;
 bool use_dyn = false;
+bool print_path_size = false;
+bool slow_count_path_size = false;
 enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
 
@@ -69,6 +71,8 @@ void Usage(char *cmd)
   printf("\t--syntactic: use syntactic theory\n");
   printf("\t--bdd: behave like a BDD. Only safe with --syntactic\n");
   printf("\t--dyn: enable dynamic variable reordering\n");
+  printf("\t--pathsize: print path size of each diagram (IPathSize, FPathSize)\n");
+  printf("\t--slowpathsize: uses path counting linear in # of paths (SIPathSize, SFPathSize)\n");
   printf("\t--verbose: be verbose\n");
 }
 
@@ -100,6 +104,8 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--syntactic")) use_syntactic_theory = true;
     else if(!strcmp(argv[i],"--bdd")) use_bddlike_manager = true;
     else if(!strcmp(argv[i],"--dyn")) use_dyn = true;
+    else if(!strcmp(argv[i],"--pathsize")) print_path_size = true;
+    else if(!strcmp(argv[i],"--slowpathsize")) slow_count_path_size = true;
     else if(!strcmp(argv[i],"--verbose")) verbose = true;
     else if(!strcmp(argv[i],"--qelim-occur")) 
       {qelim2 = false; qelim_occur=true; }
@@ -445,6 +451,11 @@ tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max,
 
 
   printf ("BRUNCH_STAT Final %d\n", Cudd_DagSize (res));
+  if (print_path_size)
+    printf ("BRUNCH_STAT FPathSize %lf\n", Cudd_CountPathsToNonZero (res));
+  if (slow_count_path_size)
+    printf ("BRUNCH_STAT SFPathSize %d\n", tdd_path_size (tdd, res));
+
   
   return res;
 }
@@ -498,6 +509,12 @@ tdd_node * Qelim(tdd_node * form,int min,int max)
 {
   /* Initial size */
   printf ("BRUNCH_STAT Initial %d\n", Cudd_DagSize (form));
+
+  if (print_path_size)
+    printf ("BRUNCH_STAT IPathSize %lf\n", Cudd_CountPathsToNonZero (form));
+  if (slow_count_path_size)
+    printf ("BRUNCH_STAT SIPathSize %d\n", tdd_path_size (tdd, form));
+
   /* number of variables quantified */
   printf ("BRUNCH_STAT Qsize %d\n", (max - min));
 
