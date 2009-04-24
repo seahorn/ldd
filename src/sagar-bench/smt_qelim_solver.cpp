@@ -312,12 +312,11 @@ int pick_qelim_var (tdd_node * form, int* qvars, int qsize)
 
   for (int i = 0; i < qsize; i++)
     if (occurrences [qvars [i]] < 2) continue;
-    else if (occurrences [qvars [i]] < minOccur)
+    else if (occurrences [qvars [i]] <= minOccur)
       {
 	idx = i;
 	minOccur = occurrences [qvars [i]];
       }
-  
   return idx;
 }
 
