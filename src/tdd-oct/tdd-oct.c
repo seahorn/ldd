@@ -383,6 +383,7 @@ linterm_t _oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
 {
   oct_term_t *x1 = (oct_term_t*)t1;
   oct_term_t *x2 = (oct_term_t*)t2;
+
   //first and first variables cancel
   if(x1->var1 == x2->var1 && x1->var1 == x && 
      x1->coeff1 == -(x2->coeff1) && x1->var2 != x2->var2) {
@@ -414,29 +415,57 @@ linterm_t _oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
  * Returns <0 if t1 and -t2 have a resolvent on variable x
  * Return 0 if t1 and t2 do not resolve.
  *********************************************************************/
-int oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
+int oct_terms_have_resolvent (linterm_t t1, linterm_t t2, int x)
 {
-  oct_term_t *x1 = (oct_term_t*)t1;
-  oct_term_t *x2 = (oct_term_t*)t2;
-  //first and first variables cancel
-  if(x1->var1 == x2->var1 && x1->var1 == x && x1->var2 != x2->var2) {
-    return (x1->coeff1 == -(x2->coeff1)) ? 1 : (x1->coeff1 == x2->coeff1 ? -1 : 0);
-  }
-  //first and second variables cancel
-  if(x1->var1 == x2->var2 && x1->var1 == x && x1->var2 != x2->var1) {
-    return (x1->coeff1 == -(x2->coeff2)) ? 1 : (x1->coeff1 == x2->coeff2 ? -1 : 0);
-  }
-  //second and first variables cancel
-  if(x1->var2 == x2->var1 && x1->var2 == x && x1->var1 != x2->var2) {
-    return (x1->coeff2 == -(x2->coeff1)) ? 1 : (x1->coeff2 == x2->coeff1 ? -1 : 0);
-  }
-  //second and second variables cancel
-  if(x1->var2 == x2->var2 && x1->var2 == x && x1->var1 != x2->var1) {
-    return (x1->coeff2 == -(x2->coeff2)) ? 1 : (x1->coeff2 == x2->coeff2 ? -1 : 0);
-  }
-  //no resolution
-  return 0;
+  /* x variable in t1, other variable in t1, coefficient of x in t1 */
+  int x1, o1, cx1;
+  /* x variable in t2, other variable in t2, coefficient of x in t2 */
+  int x2, o2, cx2;
+
+
+  if (t1->var1 == x)
+    {
+      x1 = t1->var1;
+      cx1 = t1->coeff1;
+      o1 = t1->var2;
+
+    }
+  else if (t1->var2 == x)
+    {
+      x1 = t1->var2;
+      cx1 = t1->coeff2;
+      o1 = t1->var1;
+    }
+  else return 0;
+  
+  if (t2->var1 == x)
+    {
+      x2 = t2->var1;
+      cx2 = t2->coeff1;
+      o2 = t2->var2;
+    }
+  else if (t2->var2 == x)
+    {
+      x2 = t2->var2;
+      cx2 = t2->coeff2;
+      o2 = t2->var1;
+    }
+  else 
+    return 0;
+  
+  /** 
+   * the other variables must differ. Coefficient must be the same in
+   * absolute value 
+   */
+
+  if (o1 != o2)
+    if (cx1 == cx2) return -1;
+    else if (cx1 == -cx2) return 1;
+    else return 0;
+
+  
 }
+
 
 /**********************************************************************
  * create -1*t in place -- negates the two coefficients -- variables
