@@ -40,6 +40,12 @@ bool use_bddlike_manager = false;
 bool use_dyn = false;
 bool print_path_size = false;
 bool slow_count_path_size = false;
+
+tdd_node* (*exist_abstract)(tdd_manager*,tdd_node*,int) = &tdd_exist_abstract;
+
+
+
+
 enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
 
@@ -73,6 +79,8 @@ void Usage(char *cmd)
   printf("\t--dyn: enable dynamic variable reordering\n");
   printf("\t--pathsize: print path size of each diagram (IPathSize, FPathSize)\n");
   printf("\t--slowpathsize: uses path counting linear in # of paths (SIPathSize, SFPathSize)\n");
+  printf("\t--ddd-qelim: use unoptimized exist_abstract as in DDD\n");
+
   printf("\t--verbose: be verbose\n");
 }
 
@@ -107,6 +115,8 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--pathsize")) print_path_size = true;
     else if(!strcmp(argv[i],"--slowpathsize")) slow_count_path_size = true;
     else if(!strcmp(argv[i],"--verbose")) verbose = true;
+    else if(!strcmp(argv[i],"--ddd-qelim")) 
+      exist_abstract = &tdd_exist_abstract_v3;
     else if(!strcmp(argv[i],"--qelim-occur")) 
       {qelim2 = false; qelim_occur=true; }
     else if(!strcmp(argv[i],"--qelim-approx")) 
@@ -439,7 +449,7 @@ tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max,
       printf ("QELIM_SOF of var: %d with %d occurrences\n", qvars [idx], 
 	      occurrences [qvars [idx]]);
       printf ("QELIM_SOF of var: %d", qvars [idx]);
-      tmp = tdd_exist_abstract (tdd, res, qvars [idx]);
+      tmp = exist_abstract (tdd, res, qvars [idx]);
       Cudd_Ref (tmp);
       Cudd_RecursiveDeref (cudd, res);
       res = tmp;
@@ -568,7 +578,7 @@ tdd_node * Qelim(tdd_node * form,int min,int max)
     else {
       if (occurrences && occurrences [qvars [i]] == 0) continue;
       printf ("QELIM of var: %d", qvars [i]);
-      tdd_node *tmp = tdd_exist_abstract (tdd, form, qvars [i]);
+      tdd_node *tmp = exist_abstract (tdd, form, qvars [i]);
       Cudd_Ref (tmp);
       Cudd_RecursiveDeref (cudd, form);
       form = tmp;
