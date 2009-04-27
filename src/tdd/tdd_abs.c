@@ -27,6 +27,35 @@ tdd_exist_abstract (tdd_manager * tdd,
 }
 
 
+/**
+ * Existential quantification through resolution. Unoptimized version
+ * of tdd_exist_abstract.
+ */
+tdd_node *
+tdd_exist_abstract_v3 (tdd_manager * tdd,
+		       tdd_node * f,
+		       int var)
+{
+  tdd_node *res;
+  DdHashTable *table;
+  
+  do 
+    {
+      CUDD->reordered = 0;
+      table = cuddHashTableInit (CUDD, 1, 2);
+      if (table == NULL) return NULL;
+      
+      res = tdd_exist_abstract_v3_recur (tdd, f, var, table);
+      if (res != NULL)
+	cuddRef (res);
+      cuddHashTableQuit (table);
+    } while (CUDD->reordered == 1);
+  
+  if (res != NULL) cuddDeref (res);
+  return res;
+}
+
+
 tdd_node * tdd_univ_abstract (tdd_manager * tdd,
 			      tdd_node * f,
 			      int var)
@@ -74,6 +103,7 @@ tdd_node * tdd_resolve (tdd_manager * tdd, tdd_node * f,
 {
   tdd_node *res;
   DdHashTable *table;
+
 
   do
     {
@@ -132,8 +162,8 @@ tdd_node *tdd_exist_abstract_v2 (tdd_manager * tdd,
 
 
 /**
-   resolves f with cons on var and eliminates all constraints with
-   term 't'
+ * Resolve TDD f with constraint 'cons' on variable 'var'. 
+ * In the process, eliminates all constraints with the term 't'
  */
 tdd_node * tdd_resolve_elim_inter (tdd_manager * tdd, tdd_node * f, 
 				   linterm_t t, lincons_t cons, int var)
@@ -156,7 +186,11 @@ tdd_node * tdd_resolve_elim_inter (tdd_manager * tdd, tdd_node * f,
   return res;
 }
 
-
+/**
+ * Recursive part of tdd_exist_abstract
+ *
+ * table is the hash table to keep computed results of this operation
+ */
 tdd_node * 
 tdd_exist_abstract_recur (tdd_manager * tdd, 
 			  tdd_node * f, 
@@ -332,8 +366,187 @@ tdd_exist_abstract_recur (tdd_manager * tdd,
   
 }
 
+/**
+ * Recursive part of tdd_exist_abstract_v3
+ *
+ * table is the hash table to keep computed results of this operation
+ */
+tdd_node * 
+tdd_exist_abstract_v3_recur (tdd_manager * tdd, 
+			     tdd_node * f, 
+			     int var, 
+			     DdHashTable * table)
+{
+  DdNode *F, *T, *E;
+  
+  DdManager * manager;
+  
+  lincons_t vCons;
+  linterm_t vTerm;
+  
+  DdNode *fv, *fnv;
+  unsigned int v;
 
-/*
+  DdNode *root;
+  DdNode *res;
+
+  /* true if root constraint has to be eliminated, false otherwise */
+  int fElimRoot;
+
+ 
+  manager = CUDD;
+  F = Cudd_Regular (f);
+  
+  /* base case */
+  if (F == DD_ONE(CUDD)) return f;
+
+  /* check cache */
+  if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, f)) != NULL))
+    return res;
+
+
+  /* deconstruct f into the root constraint and cofactors */
+  v = F->index;
+  vCons = tdd->ddVars [v];
+  vTerm = THEORY->get_term (vCons);
+  
+  fv = cuddT (F);
+  fnv = cuddE (F);
+
+  fv = Cudd_NotCond (fv, f != F);
+  fnv = Cudd_NotCond (fnv, f != F);
+
+  /* if variables of vTerm do not contain var, we just recurse.
+     otherwise, top constraint is removed and propagated to children
+     before recursing to children
+  */
+  if (!THEORY->term_has_var (vTerm, var))
+    {
+      /* keep the root constraint */
+      fElimRoot = 0;
+      /* grab extra references to simplify dereferencing later */
+      cuddRef (fv);
+      cuddRef (fnv);
+    }
+  else
+    {
+      DdNode *tmp;
+      lincons_t nvCons;
+
+      /* root constraint is eliminated */
+      fElimRoot = 1;
+
+      /* resolve root constraint with THEN branch */
+      tmp = tdd_resolve (tdd, fv, vTerm, NULL, vCons, var);
+      if (tmp == NULL)
+	{
+	  return NULL;
+	}      
+      cuddRef (tmp);
+
+      fv = tmp;
+      
+      
+      /* resolve negation of the root constraint with ELSE branch */
+      nvCons = THEORY->negate_cons (vCons);
+      tmp = tdd_resolve (tdd, fv, vTerm, nvCons, NULL, var);
+      THEORY->destroy_lincons (nvCons);
+      
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, fv);
+	  return NULL;
+	}
+      cuddRef (tmp);
+      fnv = tmp;
+    }
+  
+
+  /* recurse to THEN and ELSE branches*/
+  T = tdd_exist_abstract_v3_recur (tdd, fv, var, table);
+  if (T == NULL)
+    {
+      Cudd_IterDerefBdd (manager, fv);
+      Cudd_IterDerefBdd (manager, fnv);
+      return NULL;
+    }
+  cuddRef (T);
+  Cudd_IterDerefBdd (manager, fv);
+  fv = NULL;
+  
+  E = tdd_exist_abstract_v3_recur (tdd, fnv, var, table);
+  if (E == NULL)
+    {
+      Cudd_IterDerefBdd (manager, T);
+      Cudd_IterDerefBdd (manager, fnv);
+      return NULL;
+    }
+  cuddRef (E);
+  Cudd_IterDerefBdd (manager, fnv);
+  fnv = NULL;
+
+  if (fElimRoot)
+    {
+      /* do an OR */
+      res = tdd_and_recur (tdd, Cudd_Not (T), Cudd_Not (E));
+      if (res == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, T);
+	  Cudd_IterDerefBdd (manager, E);
+	  return NULL;
+	}
+      res = Cudd_Not (res);
+      cuddRef (res);
+    }
+  else
+    {
+      root = Cudd_bddIthVar (manager, v);
+      if (root == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, T);
+	  Cudd_IterDerefBdd (manager, E);
+	  return NULL;
+	}
+      cuddRef (root);
+
+      res = tdd_ite_recur (tdd, root, T, E);
+      if (res == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, T);
+	  Cudd_IterDerefBdd (manager, E);
+	  Cudd_IterDerefBdd (manager, root);
+	  return NULL;
+	}
+      cuddRef (res);
+      Cudd_IterDerefBdd (manager, root);
+      root = NULL;
+    }
+
+
+
+  Cudd_IterDerefBdd (manager, T);
+  T = NULL;
+  Cudd_IterDerefBdd (manager, E);
+  E = NULL;
+
+  if (F->ref != 1)
+    {
+      ptrint fanout = (ptrint) F->ref;
+      cuddSatDec (fanout);
+      if (!cuddHashTableInsert1 (table, f, res, fanout))
+	{
+	  Cudd_IterDerefBdd (CUDD, res);
+	  return NULL;
+	}
+    }
+  
+  cuddDeref (res);
+  return res;
+  
+}
+
+
+/**
  * Recursive part of tdd_resolve_elim
  *
  * Parameters:
@@ -369,9 +582,6 @@ tdd_node *tdd_resolve_elim_recur (tdd_manager * tdd,
   /* constraint at the root of f */
   lincons_t vCons;
   linterm_t vTerm;
-
-
-
 
   manager = CUDD;
   F = Cudd_Regular (f);
@@ -483,14 +693,20 @@ tdd_node *tdd_resolve_elim_recur (tdd_manager * tdd,
   return res;
 }
 
-
-tdd_node *tdd_resolve_recur (tdd_manager * tdd,
-			     tdd_node * f,
-			     linterm_t t,
-			     lincons_t negCons,
-			     lincons_t posCons,
-			     int var,
-			     DdHashTable *table)
+/**
+ * Recursive part of tdd_resolve. Resolves negCons and posCons with
+ * TDD f.  t is the term of posCons and -t is the term of negCons. var
+ * is the resolution variable. table is the hashtable to keep computed
+ * results.
+ */
+tdd_node *
+tdd_resolve_recur (tdd_manager * tdd,
+		   tdd_node * f,
+		   linterm_t t,
+		   lincons_t negCons,
+		   lincons_t posCons,
+		   int var,
+		   DdHashTable *table)
 {
 
   DdNode *one, *zero;

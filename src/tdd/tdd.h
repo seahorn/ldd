@@ -257,6 +257,7 @@ void tdd_manager_debug_dump (tdd_manager*);
   tdd_node *tdd_over_abstract (tdd_manager *,tdd_node*,int*);
   void tdd_support_var_occurrences(tdd_manager*,tdd_node*,int*);
   tdd_manager * tdd_bddlike_manager (tdd_manager *);
+  tdd_node* tdd_exist_abstract_v3 (tdd_manager*, tdd_node*, int);
   
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
