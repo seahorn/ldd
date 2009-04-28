@@ -449,7 +449,7 @@ tdd_exist_abstract_v3_recur (tdd_manager * tdd,
       
       /* resolve negation of the root constraint with ELSE branch */
       nvCons = THEORY->negate_cons (vCons);
-      tmp = tdd_resolve (tdd, fv, vTerm, nvCons, NULL, var);
+      tmp = tdd_resolve (tdd, fnv, vTerm, nvCons, NULL, var);
       THEORY->destroy_lincons (nvCons);
       
       if (tmp == NULL)
