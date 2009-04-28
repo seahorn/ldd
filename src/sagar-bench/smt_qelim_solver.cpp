@@ -359,9 +359,10 @@ tdd_node *qelim_sof_strategy_int(tdd_node * form, int min, int max,
       Cudd_Ref (tmp);
     }
   while (res != tmp);
-
+  
   Cudd_RecursiveDeref (cudd, res);
   res = tmp; tmp = NULL;
+  
 
   // -- number of variables to quantify out
   int qsize = max - min;
@@ -544,13 +545,14 @@ tdd_node * Qelim(tdd_node * form,int min,int max)
   if (qelim_occur)
     {
       occurrences = (int*)malloc (sizeof (int) * theoryVarSize);
-      memset (occurrences, 0, sizeof (int) * theoryVarSize);
-      tdd_var_occurrences (tdd, form, occurrences);
+      update_occurrences (form);
+     // memset (occurrences, 0, sizeof (int) * theoryVarSize);
+      // tdd_var_occurrences (tdd, form, occurrences);
 
-      if (verbose)
-	for (size_t i = 0; i < theoryVarSize; i++)
-	  if (occurrences [i] != 0)
-	    printf ("var %d occurs %d\n", i, occurrences [i]);
+      // if (verbose)
+      // 	for (size_t i = 0; i < theoryVarSize; i++)
+      // 	  if (occurrences [i] != 0)
+      // 	    printf ("var %d occurs %d\n", i, occurrences [i]);
     }
 
 
