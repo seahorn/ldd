@@ -415,12 +415,16 @@ linterm_t _oct_terms_have_resolvent(linterm_t t1, linterm_t t2, int x)
  * Returns <0 if t1 and -t2 have a resolvent on variable x
  * Return 0 if t1 and t2 do not resolve.
  *********************************************************************/
-int oct_terms_have_resolvent (linterm_t t1, linterm_t t2, int x)
+int oct_terms_have_resolvent (linterm_t lt1, linterm_t lt2, int x)
 {
   /* x variable in t1, other variable in t1, coefficient of x in t1 */
   int x1, o1, cx1;
   /* x variable in t2, other variable in t2, coefficient of x in t2 */
   int x2, o2, cx2;
+
+  /* cast linear terms into octagon terms */
+  oct_term_t *t1 = (oct_term_t*)lt1;
+  oct_term_t *t2 = (oct_term_t*)lt2;
 
 
   if (t1->var1 == x)
@@ -459,11 +463,13 @@ int oct_terms_have_resolvent (linterm_t t1, linterm_t t2, int x)
    */
 
   if (o1 != o2)
-    if (cx1 == cx2) return -1;
-    else if (cx1 == -cx2) return 1;
-    else return 0;
+    {
+      if (cx1 == cx2) return -1;
+      else if (cx1 == -cx2) return 1;
+      else return 0;
+    }
 
-  
+  return 0;
 }
 
 
