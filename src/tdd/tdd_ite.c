@@ -117,8 +117,22 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
       if (THEORY->is_stronger_cons (vCons, fCons))
 	f = cuddT (f); /* by assumption, no need to check cons of cuddT(f) */
     }
-  
 
+  /*** BDD simplifcation, 
+   *** ITE(v,f,g) == f IF f == g
+   ***/
+  if (f == g)
+    {
+      /* make sure f is kept */
+      cuddRef (f);
+
+      /* get rid of v */
+      Cudd_IterDerefBdd (CUDD, v);
+      /* return f */
+      cuddDeref(f);
+      return f;
+    }
+  
 
 
   /*** 
@@ -128,40 +142,18 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
    ***                          
    ***/
 
-#ifdef OLD_UNIQUE_INTER
-  if (G != DD_ONE(CUDD))
-    {
-      lincons_t vCons = tdd->ddVars [v->index];
-      lincons_t gCons = tdd->ddVars [G->index];
-
-      if (THEORY->is_stronger_cons (vCons, gCons))
-	{
-	  DdNode * x;
-	  
-	  /* take THEN cofactor of e */
-	  x = Cudd_NotCond (cuddT (G), g != G);
-
-	  if (f == x) 
-	    {
-	      Cudd_IterDerefBdd (CUDD, v);
-	      return g;
-	    }
-	}
-    }
-#else
   /* it is faster to first check whether the THEN branch of e and the
      THEN branch of v are the same. If they aren't, we don't need to
      do a more complex constraint checking 
   */
   /* use the fact that e == g and Cudd_Regular(e) == G. 
-     Only applies if G is not a constant, otherwise it has no children*/
-  if (G != DD_ONE(CUDD))
+     Only applies if G is not a constant, otherwise it has no children
+     Only applies if g is regular: if g is not regular, it's THEN cofactor
+     is not regular. But f is regular. Hence f != THEN cofactor.
+  */
+  if (G != DD_ONE(CUDD) && g == G)
     {
-      DdNode *x;
-      
-      /* take THEN cofactor of e */
-      x = Cudd_NotCond (cuddT (G), g != G);
-      if (f == x)
+      if (f == cuddT(G))
 	{
 	  /* now need to check the constraints */
 	  lincons_t vCons = tdd->ddVars [v->index];
@@ -170,14 +162,13 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
 	  if (THEORY->is_stronger_cons (vCons, gCons))
 	    {
 	      /* Apply simplification, get rid of v */
+	      cuddRef (g);
 	      Cudd_IterDerefBdd (CUDD, v);
+	      cuddDeref (g);
 	      return g;
 	    }
 	}
     }
-#endif
-
-
 
   res = cuddUniqueInter (CUDD, index, f, g);
   if (res == NULL)
