@@ -754,18 +754,25 @@ cuddSwapInPlace(DdManager * table,
 		int x, 
 		int y)
 {
-  return cuddSwapInPlaceGroup (table, x, y, 0);
+  /* Make sure nobody is calling this directly */
+  assert (0);
+  return cuddSwapInPlaceGroup (table, x, y, 0, 0);
 }
 
 /**
- * AG: A specialized version of cuddSwapInPlace for TDDs
+ * AG: A specialized version of cuddSwapInPlace for TDDs.
+
+ * ybot is the level of the last node whose constraint is implied by
+ * constraint on y. xbot is the level of the last node whose constraint
+ * is implied by x.
  */
 int
 cuddSwapInPlaceGroup(
   DdManager * table,
   int  x,
   int  y,
-  int ybot)
+  int ybot,
+  int xbot)
 {
     DdNodePtr *xlist, *ylist;
     int    xindex, yindex;
@@ -976,8 +983,7 @@ cuddSwapInPlaceGroup(
 	      /* AG: if the root of f1 is in the same group as y, 
 	       *     skip to its THEN part
 	       */
-	      if (f11->index != CUDD_CONST_INDEX &&
-		  table->perm [f11->index] <= ybot)
+	      if (cuddI(table,f11->index) <= ybot)
 		f11 = cuddT (f11);
 	    }
 #ifdef DD_DEBUG
@@ -989,22 +995,39 @@ cuddSwapInPlaceGroup(
 	    if ((int) f0->index == yindex) {
 		f01 = cuddT(f0); f00 = cuddE(f0);
 	    } else {
-		f01 = f00 = f0;
-		if (f01->index != CUDD_CONST_INDEX &&
-		    table->perm [f01->index] <= ybot)
-		  f01 = cuddT(f01);
+	        f01 = f00 = f0;
+	        if ((cuddI (table, f01->index) <= ybot))
+		    f01 = cuddT(f01);
 	    }
 	    if (comple) {
 		f01 = Cudd_Not(f01);
 		f00 = Cudd_Not(f00);
 	    }
 	    /* Decrease ref count of f1. */
-	    cuddSatDec(f1->ref);
+	    cuddSatDec(f1->ref); 
 	    /* Create the new T child. */
 	    if (f11 == f01) {
 		newf1 = f11;
 		cuddSatInc(newf1->ref);
-	    } else {
+	    } 
+	    /* AG: TDD reduction rule 5: 
+	     *  xbot > 0  ---  constraint of f01 may be in the same group as x
+	     *  !(Cudd_IsComplement (f01)) --- rule 5 only applies when 
+                                               f01 and f11 have the same 
+                                               complement dots. 
+                                               f11 has no complement dots.
+             *  cuddI(...)  ---  constraint of f01 is implied by x
+             *  cuddT(...)  ---  pre-condition of rule 5
+	     */
+	    else if (xbot > 0 && 
+		     !(Cudd_IsComplement (f01)) &&
+		     cuddI(table,f01->index) <= xbot &&
+		     cuddT(f01) == f11)
+	      {
+		newf1 = f01;
+		cuddSatInc (newf1->ref);
+	      }     
+	    else {
 		/* Check xlist for triple (xindex,f11,f01). */
 		posn = ddHash(f11, f01, xshift);
 		/* For each element newf1 in collision list xlist[posn]. */
@@ -1052,7 +1075,19 @@ cuddSwapInPlaceGroup(
 		newf0 = f00;
 		tmp = Cudd_Regular(newf0);
 		cuddSatInc(tmp->ref); 
-	    } else {
+	    }
+	    /* AG: TDD reduction rule 5. See comments above */
+	    else if (xbot > 0 &&
+		     Cudd_IsComplement (f00) == Cudd_IsComplement (f10) &&
+		     cuddI(table, Cudd_Regular(f00)->index) <= xbot &&
+		     cuddI(table, Cudd_Regular(f00)->index) > ybot &&
+		     cuddT(Cudd_Regular (f00)) == Cudd_Regular (f10))
+	      {
+		newf0 = f00;
+		tmp = Cudd_Regular (newf0);
+		cuddSatInc (tmp->ref);
+	      }
+	    else {
 		/* make sure f10 is regular */
 		newcomplement = Cudd_IsComplement(f10);
 		if (newcomplement) {
@@ -1097,6 +1132,8 @@ cuddSwapInPlaceGroup(
 	    }
 	    cuddE(f) = newf0;
 
+	    assert (newf1 != newf0);
+
 	    /* Insert the modified f in ylist.
 	    ** The modified f does not already exists in ylist.
 	    ** (Because of the uniqueness of the cofactors.)
@@ -1112,7 +1149,7 @@ cuddSwapInPlaceGroup(
 	    while (newf1 == cuddT(tmp) && newf0 < cuddE(tmp)) {
 		previousP = &(tmp->next);
 		tmp = *previousP;
-	    }
+	    }	    
 	    f->next = *previousP;
 	    *previousP = f;
 	    f = next;
@@ -1128,9 +1165,9 @@ cuddSwapInPlaceGroup(
 		next = f->next;
 		if (f->ref == 0) {
 		    tmp = cuddT(f);
-		    cuddSatDec(tmp->ref);
+		    cuddSatDec(tmp->ref); 
 		    tmp = Cudd_Regular(cuddE(f));
-		    cuddSatDec(tmp->ref);
+		    cuddSatDec(tmp->ref);  
 		    cuddDeallocNode(table,f);
 		    newykeys--;
 		} else {
@@ -2566,7 +2603,6 @@ ddUpdateMtrTree(
     return(1);
 }
 
-
 /**Function********************************************************************
 
   Synopsis    [Checks the BDD variable group tree before a shuffle.]
@@ -2616,3 +2652,4 @@ ddCheckPermuation(
     }
     return(1);
 }
+

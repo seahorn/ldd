@@ -1255,7 +1255,7 @@ ddGroupSiftingUp(
 		   table->subtables[y].next == (unsigned) y) {
             /* x and y are self groups */
 	    xindex = table->invperm[x];
-            size = cuddSwapInPlace(table,x,y);
+            size = cuddSwapInPlaceGroup(table,x,y,0,0);
 #ifdef DD_DEBUG
             assert(table->subtables[x].next == (unsigned) x);
             assert(table->subtables[y].next == (unsigned) y);
@@ -1420,7 +1420,7 @@ ddGroupSiftingDown(
 		isolated = table->vars[yindex]->ref == 1;
 		R -= table->subtables[y].keys - isolated;
 	    }
-            size = cuddSwapInPlace(table,x,y);
+            size = cuddSwapInPlaceGroup(table,x,y,0,0);
 #ifdef DD_DEBUG
             assert(table->subtables[x].next == (unsigned) x);
             assert(table->subtables[y].next == (unsigned) y);
@@ -1517,7 +1517,7 @@ ddGroupMove(
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
     int  initialSize,bestSize;
 #endif
-    int curYbot;
+    int curYbot, curXbot;
     
 #if DD_DEBUG
     /* We assume that x < y */
@@ -1543,9 +1543,10 @@ ddGroupMove(
        assert: y = x + 1
     */
     curYbot = ybot;
+    curXbot = 0;
     for (i = 1; i <= xsize; i++) {
       for (j = 1; j <= ysize; j++) {
-	size = cuddSwapInPlaceGroup(table,x,y,curYbot);
+	size = cuddSwapInPlaceGroup(table,x,y,curYbot,curXbot);
 	if (size == 0) goto ddGroupMoveOutOfMem;
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
 	if (size < bestSize)
@@ -1561,6 +1562,8 @@ ddGroupMove(
 	/* y is one below x */
 	y = cuddNextHigh(table,x);
       }
+      /* the bottom of x-group never moves from this point on */
+      curXbot = ybot;
       /* repeat starting one level higher */
       x = xbot - i;
       y = cuddNextHigh (table, x);
@@ -1735,6 +1738,74 @@ ddGroupMoveBackward(
 {
     int size;
     int i,j,xtop,xbot,xsize,ytop,ybot,ysize,newxtop;
+    
+    int curYbot, curXbot;
+    
+#if DD_DEBUG
+    /* We assume that x < y */
+    assert(x < y);
+#endif
+
+    /* Find top, bottom, and size for the two groups. */
+    xbot = x;
+    xtop = table->subtables[x].next;
+    xsize = xbot - xtop + 1;
+    ybot = y;
+    while ((unsigned) ybot < table->subtables[ybot].next)
+        ybot = table->subtables[ybot].next;
+    ytop = y;
+    ysize = ybot - ytop + 1;
+
+    curYbot = ybot;
+    curXbot = 0;
+    /* Sift the variables of the second group up through the first group */
+    for (i = 1; i <= xsize; i++) {
+        for (j = 1; j <= ysize; j++) {
+	  size = cuddSwapInPlaceGroup(table,x,y,curYbot,curXbot);
+            if (size == 0)
+                return(0);
+            x = y;
+	    y = cuddNextHigh (table, x);
+        }
+	curXbot = ybot;
+	x = xbot - i;
+	y = cuddNextHigh (table, x);
+	curYbot = cuddNextLow (table, curYbot);
+    }
+
+    /* fix groups */
+    y = xtop;
+    for (i = 0; i < ysize - 1; i++) {
+        table->subtables[y].next = cuddNextHigh(table,y);
+        y = cuddNextHigh(table,y);
+    }
+    table->subtables[y].next = xtop; /* y is bottom of its group, join */
+                                    /* to its top */
+    x = cuddNextHigh(table,y);
+    newxtop = x;
+    for (i = 0; i < xsize - 1; i++) {
+        table->subtables[x].next = cuddNextHigh(table,x);
+        x = cuddNextHigh(table,x);
+    }
+    table->subtables[x].next = newxtop; /* x is bottom of its group, join */
+                                    /* to its top */
+#ifdef DD_DEBUG
+    if (pr > 0) (void) fprintf(table->out,"ddGroupMoveBackward:\n");
+#endif
+
+    return(1);
+
+} /* end of ddGroupMoveBackward */
+
+
+static int
+original_ddGroupMoveBackward(
+  DdManager * table,
+  int  x,
+  int  y)
+{
+    int size;
+    int i,j,xtop,xbot,xsize,ytop,ybot,ysize,newxtop;
 
 
 #if DD_DEBUG
@@ -1873,7 +1944,7 @@ ddGroupSiftingBackward(
 	}
         if ((table->subtables[move->x].next == move->x) &&
 	(table->subtables[move->y].next == move->y)) {
-            res = cuddSwapInPlace(table,(int)move->x,(int)move->y);
+	  res = cuddSwapInPlaceGroup(table,(int)move->x,(int)move->y,0,0);
             if (!res) return(0);
 #ifdef DD_DEBUG
             if (pr > 0) (void) fprintf(table->out,"ddGroupSiftingBackward:\n");
