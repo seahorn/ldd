@@ -158,7 +158,15 @@ tdd_support_var_occurrences (tdd_manager *tdd,
   unsigned int v, u;
   lincons_t vCons, uCons;
   linterm_t vTerm, uTerm;
+
+  Cudd_ReorderingType type;
+  int reorderEnabled;
   
+  /* reorderEnabled = Cudd_ReorderingStatus (CUDD, &type); */
+  /* if (reorderEnabled) */
+  /*   Cudd_AutodynDisable (CUDD); */
+  
+
   /* no variables in the constant node */
   if (Cudd_IsConstant (n)) return;
 
@@ -201,8 +209,11 @@ tdd_support_var_occurrences (tdd_manager *tdd,
       N = T;
     }
   while (N != DD_ONE (CUDD));
-  
+
   Cudd_IterDerefBdd (CUDD, S);
+
+  /* if (reorderEnabled) */
+  /*   Cudd_AutodynEnable (CUDD, type); */
 }
 
 
