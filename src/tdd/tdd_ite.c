@@ -339,10 +339,17 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
     Cudd_IterDerefBdd(CUDD,e);
     return(NULL);
   }
-  cuddDeref(t);
-  cuddDeref(e);
+
+  assert (!Cudd_IsComplement (r));
+  
+  /** Cannot assume that t and e are live after this function. */
+  cuddRef (r);
+  Cudd_IterDerefBdd (CUDD, t);
+  Cudd_IterDerefBdd (CUDD, e);
 
   cuddCacheInsert(CUDD, DD_TDD_ITE_TAG, f, g, h, r);
+
+  cuddDeref (r);
   return(Cudd_NotCond(r,comple));
 }
 
@@ -360,6 +367,7 @@ tdd_and_recur (tdd_manager * tdd,
   unsigned int topf, topg, index;
 
   lincons_t vCons;
+  
 
   manager = CUDD;
   statLine(manager);
@@ -500,7 +508,7 @@ tdd_and_recur (tdd_manager * tdd,
 	Cudd_IterDerefBdd(manager, e);
 	return(NULL);
       }
-      r = Cudd_Not(r);
+      r = Cudd_Not (r);
     } else {
       r = tdd_unique_inter(tdd,index, t, e);
       if (r == NULL) {
@@ -510,11 +518,17 @@ tdd_and_recur (tdd_manager * tdd,
       }
     }
   }
-  cuddDeref(e);
-  cuddDeref(t);
+
+  /** Cannot assume that t and e are live after this function. */
+  cuddRef (r);
+  Cudd_IterDerefBdd (CUDD, t);
+  Cudd_IterDerefBdd (CUDD, e);
+
   if (F->ref != 1 || G->ref != 1)
     cuddCacheInsert2(manager, (DD_CTFP)tdd_and, f, g, r);
-  return(r);
+
+  cuddDeref (r);
+  return r;
 }
 
 
@@ -528,8 +542,6 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
   unsigned int topf, topg, index;
   
   lincons_t vCons;
-
-
 
   manager = CUDD;
   statLine(manager);
@@ -662,7 +674,7 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
 	Cudd_IterDerefBdd(manager, e);
 	return(NULL);
       }
-      r = Cudd_Not(r);
+      r = Cudd_Not (r);
     } else {
       r = tdd_unique_inter(tdd,index, t, e);
       if (r == NULL) {
@@ -672,11 +684,17 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
       }
     }
   }
-  cuddDeref(e);
-  cuddDeref(t);
+
+  /** Cannot assume that t and e are live after this function. */
+  cuddRef (r);
+  Cudd_IterDerefBdd (CUDD, t);
+  Cudd_IterDerefBdd (CUDD, e);
+
   if (f->ref != 1 || G->ref != 1)
     cuddCacheInsert2(manager, (DD_CTFP)tdd_xor, f, g, r);
-  return(r);
+
+  cuddDeref (r);
+  return r;
 }
 
 
