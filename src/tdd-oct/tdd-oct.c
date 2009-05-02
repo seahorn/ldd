@@ -851,6 +851,15 @@ tdd_node *oct_get_node(tdd_manager* m,oct_cons_node_t *curr,
       (oct_cons_node_t*)malloc(sizeof(oct_cons_node_t));
     cn->cons = *c;
     cn->node = tdd_new_var_before(m,curr->node,(lincons_t)c);
+
+    if (cn->node == NULL)
+      {
+	free (cn);
+	return NULL;
+      }
+    cuddRef (cn->node);
+  
+
     //if not at the start of the list
     if(prev) {
       cn->next = prev->next;
@@ -887,15 +896,12 @@ tdd_node* oct_to_tdd(tdd_manager* m, lincons_t l)
   tdd_node *res = 
     oct_get_node(m,theory->cons_node_map[c->term.var1][c->term.var2],NULL,c);
 
-  //cleanup
-  if(neg) {
-    res = tdd_not(res);
-    oct_destroy_lincons(l);
-  }
-  
+  if (neg) oct_destroy_lincons (l);
+
   //all done
-  return res;
+  return neg && res != NULL ? tdd_not (res) : res;   
 }
+
 
 /**********************************************************************
  * print a constraint - this one takes a linconst_t as input
