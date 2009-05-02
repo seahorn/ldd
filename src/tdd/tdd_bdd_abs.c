@@ -30,7 +30,14 @@ tdd_over_abstract (tdd_manager *tdd,
 {
 
   tdd_node * cube, *res;
+
+  Cudd_ReorderingType type;
+  int reorderEnabled;
   
+  /* reorderEnabled = Cudd_ReorderingStatus (CUDD, &type); */
+  /* if (reorderEnabled) */
+  /*   Cudd_AutodynDisable (CUDD); */
+
   cube = tdd_terms_with_vars (tdd, vars);
   
   if (cube == NULL) return NULL;
@@ -42,10 +49,13 @@ tdd_over_abstract (tdd_manager *tdd,
     cuddRef (res);
   
   Cudd_IterDerefBdd (CUDD, cube);
-  
+
+  /* if (reorderEnabled) */
+  /*   Cudd_AutodynEnable (CUDD, type); */
+
   if (res != NULL)
     cuddDeref (res);
-  
+
   return res;
 }
 
@@ -185,11 +195,13 @@ tdd_bdd_exist_abstract_recur (tdd_manager *tdd,
 	    Cudd_IterDerefBdd(manager, res2);
 	    return(NULL);
 	}
-	cuddDeref(res1);
-	cuddDeref(res2);
+	cuddRef (res);
+	Cudd_IterDerefBdd (manager, res1);
+	Cudd_IterDerefBdd (manager, res2);
 	if (F->ref != 1)
 	  cuddCacheInsert2(manager, 
 			   (DD_CTFP)tdd_bdd_exist_abstract, f, cube, res);
+	cuddDeref (res);
         return(res);
     }	    
   
