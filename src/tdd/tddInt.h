@@ -63,5 +63,8 @@ tdd_node* tdd_bdd_exist_abstract_recur (tdd_manager*, tdd_node*, tdd_node*);
 tdd_node* tdd_exist_abstract_v3_recur (tdd_manager*, tdd_node*, int, 
 				       DdHashTable*);
 
+void tdd_debug_print_mtr (MtrNode*);
+int tdd_fix_mtr_tree (DdManager*, const char *, void*);
+
 
 #endif

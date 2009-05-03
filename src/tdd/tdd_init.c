@@ -29,6 +29,9 @@ tdd_init (DdManager *cudd, theory_t * t)
     }
   for (i = 0; i < tdd->varsSize; i++)
     tdd->ddVars [i] = NULL;
+
+  /* add a hook to fix MTR tree after variable reordering */
+  Cudd_AddHook (CUDD, &tdd_fix_mtr_tree, CUDD_POST_REORDERING_HOOK);
   
   return tdd;
 }
