@@ -110,6 +110,49 @@ static void debugCheckParent (DdManager *table, DdNode *node);
 /* Definition of exported functions                                          */
 /*---------------------------------------------------------------------------*/
 
+int
+Cudd_MtrDebugCheck(DdManager *table)
+{
+  MtrNode *group;
+  MtrNode *tree = table->tree;
+  
+  if (tree == NULL || tree->child == NULL) return 0;
+
+  for (group = tree->child ; group != NULL; group = group->younger)
+    {
+      if (group->younger != NULL && group->low >= group->younger->low)
+	{
+	  fprintf (table->err, "MtrTree is corrupted\n");
+	  fprintf (table->err, "\tgroup is (low=%d, index=%d, size=%d)\n", 
+		   group->low, group->index, group->size);
+	  fprintf (table->err, "\tgroup->younger is (low=%d, index=%d, size=%d)\n", 
+		   group->younger->low, group->younger->index, group->younger->size);
+
+	  
+	  return 1;
+	}
+      else if (group->younger != NULL && 
+	       table->perm [group->index] >=
+	       table->perm [group->younger->index])
+	{
+	  fprintf (table->err, "MtrTree does not reflect indecies\n");
+	  fprintf (table->err, "idx=%d is at lvl=%d\n", group->index,
+		   table->perm[group->index]);
+	  fprintf (table->err, "idx=%d is at lvl=%d\n", group->younger->index,
+		   table->perm[group->younger->index]);
+	  fprintf (table->err, "\tgroup is (low=%d, index=%d, size=%d)\n", 
+		   group->low, group->index, group->size);
+	  fprintf (table->err, "\tgroup->younger is (low=%d, index=%d, size=%d)\n", 
+		   group->younger->low, group->younger->index, group->younger->size);
+	  return 1;
+	}
+      
+      
+    }
+  
+  return 0;
+}
+
 
 /**Function********************************************************************
 

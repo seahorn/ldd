@@ -835,6 +835,8 @@ extern DdNode * Cudd_BddToAdd (DdManager *dd, DdNode *B);
 extern DdNode * Cudd_addBddPattern (DdManager *dd, DdNode *f);
 extern DdNode * Cudd_bddTransfer (DdManager *ddSource, DdManager *ddDestination, DdNode *f);
 extern int Cudd_DebugCheck (DdManager *table);
+  extern int Cudd_MtrDebugCheck (DdManager *table);
+  
 extern int Cudd_CheckKeys (DdManager *table);
 extern DdNode * Cudd_bddClippingAnd (DdManager *dd, DdNode *f, DdNode *g, int maxDepth, int direction);
 extern DdNode * Cudd_bddClippingAndAbstract (DdManager *dd, DdNode *f, DdNode *g, DdNode *cube, int maxDepth, int direction);

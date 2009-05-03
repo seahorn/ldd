@@ -398,7 +398,7 @@ ddTreeSiftingAux(
 	    saveCheck = table->groupcheck;
 	    table->groupcheck = CUDD_NO_CHECK;
 	    if (method != CUDD_REORDER_LAZY_SIFT)
-	      res = ddReorderChildren(table, auxnode, CUDD_REORDER_GROUP_SIFT);
+              res = ddReorderChildren(table, auxnode, CUDD_REORDER_GROUP_SIFT);
 	    else
 	      res = ddReorderChildren(table, auxnode, CUDD_REORDER_LAZY_SIFT);
 	    table->groupcheck = saveCheck;
@@ -1953,6 +1953,10 @@ ddGroupSiftingBackward(
 #endif
         } else { /* Group move necessary */
 	    if (move->flags == MTR_NEWNODE) {
+	      /* we assume that no groups are created and dissolved
+		 other than the original groups in the MTR tree
+	      */
+	      assert (0);
 		ddDissolveGroup(table,(int)move->x,(int)move->y);
 	    } else {
 		res = ddGroupMoveBackward(table,(int)move->x,(int)move->y);
