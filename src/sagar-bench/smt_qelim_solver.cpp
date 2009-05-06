@@ -40,6 +40,7 @@ bool use_bddlike_manager = false;
 bool use_dyn = false;
 bool print_path_size = false;
 bool slow_count_path_size = false;
+bool skip_sof = false;
 
 tdd_node* (*exist_abstract)(tdd_manager*,tdd_node*,int) = &tdd_exist_abstract;
 
@@ -80,6 +81,7 @@ void Usage(char *cmd)
   printf("\t--pathsize: print path size of each diagram (IPathSize, FPathSize)\n");
   printf("\t--slowpathsize: uses path counting linear in # of paths (SIPathSize, SFPathSize)\n");
   printf("\t--ddd-qelim: use unoptimized exist_abstract as in DDD\n");
+  printf ("\t--skip-sof: skip SOF heuristic\n");
 
   printf("\t--verbose: be verbose\n");
 }
@@ -117,6 +119,7 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--verbose")) verbose = true;
     else if(!strcmp(argv[i],"--ddd-qelim")) 
       exist_abstract = &tdd_exist_abstract_v3;
+    else if(!strcmp(argv[i],"--skip-sof")) skip_sof = true;
     else if(!strcmp(argv[i],"--qelim-occur")) 
       {qelim2 = false; qelim_occur=true; }
     else if(!strcmp(argv[i],"--qelim-approx")) 
@@ -293,6 +296,10 @@ void update_occurrences (tdd_node *form)
 
 tdd_node * eliminate_single_occurrences (tdd_node *form, int min, int max)
 {
+
+  if (skip_sof)
+    return form;
+
   size_t theoryVarSize = theory->num_of_vars (theory);
   
   memset (vars, 0, sizeof (int) * theoryVarSize);
@@ -321,7 +328,7 @@ int pick_qelim_var (tdd_node * form, int* qvars, int qsize)
   update_occurrences (form);
 
   for (int i = 0; i < qsize; i++)
-    if (occurrences [qvars [i]] < 2) continue;
+    if (occurrences [qvars [i]] <= 0) continue;
     else if (occurrences [qvars [i]] <= minOccur)
       {
 	idx = i;
