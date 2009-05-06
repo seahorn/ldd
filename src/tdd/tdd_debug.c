@@ -166,6 +166,8 @@ tdd_support_var_occurrences (tdd_manager *tdd,
   /* if (reorderEnabled) */
   /*   Cudd_AutodynDisable (CUDD); */
   
+  reorderEnabled = tdd->cudd->autoDyn;
+  tdd->cudd->autoDyn = 0;
 
   /* no variables in the constant node */
   if (Cudd_IsConstant (n)) return;
@@ -211,6 +213,8 @@ tdd_support_var_occurrences (tdd_manager *tdd,
   while (N != DD_ONE (CUDD));
 
   Cudd_IterDerefBdd (CUDD, S);
+
+  tdd->cudd->autoDyn = reorderEnabled;
 
   /* if (reorderEnabled) */
   /*   Cudd_AutodynEnable (CUDD, type); */
