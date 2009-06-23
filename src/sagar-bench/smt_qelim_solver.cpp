@@ -30,6 +30,7 @@ extern "C" {
 list<string> fileNames;
 bool noqelim = false;
 bool qelim_sof = false;
+bool qelim_wb = false;
 bool qelim2 = false;
 bool qelim_occur = false;
 bool qelim_approx = false;
@@ -74,6 +75,7 @@ void Usage(char *cmd)
   printf("\t--noqelim: do not do quantifier elimination\n");
   printf("\t--qelim-approx: Approximate using BDD quantification\n");
   printf("\t--qelim-sof: qelim with sof strategy\n");
+  printf("\t--qelim-wb: white box qelim\n");
   printf("\t--qelim-sof-nosupport: use non-support-based var occurrences\n");
   printf("\t--syntactic: use syntactic theory\n");
   printf("\t--bdd: behave like a BDD. Only safe with --syntactic\n");
@@ -125,6 +127,7 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--qelim-approx")) 
       { qelim2 = true; qelim_approx=true; }
     else if(!strcmp(argv[i],"--qelim-sof")) qelim_sof = true;
+    else if(!strcmp(argv[i],"--qelim-wb")) qelim_wb = true;
     else if(!strcmp(argv[i],"--qelim-sof-nosupport")) 
       {use_support = false; qelim_sof = true;}
     
@@ -517,6 +520,168 @@ tdd_node *qelim_sof_strategy (tdd_node *form, int min, int max)
   
 }
 
+tdd_node *
+drop_single_use_constraints (tdd_node *n, int * qvars, 
+			     size_t qsize, int *occurlist, int *varlist)
+{
+  size_t i;
+
+  /* 
+   * compute in varlist all variables in qvars that have only a single
+   * occurrence 
+   */
+  for (i = 0; i < qsize; i++)
+    {
+      int v;
+      
+      v = qvars [i];
+      if (occurlist [v] == 1) varlist [v] = 1;
+    }
+
+  return tdd_over_abstract (tdd, n, varlist);
+}
+
+int 
+choose_var_idx (tdd_node * n, int * qvars, size_t qsize, int *occurlist)
+{
+  int res = -1;
+  int min = INT_MAX;
+  size_t i;
+
+  
+  /* pick a varialbe with the least number of occurrences */
+  for (i = 0; i < qsize; i++)
+    {
+      int v;
+      
+      v = qvars [i];
+      
+      if (occurlist [v] <= 0) continue;
+      else if (occurlist [v] <= min)
+	{
+	  res = i;
+	  min = occurlist [v];
+	}
+    }
+
+  return res;
+}
+
+
+
+/* 
+ * Quantifies variables from a TDD
+ * 
+ * n        TDD from which variables are eliminated
+ * qvars    list of quantified variables
+ * qsize    the size of qvars
+ */
+tdd_node *
+wb_mv_qelim (tdd_node *n, int * qvars, size_t qsize)
+{
+  tdd_node * res;
+
+  size_t t_vsize;
+  int *occurlist;
+  int *varlist;
+  
+
+  printf ("WB MV QELIM with %d variables\n", qsize);
+
+  if (n == NULL) return n;
+
+  t_vsize = theory->num_of_vars (theory);
+  
+  occurlist = (int *) malloc (sizeof (int) * t_vsize);
+  if (occurlist == NULL) return NULL;
+  varlist = (int *) malloc (sizeof (int) * t_vsize);
+  if (varlist == NULL)
+    {
+      free (occurlist);
+      return NULL;
+    }
+
+  res = n;
+  Cudd_Ref (res);
+  
+  while (1)
+    {
+      /* itermediate result */
+      tdd_node * tmp;
+      /* variable to be eliminated next */
+      int v;
+
+      /* nothing left to eliminate, break out */
+      if (Cudd_IsConstant (res)) break;
+
+      memset (occurlist, 0, sizeof (int) * t_vsize);
+      tdd_support_var_occurrences (tdd, res, occurlist);
+      
+      memset (varlist, 0, sizeof (int) * t_vsize);
+      tmp = drop_single_use_constraints (res, qvars, qsize, occurlist, varlist);
+
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (cudd, res);
+	  return NULL;
+	}
+      Cudd_Ref (tmp);
+
+      /* 
+       * if tmp has changed, then some single-use constraints have been dropped
+       */
+      if (tmp != res)
+	{
+	  Cudd_IterDerefBdd (cudd, res);
+	  res = tmp;
+	  tmp = NULL;
+	  continue;
+	}
+      else
+	{
+	  /* tmp is not needed, loose the reference */
+	  Cudd_IterDerefBdd (cudd, tmp);
+	  tmp = NULL;
+	}
+      
+      v = choose_var_idx (res, qvars, qsize, occurlist);
+
+      /* no more variables to eliminate, break out */
+      if (v < 0) break;
+
+      tmp = tdd_exist_abstract (tdd, res, qvars [v]);
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (cudd, res);
+	  return NULL;
+	}
+      Cudd_Ref (tmp);
+      Cudd_IterDerefBdd (cudd, res);
+      res = tmp;
+      
+    }
+
+  Cudd_Deref (res);
+  return res;
+}
+
+
+tdd_node *
+wb_mv_qelim_minmax (tdd_node *n, int min, int max)
+{
+  
+  int * qvars = (int*) malloc (sizeof (int) * (max - min));
+
+  // -- number of variables to quantify out
+  int qsize = max - min;
+  
+  // create an array with all variables that need to be quantified out
+  for (int i = 0; i < qsize; i++)
+    qvars [i] = min + i;
+
+  return wb_mv_qelim (n, qvars, qsize);
+}
+
 
 /*********************************************************************/
 //quantify out all variables from min to max-1 from node and return
@@ -541,6 +706,8 @@ tdd_node * Qelim(tdd_node * form,int min,int max)
 
   if (qelim_sof)
     return qelim_sof_strategy (form, min, max);
+  else if (qelim_wb)
+    return wb_mv_qelim_minmax (form, min, max);
   
 
   size_t theoryVarSize = theory->num_of_vars (theory);
