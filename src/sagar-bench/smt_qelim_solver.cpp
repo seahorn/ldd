@@ -661,6 +661,9 @@ wb_mv_qelim (tdd_node *n, int * qvars, size_t qsize)
       
     }
 
+  free (varlist);
+  free (occurlist);
+  
   Cudd_Deref (res);
   return res;
 }
@@ -669,9 +672,12 @@ wb_mv_qelim (tdd_node *n, int * qvars, size_t qsize)
 tdd_node *
 wb_mv_qelim_minmax (tdd_node *n, int min, int max)
 {
-  
-  int * qvars = (int*) malloc (sizeof (int) * (max - min));
 
+  tdd_node * res;
+  int * qvars = (int*) malloc (sizeof (int) * (max - min));
+  
+  if (qvars == NULL) return NULL;
+  
   // -- number of variables to quantify out
   int qsize = max - min;
   
@@ -679,7 +685,15 @@ wb_mv_qelim_minmax (tdd_node *n, int min, int max)
   for (int i = 0; i < qsize; i++)
     qvars [i] = min + i;
 
-  return wb_mv_qelim (n, qvars, qsize);
+  printf ("BRUNCH_STAT Initial %d\n", Cudd_DagSize (n));
+
+  res = wb_mv_qelim (n, qvars, qsize);
+
+  free (qvars);
+
+  /* don't need to reference res since there are no calls to CUDD */
+  printf ("BRUNCH_STAT Final %d\n", Cudd_DagSize (res));
+  return res;
 }
 
 
