@@ -635,6 +635,8 @@ wb_mv_qelim (tdd_node *n, int * qvars, size_t qsize)
 	  Cudd_IterDerefBdd (cudd, res);
 	  res = tmp;
 	  tmp = NULL;
+
+	  printf ("QELIM_WB single use elimination round\n");
 	  continue;
 	}
       else
@@ -649,6 +651,9 @@ wb_mv_qelim (tdd_node *n, int * qvars, size_t qsize)
       /* no more variables to eliminate, break out */
       if (v < 0) break;
 
+      printf ("QELIM_WB of var: %d with %d occurrences\n",
+	      qvars [v], occurlist [qvars [v]]);
+      
       tmp = tdd_exist_abstract (tdd, res, qvars [v]);
       if (tmp == NULL)
 	{
@@ -659,6 +664,7 @@ wb_mv_qelim (tdd_node *n, int * qvars, size_t qsize)
       Cudd_IterDerefBdd (cudd, res);
       res = tmp;
       
+      printf ("QELIM_WB of var %d size: %d\n", qvars [v], Cudd_DagSize (res));
     }
 
   free (varlist);
@@ -687,7 +693,9 @@ wb_mv_qelim_minmax (tdd_node *n, int min, int max)
 
   printf ("BRUNCH_STAT Initial %d\n", Cudd_DagSize (n));
 
-  res = wb_mv_qelim (n, qvars, qsize);
+  /* use the implementation from TDD library */
+  res = tdd_mv_exist_abstract (tdd, n, qvars, qsize);
+  //res = wb_mv_qelim (n, qvars, qsize);
 
   free (qvars);
 
