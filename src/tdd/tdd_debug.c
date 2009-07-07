@@ -159,7 +159,6 @@ tdd_support_var_occurrences (tdd_manager *tdd,
   lincons_t vCons, uCons;
   linterm_t vTerm, uTerm;
 
-  Cudd_ReorderingType type;
   int reorderEnabled;
   
   /* reorderEnabled = Cudd_ReorderingStatus (CUDD, &type); */

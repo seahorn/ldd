@@ -31,8 +31,6 @@ tdd_over_abstract (tdd_manager *tdd,
 
   tdd_node * cube, *res;
 
-  Cudd_ReorderingType type;
-  int reorderEnabled;
   
   /* reorderEnabled = Cudd_ReorderingStatus (CUDD, &type); */
   /* if (reorderEnabled) */
