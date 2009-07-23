@@ -519,7 +519,8 @@ tdd_and_recur (tdd_manager * tdd,
     }
   }
 
-  /** Cannot assume that t and e are live after this function. */
+  /** Unlike in with BDDs, t and e may become garbage at this
+      point. Must clean up with IterDerefBdd */
   cuddRef (r);
   Cudd_IterDerefBdd (CUDD, t);
   Cudd_IterDerefBdd (CUDD, e);
