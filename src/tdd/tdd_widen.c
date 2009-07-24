@@ -156,13 +156,16 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
       r = t;
       cuddRef (r);
     }
-  /** F->index < G->index  implies that F and G are different
+  /** 
+   ** extrapolate to the right
+   ** perm[F->index] < perm[G->index]  implies that F and G are different
    ** gv != g  implies that C(f) implies C(g)
-   ** G->index < Fnv->index implies that C(g) implies C(fnv)
+   ** perm[G->index] < perm[Fnv->index] implies that C(g) implies C(fnv)
    **/
-  else if ( (F->index < G->index) &&
+  else if ( (CUDD->perm[F->index] < CUDD->perm[G->index]) &&
 	    (gv != g) &&
-	    (G->index < Fnv->index) &&
+	    (Fnv->index == CUDD_CONST_INDEX ||
+	     CUDD->perm[G->index] < CUDD->perm[Fnv->index]) &&
 	    (fnv == zero || 
 	     (Fnv != one &&
 	      cuddT (Fnv) == ((fnv == Fnv) ? zero : one))))
@@ -180,16 +183,19 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
       cuddRef (r);
 
     }
-  else if (G->index < F->index && 
+  /** extrapolate to the left */
+  else if (CUDD->perm[G->index] < CUDD->perm[F->index] && 
 	   fv == zero &&
 	   f != fv &&
-	   F->index < Gnv->index)
+	   (Gnv->index == CUDD_CONST_INDEX ||
+	    CUDD->perm[F->index] < CUDD->perm[Gnv->index]))
 
     {
       DdNode *h, *k, *w;
       lincons_t fnvCons, gnvCons, fCons;
       
-      fnv = Cudd_NotCond (cuddE (F), F == f);
+      fnv = cuddE (F);
+      fnv = Cudd_NotCond (fnv, F != f);
       Fnv = Cudd_Regular (fnv);
       
       
@@ -198,12 +204,12 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
       fCons = tdd->ddVars [F->index];
       
       if (THEORY->is_stronger_cons (fCons, fnvCons))
-	h = Cudd_NotCond (cuddT(Fnv), Fnv == fnv);
+	h = Cudd_NotCond (cuddT(Fnv), Fnv != fnv);
       else
 	h = fnv;
       
       if (THEORY->is_stronger_cons (vCons, gnvCons))
-	k = Cudd_NotCond (cuddT (gnv), Gnv == gnv);
+	k = Cudd_NotCond (cuddT (Gnv), Gnv != gnv);
       else
 	k = gnv;
       
@@ -220,6 +226,8 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
 
       /* t = OR (gv, w) */
       t = tdd_and_recur (tdd, Cudd_Not (gv), Cudd_Not (w));
+      t = Cudd_NotCond (t, t != NULL);
+
       if (t == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, w);
@@ -227,7 +235,6 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
 	}
       cuddRef (t);
       Cudd_IterDerefBdd (CUDD, w);
-      t = Cudd_Not (t);
       
       e = tdd_box_extrapolate_recur (tdd, fnv, gnv);
       if (e == NULL)
@@ -271,7 +278,7 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
   Cudd_IterDerefBdd (CUDD, e);
 
   if (F->ref != 1 || G->ref != 1)
-    cuddCacheInsert2(manager, (DD_CTFP)tdd_and, f, g, r);
+    cuddCacheInsert2(manager, (DD_CTFP)tdd_box_extrapolate, f, g, r);
 
   cuddDeref (r);
   return r;
