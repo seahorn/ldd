@@ -21,6 +21,34 @@ tdd_box_extrapolate (tdd_manager *tdd, tdd_node *f, tdd_node *g)
   return (res);
 }
 
+/**
+ * Apply t1 <- k1*t2 + k2, i.e, replace all constraints on term t1
+ * with a linear combination on constraints with term t2
+ */
+tdd_node * 
+tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1, 
+		  linterm_t t2, constant_t k1, constant_t k2)
+{
+  tdd_node *res;
+  DdHashTable * table;
+  
+  do 
+    {
+      CUDD->reordered = 0;
+      table = cuddHashTableInit (CUDD, 1, 2);
+      if (table == NULL) return NULL;
+      
+      res = tdd_term_replace_recur (tdd, f, t1, t2, k1, k2, table);
+      if (res != NULL)
+	cuddRef (res);
+      cuddHashTableQuit (table);
+    } while (CUDD->reordered == 1);
+  
+  if (res != NULL) cuddDeref (res);
+  return (res);
+}
+
+
 tdd_node *
 tdd_box_extrapolate_recur (tdd_manager *tdd,
 			   tdd_node *f,
@@ -285,3 +313,202 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
   
 }
 
+tdd_node * 
+tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f, 
+			linterm_t t1, linterm_t t2, 
+			constant_t k1, constant_t k2, 
+			DdHashTable* table)
+{
+  DdNode *F, *res, *fv, *fnv, *t, *e;
+  DdNode *rootT, *rootE;
+  
+  lincons_t fCons;
+  linterm_t fTerm;
+  
+
+  F = Cudd_Regular (f);
+  
+  if (F == DD_ONE (CUDD)) return f;  
+
+
+  /* if terms t1 and t2 do not appear in f, can stop here */
+
+  /* check cache */
+  if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, f)) != NULL))
+    return res;
+
+  /* cofactors */
+  fv = Cudd_NotCond (cuddT(F), F != f);
+  fnv = Cudd_NotCond (cuddE(F), F != f);
+  
+
+  /* roots of the result diagram */
+  rootT = NULL;
+  rootE = NULL;
+  
+  fCons = tdd->ddVars [F->index];
+  fTerm = THEORY->get_term (fCons);
+  
+  /* remove top term if it is t1 */
+  if (THEORY->term_equals (fTerm, t1))
+    {
+      rootT = DD_ONE(CUDD);
+      cuddRef (rootT);
+      
+      rootE = DD_ONE(CUDD);
+      cuddRef (rootE);
+    }
+  /* keep top term if it is not t1 */
+  else
+    {
+      rootT = Cudd_bddIthVar (CUDD, F->index);
+      if (rootT == NULL) return NULL;
+      cuddRef (rootT);
+      
+      rootE = Cudd_Not (rootT);
+      if (rootE == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootT);
+	  return NULL;
+	}
+      cuddRef (rootE);
+    }
+  
+  
+  /* if top constraint is  t2 < c, add t1 < k1*c + k2 to the THEN branch
+   * and its negation to the ELSE branch of the result
+   */
+  if (THEORY->term_equals (fTerm, t2))
+    {
+      DdNode *tmp, *d;
+      constant_t fCst;
+      lincons_t newCons;
+      
+      fCst = THEORY->get_constant (fCons);
+
+      /* TODO: create a new linear constraint with term t1, strictness
+	 of l, and bound as a linear function k1 * fCst + k2 */
+      newCons = NULL;
+      d = to_tdd (tdd, newCons);
+      if (d == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootT);
+	  Cudd_IterDerefBdd (CUDD, rootE);
+	  return NULL;
+	}
+      cuddRef (d);
+
+      /* add d to the THEN branch */
+      tmp = tdd_and_recur (tdd, rootT, d);
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, rootT);
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootE);
+	  return NULL;
+	}
+      rootT = tmp;
+      tmp = NULL;
+      
+      /* add !d to the ELSE branch */
+      tmp = tdd_and_recur (tdd, rootE, Cudd_Not (d));
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, rootE);
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootT);
+	  return NULL;
+	}
+      rootE = tmp;
+    }
+  
+      
+  /* recursive step */
+
+  t = tdd_term_replace_recur (tdd, fv, t1, t2, k1, k2, table);
+  if (t == NULL)
+    {
+      Cudd_IterDerefBdd (CUDD, rootT);
+      Cudd_IterDerefBdd (CUDD, rootE);
+      return NULL;
+    }
+  
+  cuddRef (t);
+  
+  e = tdd_term_replace_recur (tdd, fnv, t1, t2, k1, k2, table);
+  if (e == NULL)
+    {
+      Cudd_IterDerefBdd (CUDD, rootT);
+      Cudd_IterDerefBdd (CUDD, rootE);
+      Cudd_IterDerefBdd (CUDD, t);
+      return NULL;
+    }
+  cuddRef (e);
+  
+
+
+  /* Add rootT to the THEN branch of the result */
+  if (rootT != DD_ONE(CUDD))
+    {
+      DdNode *tmp;
+      tmp = tdd_and_recur (tdd, rootT, t);
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, rootT);
+      Cudd_IterDerefBdd (CUDD, t);
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootE);
+	  Cudd_IterDerefBdd (CUDD, e);
+	  return NULL;
+	}
+      t = tmp; 
+    }
+  else
+    cuddDeref (rootT);
+  
+  /* Add rootE to the ELSE branch of the result */
+  if (rootE != DD_ONE(CUDD))
+    {
+      DdNode *tmp;
+      tmp = tdd_and_recur (tdd, rootE, e);
+      if (t != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, rootE);
+      Cudd_IterDerefBdd (CUDD, e);
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, t);
+	  return NULL;
+	}
+      e = tmp; 
+    }
+  else
+    cuddDeref (rootE);
+
+
+  /* res = OR (t, e) */
+  res = tdd_and_recur (tdd, Cudd_Not (t), Cudd_Not (e));
+  if (res != NULL)
+    {
+      res = Cudd_Not (res);
+      cuddRef (res);
+    }
+  Cudd_IterDerefBdd (CUDD, t);
+  Cudd_IterDerefBdd (CUDD, e);
+  if (res == NULL) return NULL;
+  
+  /* update cache */
+  if (F->ref != 1)
+    {
+      ptrint fanout = (ptrint) F->ref;
+      cuddSatDec (fanout);
+      if (!cuddHashTableInsert1 (table, f, res, fanout))
+	{
+	  Cudd_IterDerefBdd (CUDD, res);
+	  return NULL;
+	}
+    }
+
+  cuddDeref (res);
+  return res;
+    
+}

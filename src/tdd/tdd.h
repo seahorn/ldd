@@ -260,6 +260,7 @@ void tdd_manager_debug_dump (tdd_manager*);
   tdd_node* tdd_exist_abstract_v3 (tdd_manager*, tdd_node*, int);
   tdd_node * tdd_mv_exist_abstract (tdd_manager*, tdd_node *, int * , size_t );
   tdd_node * tdd_box_extrapolate (tdd_manager*, tdd_node*, tdd_node*);
+  tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, constant_t, constant_t);
   
   
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
