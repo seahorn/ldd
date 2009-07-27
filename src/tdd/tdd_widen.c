@@ -331,7 +331,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
   if (F == DD_ONE (CUDD)) return f;  
 
 
-  /* if terms t1 and t2 do not appear in f, can stop here */
+  /* XXX if terms t1 and t2 do not appear in f, can stop here */
 
   /* check cache */
   if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, f)) != NULL))
@@ -366,11 +366,6 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       cuddRef (rootT);
       
       rootE = Cudd_Not (rootT);
-      if (rootE == NULL)
-	{
-	  Cudd_IterDerefBdd (CUDD, rootT);
-	  return NULL;
-	}
       cuddRef (rootE);
     }
   
@@ -381,14 +376,23 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
   if (THEORY->term_equals (fTerm, t2))
     {
       DdNode *tmp, *d;
-      constant_t fCst;
+      constant_t fCst, tmpCst, nCst;
       lincons_t newCons;
       
       fCst = THEORY->get_constant (fCons);
 
-      /* TODO: create a new linear constraint with term t1, strictness
-	 of l, and bound as a linear function k1 * fCst + k2 */
-      newCons = NULL;
+
+      /* nCst = k1 * fCst + k2 */
+      tmpCst = THEORY->mul_cst (k1, fCst);
+      nCst = THEORY->add_cst (tmpCst, k2);
+      THEORY->destroy_cst (tmpCst);
+      tmpCst = NULL;
+      
+      newCons = THEORY->create_cons (THEORY->dup_term (t1), 
+				     THEORY->is_strict (fCons), 
+				     nCst);
+      /* nCst is now managed by createCons */
+
       d = to_tdd (tdd, newCons);
       if (d == NULL)
 	{
@@ -405,6 +409,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       if (tmp == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, rootE);
+	  Cudd_IterDerefBdd (CUDD, d);
 	  return NULL;
 	}
       rootT = tmp;
@@ -417,9 +422,12 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       if (tmp == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, rootT);
+	  Cudd_IterDerefBdd (CUDD, d);
 	  return NULL;
 	}
       rootE = tmp;
+
+      Cudd_IterDerefBdd (CUDD, d);
     }
   
       
@@ -432,7 +440,6 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       Cudd_IterDerefBdd (CUDD, rootE);
       return NULL;
     }
-  
   cuddRef (t);
   
   e = tdd_term_replace_recur (tdd, fnv, t1, t2, k1, k2, table);
@@ -444,8 +451,6 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       return NULL;
     }
   cuddRef (e);
-  
-
 
   /* Add rootT to the THEN branch of the result */
   if (rootT != DD_ONE(CUDD))
@@ -464,6 +469,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       t = tmp; 
     }
   else
+    /* rootT == DD_ONE(CUDD) */
     cuddDeref (rootT);
   
   /* Add rootE to the ELSE branch of the result */
@@ -482,6 +488,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       e = tmp; 
     }
   else
+    /* rootE == DD_ONE(CUDD) */
     cuddDeref (rootE);
 
 

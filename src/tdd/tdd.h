@@ -58,12 +58,22 @@ struct theory
   /** Destroy a constant */
   void (*destroy_cst) (constant_t c);
 
+  /** Returns c1+c3 */
+  constant_t (*add_cst) (constant_t c1, constant_t c2);
+
+  /** Returns c1*c2 */
+  constant_t (*mul_cst) (constant_t c1, constant_t c2);
+  
+
   /** 
    * Create a linear term: the first argument is an array of variable
    * coefficients. the second argument is the size of the array of
    * coefficients.
    */
   linterm_t (*create_linterm)(int* coeffs, size_t n);
+
+  /** Duplicate a term */
+  linterm_t (*dup_term) (linterm_t t);
 
   /** Returns true if t1 is the same term as t2 */
   int (*term_equals)(linterm_t t1, linterm_t t2);

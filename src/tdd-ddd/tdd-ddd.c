@@ -83,6 +83,41 @@ constant_t ddd_negate_cst (constant_t c)
   return (constant_t)x;
 }
 
+/**
+ * Returns c1 + c2. Allocates a new constant.
+ */
+constant_t ddd_add_int_cst (constant_t c1, constant_t c2)
+{
+  ddd_cst_t *x1 = ddd_dup_cst ((ddd_cst_t*)c1);
+  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+  
+
+  assert (x1->type == DDD_INT && x2->type == DDD_INT);
+
+  /* XXX Should check for overflow */
+  x1->int_val += x2->int_val;
+  return (constant_t)x1;
+
+}
+
+/**
+ * Returns c1 * c2. Allocates a new constant 
+ */
+constant_t ddd_mul_int_cst (constant_t c1, constant_t c2)
+{
+  ddd_cst_t *x1 = ddd_dup_cst ((ddd_cst_t*)c1);
+  ddd_cst_t *x2 = (ddd_cst_t*)c2;
+  
+  assert (x1->type == DDD_INT && x2->type == DDD_INT);
+  
+  /** XXX Check for overflow */
+  x1->int_val *= x2->int_val;
+  return (constant_t)x1;
+}
+
+
+
+
 /**********************************************************************
  * Compares c1 and c2 for =
  * Returns true if c1 and c2 are of same type and c1 = c2
@@ -516,6 +551,15 @@ ddd_term_t *ddd_dup_term(ddd_term_t *arg)
   return res;
 }
 
+/**
+ * External interface to duplicate terms 
+ */
+linterm_t ddd_dup_term_external (linterm_t t)
+{
+  return (linterm_t) (ddd_dup_term ((ddd_term_t*)t));
+}
+
+
 /**********************************************************************
  * get the term corresponding to the argument constraint -- the
  * returned value should NEVER be freed by the user.
@@ -911,6 +955,7 @@ ddd_theory_t *ddd_create_theory_common(size_t vn)
   res->base.is_ninf_cst = ddd_is_ninf_cst;
   res->base.destroy_cst = ddd_destroy_cst;
   res->base.create_linterm = ddd_create_linterm;
+  res->base.dup_term = ddd_dup_term_external;
   res->base.term_equals = ddd_term_equals;
   res->base.term_has_var = ddd_term_has_var;
   res->base.term_has_vars = ddd_term_has_vars;
@@ -954,6 +999,10 @@ ddd_theory_t *ddd_create_theory_common(size_t vn)
 theory_t *ddd_create_int_theory(size_t vn)
 {
   ddd_theory_t *res = ddd_create_theory_common(vn);
+
+  res->base.add_cst = ddd_add_int_cst;
+  res->base.mul_cst = ddd_mul_int_cst;
+  
   res->base.create_cons = ddd_create_int_cons;
   res->base.negate_cons = ddd_negate_int_cons;
   res->base.resolve_cons = ddd_resolve_int_cons;
