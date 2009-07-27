@@ -48,6 +48,23 @@ tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1,
   return (res);
 }
 
+/**
+ * Approximates f by computing the min and max bounds for all terms.
+ */
+tdd_node * 
+tdd_term_minmax_approx (tdd_manager *tdd, tdd_node *f)
+{
+  tdd_node *res;
+  
+  do 
+    {
+      CUDD->reordered = 0;
+      res = tdd_term_minmax_approx_recur (tdd, f);
+    } while (CUDD->reordered == 1);
+  return (res);
+}
+
+
 
 tdd_node *
 tdd_box_extrapolate_recur (tdd_manager *tdd,
@@ -60,7 +77,7 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
   unsigned int topf, topg, index;
 
   lincons_t vCons;
-  
+
   manager = CUDD;
   statLine(manager);
   one = DD_ONE(manager);
@@ -518,4 +535,150 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
   cuddDeref (res);
   return res;
     
+}
+
+
+tdd_node *
+tdd_term_minmax_approx_recur (tdd_manager *tdd,
+			      tdd_node *f)
+{
+  DdManager * manager;
+  DdNode *F, *fv, *fnv, *h, *k;
+  DdNode *one, *zero, *r, *t;
+
+  unsigned int minIndex, maxIndex;
+  lincons_t minCons, maxCons;
+  
+  manager = CUDD;
+  statLine(manager);
+  one = DD_ONE(manager);
+  zero = Cudd_Not (one);
+
+  F = Cudd_Regular(f);
+
+
+  /* Terminal cases. */
+  if (F == one) return f;
+
+
+  /* Check cache. */
+  if (F->ref != 1) {
+    r = cuddCacheLookup1(manager, (DD_CTFP1)tdd_term_minmax_approx, f);
+    if (r != NULL) return(r);
+  }
+  
+  /* Get the levels */
+  /* Here we can skip the use of cuddI, because the operands are known
+  ** to be non-constant.
+  */
+  minIndex = manager->perm[F->index];
+
+  fv = Cudd_NotCond (cuddT(F), F != f);
+  fnv = Cudd_NotCond (cuddE(F), F != f);
+
+  /** 
+   * Get the constraint of the root node 
+   */
+  minCons = tdd->ddVars [minIndex];
+
+  maxCons = minCons;
+  maxIndex = minIndex;
+
+  k = fv;
+  cuddRef (k);
+  
+  h = fnv;
+  
+  while (!cuddIsConstant (h))
+    {
+      lincons_t hCons;
+      DdNode *H, *tmp;
+      
+      H = Cudd_Regular (h);
+      hCons = tdd->ddVars [H->index];
+      
+      if (!THEORY->is_stronger_cons (maxCons, hCons)) break;
+      
+      maxCons = hCons;
+      maxIndex = H->index;
+
+      /* k = OR (k, h) */
+      tmp = tdd_and_recur (tdd, Cudd_Not (k), Cudd_Not (h));
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, k);
+      if (tmp == NULL) return NULL;
+      k = Cudd_Not (tmp);
+
+      h = Cudd_NotCond (cuddE (H), H != h);
+    }
+  
+  if (h != zero)
+    {
+      DdNode *tmp;
+      
+      tmp = tdd_and_recur (tdd, Cudd_Not (k), Cudd_Not (h));
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, k);
+      if (tmp == NULL) return NULL;
+      k = Cudd_Not (tmp);
+    }
+  
+  t = tdd_term_minmax_approx_recur (tdd, k);
+  if (t != NULL) cuddRef (t);
+  Cudd_IterDerefBdd (CUDD, k);
+  if (t == NULL) return NULL;
+  k = t; t = NULL;
+  
+
+  if (h != zero)
+    {
+      r = k; k = NULL;
+    }
+  
+  else
+    {
+      DdNode *root;
+      
+      root = Cudd_bddIthVar (CUDD, maxIndex);
+      if (root == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, k);
+	  return NULL;
+	}
+      cuddRef (root);
+      
+      r = tdd_ite_recur (tdd, root, k, zero);
+      if (r != NULL) cuddRef (r);
+      Cudd_IterDerefBdd (CUDD, root);
+      Cudd_IterDerefBdd (CUDD, k);
+      k = NULL;
+      if (r == NULL) return NULL;
+    }
+  
+  /* k is dead here, r is referenced once */
+
+  if (fv == zero)
+    {
+      DdNode *root, *tmp;
+      
+      root = Cudd_bddIthVar (CUDD, minIndex);
+      if (root == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, r);
+	  return NULL;
+	}
+      cuddRef (root);
+      
+      tmp = tdd_ite_recur (tdd, root, zero, r);
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, r);
+      if (tmp == NULL) return NULL;
+      r = tmp;
+    }
+  
+  if (F->ref != 1)
+    cuddCacheInsert1(CUDD, (DD_CTFP1)tdd_term_minmax_approx, f, r);
+  
+  cuddDeref (r);
+  return r;
 }
