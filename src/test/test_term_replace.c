@@ -87,7 +87,7 @@ void test0 ()
 
   box4 = tdd_term_replace (tdd, box3, 
 			   t->get_term (l2), t->get_term (l5),
-			   k1, k2);
+			   k1, k1, k2, k2);
   Cudd_Ref (box4);
 
   t->destroy_cst (k1); k1 = NULL;

@@ -47,6 +47,9 @@ struct theory
   /** Create a double constant */
   constant_t (*create_double_cst) (double v);
 
+  /** Duplicate a constant */
+  constant_t (*dup_cst) (constant_t c);
+
   /** Return -1*c */
   constant_t (*negate_cst) (constant_t c);
 
@@ -270,7 +273,7 @@ void tdd_manager_debug_dump (tdd_manager*);
   tdd_node* tdd_exist_abstract_v3 (tdd_manager*, tdd_node*, int);
   tdd_node * tdd_mv_exist_abstract (tdd_manager*, tdd_node *, int * , size_t );
   tdd_node * tdd_box_extrapolate (tdd_manager*, tdd_node*, tdd_node*);
-  tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, constant_t, constant_t);
+  tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, constant_t, constant_t, constant_t, constant_t);
   tdd_node* tdd_term_minmax_approx(tdd_manager*, tdd_node*);
   
   

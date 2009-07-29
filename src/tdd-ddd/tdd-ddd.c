@@ -580,6 +580,13 @@ ddd_cst_t *ddd_dup_cst(ddd_cst_t *arg)
   return res;
 }
 
+
+constant_t ddd_dup_cst_external (constant_t c)
+{
+  return (constant_t) (ddd_dup_cst ((ddd_cst_t*)c));
+}
+
+
 /**********************************************************************
  * get the constant corresponding to the argument constraint -- the
  * returned value should NEVER be freed by the user.
@@ -951,6 +958,7 @@ ddd_theory_t *ddd_create_theory_common(size_t vn)
   res->base.create_rat_cst = ddd_create_rat_cst;
   res->base.create_double_cst = ddd_create_double_cst;
   res->base.negate_cst = ddd_negate_cst;
+  res->base.dup_cst = ddd_dup_cst_external;
   res->base.is_pinf_cst = ddd_is_pinf_cst;
   res->base.is_ninf_cst = ddd_is_ninf_cst;
   res->base.destroy_cst = ddd_destroy_cst;

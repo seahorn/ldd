@@ -22,12 +22,14 @@ tdd_box_extrapolate (tdd_manager *tdd, tdd_node *f, tdd_node *g)
 }
 
 /**
- * Apply t1 <- k1*t2 + k2, i.e, replace all constraints on term t1
- * with a linear combination on constraints with term t2
+ * Apply t1 <- [amin,amax]*t2 + [kmin,kmax], i.e, replace all
+ * constraints on term t1 with a linear combination on constraints
+ * with term t2
  */
 tdd_node * 
 tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1, 
-		  linterm_t t2, constant_t k1, constant_t k2)
+		  linterm_t t2, constant_t amin, constant_t amax, 
+		  constant_t kmin, constant_t kmax)
 {
   tdd_node *res;
   DdHashTable * table;
@@ -38,7 +40,8 @@ tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = tdd_term_replace_recur (tdd, f, t1, t2, k1, k2, table);
+      res = tdd_term_replace_recur (tdd, f, t1, t2, 
+				    amin, amax, kmin, kmax,table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -333,7 +336,8 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
 tdd_node * 
 tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f, 
 			linterm_t t1, linterm_t t2, 
-			constant_t k1, constant_t k2, 
+			constant_t amin, constant_t amax, 
+			constant_t kmin, constant_t kmax,
 			DdHashTable* table)
 {
   DdNode *F, *res, *fv, *fnv, *t, *e;
@@ -345,7 +349,51 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
 
   F = Cudd_Regular (f);
   
-  if (F == DD_ONE (CUDD)) return f;  
+  if (F == DD_ONE (CUDD)) 
+    {
+      if (t2 == NULL && f == DD_ONE(CUDD))
+	{
+	  lincons_t maxCons;
+	  lincons_t minCons;
+	  DdNode *tmp1, *tmp2;
+	  
+	  maxCons = THEORY->create_cons (THEORY->dup_term (t1), 0,
+					 THEORY->dup_cst (kmax));
+	  if (maxCons == NULL) return NULL;
+
+	  res = to_tdd (tdd, maxCons);
+	  THEORY->destroy_lincons (maxCons);
+	  if (res == NULL) return NULL;
+	  cuddRef (res);
+
+	  minCons = THEORY->create_cons (THEORY->negate_term (t1), 0,
+					 THEORY->negate_cst (kmin));
+	  if (minCons == NULL) 
+	    {
+	      Cudd_IterDerefBdd (CUDD, res);
+	      return NULL;
+	    }
+	  tmp1 = to_tdd (tdd, minCons);
+	  if (tmp1 == NULL)
+	    {
+	      Cudd_IterDerefBdd (CUDD, res);
+	      return NULL;
+	    }
+	  cuddRef (tmp1);
+
+	  tmp2 = tdd_and_recur (tdd, res, tmp1);
+	  if (tmp2 != NULL) cuddRef (tmp2);
+	  Cudd_IterDerefBdd (CUDD, res);
+	  Cudd_IterDerefBdd (CUDD, tmp1);
+	  if (tmp2 == NULL) return NULL;
+	  res = tmp2;
+
+	  cuddDeref (res);
+	  return res;
+	}
+      
+      return f;  
+    }
 
 
   /* XXX if terms t1 and t2 do not appear in f, can stop here */
@@ -387,8 +435,8 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
     }
   
   
-  /* if top constraint is  t2 < c, add t1 < k1*c + k2 to the THEN branch
-   * and its negation to the ELSE branch of the result
+  /* if top constraint is  t2 < c, add t1 < amax*c + kmax to the THEN branch
+   * and !(t1 < amin*c + kmin) to the ELSE branch of the result
    */
   if (THEORY->term_equals (fTerm, t2))
     {
@@ -399,9 +447,9 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       fCst = THEORY->get_constant (fCons);
 
 
-      /* nCst = k1 * fCst + k2 */
-      tmpCst = THEORY->mul_cst (k1, fCst);
-      nCst = THEORY->add_cst (tmpCst, k2);
+      /* nCst = amax * fCst + kmax */
+      tmpCst = THEORY->mul_cst (amax, fCst);
+      nCst = THEORY->add_cst (tmpCst, kmax);
       THEORY->destroy_cst (tmpCst);
       tmpCst = NULL;
       
@@ -411,6 +459,8 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       /* nCst is now managed by createCons */
 
       d = to_tdd (tdd, newCons);
+      THEORY->destroy_lincons (newCons);
+      newCons = NULL;
       if (d == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, rootT);
@@ -431,8 +481,37 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
 	}
       rootT = tmp;
       tmp = NULL;
+
+      /* compute d for the ELSE branch */
+      if (amin != amax || kmin != kmax)
+	{
+	  Cudd_IterDerefBdd (CUDD, d);
+	  d = NULL;
+	  
+	  /* nCst = amin * fCst + kmin */
+	  tmpCst = THEORY->mul_cst (amin, fCst);
+	  nCst = THEORY->add_cst (tmpCst, kmin);
+	  THEORY->destroy_cst (tmpCst);
+	  tmpCst = NULL;
       
-      /* add !d to the ELSE branch */
+	  newCons = THEORY->create_cons (THEORY->dup_term (t1), 
+					 THEORY->is_strict (fCons), 
+					 nCst);
+	  /* nCst is now managed by createCons */
+
+	  d = to_tdd (tdd, newCons);
+	  THEORY->destroy_lincons (newCons);
+	  newCons = NULL;
+	  if (d == NULL)
+	    {
+	      Cudd_IterDerefBdd (CUDD, rootT);
+	      Cudd_IterDerefBdd (CUDD, rootE);
+	      return NULL;
+	    }
+	  cuddRef (d);
+	}
+
+      /* add d to the ELSE branch */
       tmp = tdd_and_recur (tdd, rootE, Cudd_Not (d));
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, rootE);
@@ -445,12 +524,13 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
       rootE = tmp;
 
       Cudd_IterDerefBdd (CUDD, d);
+
     }
   
       
   /* recursive step */
 
-  t = tdd_term_replace_recur (tdd, fv, t1, t2, k1, k2, table);
+  t = tdd_term_replace_recur (tdd, fv, t1, t2, amin, amax, kmin, kmax, table);
   if (t == NULL)
     {
       Cudd_IterDerefBdd (CUDD, rootT);
@@ -459,7 +539,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
     }
   cuddRef (t);
   
-  e = tdd_term_replace_recur (tdd, fnv, t1, t2, k1, k2, table);
+  e = tdd_term_replace_recur (tdd, fnv, t1, t2, amin, amax, kmin, kmax, table);
   if (e == NULL)
     {
       Cudd_IterDerefBdd (CUDD, rootT);
