@@ -29,27 +29,21 @@ tdd_over_abstract (tdd_manager *tdd,
 		   bool * vars)
 {
 
-  tdd_node * cube, *res;
+  tdd_node *res;
+  tdd_nodeset* varset;
 
   
-  /* reorderEnabled = Cudd_ReorderingStatus (CUDD, &type); */
-  /* if (reorderEnabled) */
-  /*   Cudd_AutodynDisable (CUDD); */
-
-  cube = tdd_terms_with_vars (tdd, vars);
+  varset = tdd_terms_with_vars (tdd, vars);
   
-  if (cube == NULL) return NULL;
-  cuddRef (cube);
+  if (varset == NULL) return NULL;
+  cuddRef (varset);
 
-  res = tdd_bdd_exist_abstract (tdd, f, cube);
+  res = tdd_bdd_exist_abstract (tdd, f, varset);
 
   if (res != NULL)
     cuddRef (res);
   
-  Cudd_IterDerefBdd (CUDD, cube);
-
-  /* if (reorderEnabled) */
-  /*   Cudd_AutodynEnable (CUDD, type); */
+  Cudd_IterDerefBdd (CUDD, varset);
 
   if (res != NULL)
     cuddDeref (res);
@@ -62,15 +56,15 @@ tdd_over_abstract (tdd_manager *tdd,
  * Constructs a cube of all of the terms that contains variables in
  * the Boolean array vars.
  */
-tdd_node *
+tdd_nodeset *
 tdd_terms_with_vars (tdd_manager *tdd,
 		     bool * vars)
 {
-  tdd_node * res;
+  tdd_nodeset * res;
   
   int i;
 
-  res = DD_ONE (CUDD);
+  res = tdd_empty_nodeset (tdd);
   cuddRef (res);
   
   for (i = tdd->varsSize - 1; i >= 0; i--)
@@ -79,19 +73,12 @@ tdd_terms_with_vars (tdd_manager *tdd,
       
       if (THEORY->term_has_vars (THEORY->get_term (tdd->ddVars [i]), vars))
 	{
-	  tdd_node *tmp;
-	  
-	  /* MUST use Cudd_bddAnd. This constructs a cube -- a set of
-	     variables. TDD simplifications do not apply. */
-	  tmp = Cudd_bddAnd (CUDD, res, CUDD->vars [i]);
-	  if (tmp == NULL)
-	    {
-	      Cudd_IterDerefBdd (CUDD, res);
-	      return NULL;
-	    }
-	  
-	  cuddRef (tmp);
+	  tdd_nodeset *tmp;
+
+	  tmp = tdd_nodeset_add (tdd, res, CUDD->vars [i]);
+	  if (tmp != NULL) cuddRef (tmp);
 	  Cudd_IterDerefBdd (CUDD, res);
+	  if (tmp == NULL) return NULL;
 	  res = tmp;
 	}
     }
@@ -107,7 +94,7 @@ tdd_terms_with_vars (tdd_manager *tdd,
 tdd_node *
 tdd_bdd_exist_abstract_recur (tdd_manager *tdd,
 			      tdd_node *f,
-			      tdd_node *cube)
+			      tdd_nodeset *varset)
 {
   tdd_node *F, *T, *E, *res, *res1, *res2, *one;
   DdManager *manager;
@@ -118,19 +105,19 @@ tdd_bdd_exist_abstract_recur (tdd_manager *tdd,
   one = DD_ONE (manager);
   F = Cudd_Regular (f);
   
-  if (cube == one || F == one) return (f);
+  if (varset == one || F == one) return (f);
   
     /* Abstract a variable that does not appear in f. */
-    while (manager->perm[F->index] > manager->perm[cube->index]) {
-	cube = cuddT(cube);
-	if (cube == one) return(f);
+    while (manager->perm[F->index] > manager->perm[varset->index]) {
+      varset = Cudd_Regular (cuddE(varset));
+      if (varset == one) return(f);
     }
 
     /* Check the cache. */
     if (F->ref != 1 && 
 	(res = cuddCacheLookup2(manager, 
 				(DD_CTFP)tdd_bdd_exist_abstract, 
-				f, cube)) != NULL) {
+				f, varset)) != NULL) {
 	return(res);
     }
 
@@ -141,20 +128,22 @@ tdd_bdd_exist_abstract_recur (tdd_manager *tdd,
     }
 
     /* If the two indices are the same, so are their levels. */
-    if (F->index == cube->index) {
+    if (F->index == varset->index) {
 	if (T == one || E == one || T == Cudd_Not(E)) {
 	    return(one);
 	}
-	res1 = tdd_bdd_exist_abstract_recur(tdd, T, cuddT(cube));
+	res1 = 
+	  tdd_bdd_exist_abstract_recur(tdd, T, Cudd_Regular(cuddE(varset)));
 	if (res1 == NULL) return(NULL);
 	if (res1 == one) {
 	    if (F->ref != 1)
 	      cuddCacheInsert2(manager, 
-			       (DD_CTFP)tdd_bdd_exist_abstract, f, cube, one);
+			       (DD_CTFP)tdd_bdd_exist_abstract, f, varset, one);
 	    return(one);
 	}
         cuddRef(res1);
-	res2 = tdd_bdd_exist_abstract_recur(tdd, E, cuddT(cube));
+	res2 = tdd_bdd_exist_abstract_recur(tdd, E, 
+					    Cudd_Regular (cuddE(varset)));
 	if (res2 == NULL) {
 	    Cudd_IterDerefBdd(manager,res1);
 	    return(NULL);
@@ -172,14 +161,14 @@ tdd_bdd_exist_abstract_recur (tdd_manager *tdd,
 	Cudd_IterDerefBdd(manager, res2);
 	if (F->ref != 1)
 	  cuddCacheInsert2(manager, 
-			   (DD_CTFP)tdd_bdd_exist_abstract, f, cube, res);
+			   (DD_CTFP)tdd_bdd_exist_abstract, f, varset, res);
 	cuddDeref(res);
         return(res);
     } else { /* if (cuddI(manager,F->index) < cuddI(manager,cube->index)) */
-	res1 = tdd_bdd_exist_abstract_recur(tdd, T, cube);
+	res1 = tdd_bdd_exist_abstract_recur(tdd, T, varset);
 	if (res1 == NULL) return(NULL);
         cuddRef(res1);
-	res2 = tdd_bdd_exist_abstract_recur(tdd, E, cube);
+	res2 = tdd_bdd_exist_abstract_recur(tdd, E, varset);
 	if (res2 == NULL) {
 	    Cudd_IterDerefBdd(manager, res1);
 	    return(NULL);
@@ -198,7 +187,7 @@ tdd_bdd_exist_abstract_recur (tdd_manager *tdd,
 	Cudd_IterDerefBdd (manager, res2);
 	if (F->ref != 1)
 	  cuddCacheInsert2(manager, 
-			   (DD_CTFP)tdd_bdd_exist_abstract, f, cube, res);
+			   (DD_CTFP)tdd_bdd_exist_abstract, f, varset, res);
 	cuddDeref (res);
         return(res);
     }	    
