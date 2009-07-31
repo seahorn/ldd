@@ -230,6 +230,15 @@ struct theory
 #define tdd_not(X) Cudd_Not(X)
 #define tdd_to_nodeset(X) ((tdd_nodeset*)X)
 
+#define tdd_ref (X) Cudd_Ref (X)
+#define tdd_deref(X) Cudd_Deref (X)
+#define tdd_recursiveDeref (T,X) Cudd_RecursiveDeref(T,X)
+
+#define tdd_nodeset_ref (X) Cudd_Ref (X)
+#define tdd_nodeset_deref(X) Cudd_Deref (X)
+#define tdd_nodeset_recursiveDeref (T,X) Cudd_RecursiveDeref(T,X)
+
+
 
 tdd_manager* tdd_init (DdManager *cudd, theory_t * t);
 void tdd_quit (tdd_manager* tdd);
