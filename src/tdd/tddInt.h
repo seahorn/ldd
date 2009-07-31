@@ -72,5 +72,6 @@ tdd_node* tdd_term_replace_recur (tdd_manager*, tdd_node*,
 				  constant_t, constant_t, 
 				  constant_t, constant_t, DdHashTable*);
 tdd_node* tdd_term_minmax_approx_recur (tdd_manager*, tdd_node*);
+tdd_nodeset* tdd_nodeset_union_recur(tdd_manager*, tdd_nodeset*, tdd_nodeset*);
 
 #endif
