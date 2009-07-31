@@ -232,11 +232,11 @@ struct theory
 
 #define tdd_ref (X) Cudd_Ref (X)
 #define tdd_deref(X) Cudd_Deref (X)
-#define tdd_recursiveDeref (T,X) Cudd_RecursiveDeref(T,X)
+#define tdd_recursiveDeref (T,X) Cudd_IterDerefBdd(T,X)
 
 #define tdd_nodeset_ref (X) Cudd_Ref (X)
 #define tdd_nodeset_deref(X) Cudd_Deref (X)
-#define tdd_nodeset_recursiveDeref (T,X) Cudd_RecursiveDeref(T,X)
+#define tdd_nodeset_recursiveDeref (T,X) Cudd_IterDerefBbd(T,X)
 
 
 
