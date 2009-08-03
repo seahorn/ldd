@@ -64,7 +64,7 @@ tdd_terms_with_vars (tdd_manager *tdd,
   
   int i;
 
-  res = tdd_empty_nodeset (tdd);
+  res = (tdd_nodeset*) tdd_get_true (tdd); //tdd_empty_nodeset (tdd);
   cuddRef (res);
   
   for (i = tdd->varsSize - 1; i >= 0; i--)
