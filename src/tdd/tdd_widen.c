@@ -52,6 +52,34 @@ tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1,
 }
 
 /**
+ * Constrain f with  t1 <= t2 + k. 
+ * f is an LDD, t1 and t2 are terms, k a constant
+ */
+tdd_node * 
+tdd_term_constrain (tdd_manager *tdd, tdd_node *f, linterm_t t1, 
+		    linterm_t t2, constant_t k)
+{
+  tdd_node *res;
+  DdHashTable * table;
+  
+  do 
+    {
+      CUDD->reordered = 0;
+      table = cuddHashTableInit (CUDD, 1, 2);
+      if (table == NULL) return NULL;
+      
+      res = tdd_term_constrain_recur (tdd, f, t1, t2, k,table);
+      if (res != NULL)
+	cuddRef (res);
+      cuddHashTableQuit (table);
+    } while (CUDD->reordered == 1);
+  
+  if (res != NULL) cuddDeref (res);
+  return (res);
+}
+
+
+/**
  * Approximates f by computing the min and max bounds for all terms.
  */
 tdd_node * 
@@ -762,3 +790,150 @@ tdd_term_minmax_approx_recur (tdd_manager *tdd,
   cuddDeref (r);
   return r;
 }
+
+tdd_node * 
+tdd_term_constrain_recur (tdd_manager *tdd, tdd_node *f, linterm_t t1, 
+			  linterm_t t2, constant_t k, DdHashTable *table)
+{
+  DdNode *F, *t, *e, *r;
+  lincons_t fCons;
+  linterm_t fTerm;
+  constant_t fCst;
+  DdNode *zero, *tmp;
+  
+  
+  
+  F = Cudd_Regular (f);
+  zero = Cudd_Not (DD_ONE(CUDD));
+  
+  if (F == DD_ONE(CUDD)) return f;
+
+  if (F->ref != 1 && (r = cuddHashTableLookup1 (table, f)) != NULL)
+    return r;
+
+  fCons = tdd->ddVars [F->index];
+  fTerm = THEORY->get_term (fCons);
+
+  t = Cudd_NotCond (cuddT(F), f != F);
+  cuddRef (t);
+  
+  if (t != zero && THEORY->term_equals (fTerm, t2))
+    {
+      DdNode *d;
+      constant_t nCst;
+      lincons_t nCons;
+      
+      /* create  t1 <= fCst + k */
+      fCst = THEORY->get_constant (fCons);
+      nCst = THEORY->add_cst (fCst, k);
+      nCons = THEORY->create_cons (THEORY->dup_term (t1),
+				   THEORY->is_strict (fCons),
+				   nCst);
+      d = to_tdd (tdd, nCons);
+      THEORY->destroy_lincons (nCons);
+      nCons = NULL;
+      if (d == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, t);
+	  return NULL;
+	}
+      cuddRef (d);
+      
+      /* add new constraint to t */
+      tmp = tdd_and_recur (tdd, t, d);
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, t);
+      Cudd_IterDerefBdd (CUDD, d);
+      if (tmp == NULL) return NULL;
+      t = tmp;
+    }
+  
+  /* recurse on the THEN branch */
+  tmp = tdd_term_constrain_recur (tdd, t, t1, t2, k, table);
+  if (tmp != NULL) cuddRef (tmp);
+  Cudd_IterDerefBdd (CUDD, t);
+  if (tmp == NULL) return NULL;
+  t = tmp;
+  
+  e = Cudd_NotCond (cuddE(F), f != F);
+  cuddRef (e);
+
+  if (e != zero && THEORY->term_equals (fTerm, t1))
+    {
+      DdNode *d;
+      constant_t tmpCst, nCst;
+      lincons_t nCons;
+     
+      /* Create  t2 <= fCst - k */
+      fCst = THEORY->get_constant (fCons);
+      tmpCst = THEORY->negate_cst (k);
+      nCst = THEORY->add_cst (tmpCst, fCst);
+      THEORY->destroy_cst (tmpCst);
+      tmpCst = NULL;
+      
+      nCons = THEORY->create_cons 
+	(THEORY->dup_term (t2), THEORY->is_strict (fCons), nCst);
+      d = to_tdd (tdd, nCons);
+      THEORY->destroy_lincons (nCons);
+      nCons = NULL;
+      if (d == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, t);
+	  Cudd_IterDerefBdd (CUDD, e);
+	  return NULL;
+	}
+      cuddRef (d);
+      d = Cudd_Not (d);
+
+      /* add new constraint to e */
+      tmp = tdd_and_recur (tdd, e, d);
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, e);
+      Cudd_IterDerefBdd (CUDD, d);
+      if (tmp == NULL) 
+	{
+	  Cudd_IterDerefBdd (CUDD, t);
+	  return NULL;
+	}
+      e = tmp;
+      
+    }
+
+  /* recurse on the ELSE branch */
+  tmp = tdd_term_constrain_recur (tdd, e, t1, t2, k, table);
+  if (tmp != NULL) cuddRef (tmp);
+  Cudd_IterDerefBdd (CUDD, e);
+  if (tmp == NULL)
+    {
+      Cudd_IterDerefBdd (CUDD, t);
+      return NULL;
+    }
+  e = tmp;
+  
+  
+  /* construct the result */
+  r = tdd_ite_recur (tdd, CUDD->vars[F->index], t, e);
+
+  
+  if (r != NULL) cuddRef (r);
+  Cudd_IterDerefBdd (CUDD, t);
+  Cudd_IterDerefBdd (CUDD, e);
+  if (r == NULL) return NULL;
+
+  if (F->ref != 1)
+    {
+      ptrint fanout = (ptrint) F->ref;
+      cuddSatDec (fanout);
+      if (!cuddHashTableInsert1 (table, f, r, fanout));
+      {
+	Cudd_IterDerefBdd (CUDD, r);
+	return NULL;
+      }
+    }
+
+  cuddDeref (r);
+  return r;
+  
+}
+
+
