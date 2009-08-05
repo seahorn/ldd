@@ -394,16 +394,18 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
           
           if (kmax != NULL)
             {
-              maxCons = THEORY->create_cons (THEORY->dup_term (t1), 0,
-                                             THEORY->dup_cst (kmax));
-              if (maxCons == NULL) return NULL;
-          
               Cudd_IterDerefBdd (CUDD, res); 
               res = NULL;
+
+              maxCons = THEORY->create_cons (THEORY->dup_term (t1), 0,
+                                             THEORY->dup_cst (kmax));
+              if (maxCons == NULL) 
+                  return NULL;
+          
               res = to_tdd (tdd, maxCons);
               THEORY->destroy_lincons (maxCons);
               if (res == NULL) return NULL;
-              cuddRef (res);
+              cuddRef (res); /* res count 1 */
             }
 
           if (kmin != NULL)
@@ -720,7 +722,7 @@ tdd_term_minmax_approx_recur (tdd_manager *tdd,
   
   h = fnv;
   
-  while (!cuddIsConstant (h))
+  while (!cuddIsConstant (Cudd_Regular (h)))
     {
       lincons_t hCons;
       DdNode *H, *tmp;
