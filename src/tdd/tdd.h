@@ -230,15 +230,13 @@ struct theory
 #define tdd_not(X) Cudd_Not(X)
 #define tdd_to_nodeset(X) ((tdd_nodeset*)X)
 
-#define tdd_ref (X) Cudd_Ref (X)
-#define tdd_deref(X) Cudd_Deref (X)
-#define tdd_recursiveDeref (T,X) Cudd_IterDerefBdd(T->cudd,X)
+#define tdd_ref(X) Cudd_Ref(X)
+#define tdd_deref(X) Cudd_Deref(X)
+#define tdd_recursiveDeref(T,X) Cudd_IterDerefBdd(T->cudd,X)
 
-#define tdd_nodeset_ref (X) Cudd_Ref (X)
-#define tdd_nodeset_deref(X) Cudd_Deref (X)
-#define tdd_nodeset_recursiveDeref (T,X) Cudd_IterDerefBbd(T->cudd,X)
-
-
+#define tdd_nodeset_ref(X) Cudd_Ref(X)
+#define tdd_nodeset_deref(X) Cudd_Deref(X)
+#define tdd_nodeset_recursiveDeref(T,X) Cudd_IterDerefBbd(T->cudd,X)
 
 tdd_manager* tdd_init (DdManager *cudd, theory_t * t);
 void tdd_quit (tdd_manager* tdd);
@@ -266,32 +264,31 @@ tdd_node* tdd_resolve (tdd_manager*, tdd_node*,
 tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, int*);
 
 void tdd_manager_debug_dump (tdd_manager*);
-  int tdd_path_size (tdd_manager*, tdd_node*);
+int tdd_path_size (tdd_manager*, tdd_node*);
   
-  void tdd_sanity_check (tdd_manager*);
-  void tdd_node_sanity_check (tdd_manager*, tdd_node*);
+void tdd_sanity_check (tdd_manager*);
+void tdd_node_sanity_check (tdd_manager*, tdd_node*);
 
-  tdd_node *tdd_sat_reduce (tdd_manager *, tdd_node*, int);
-  bool tdd_is_sat (tdd_manager *, tdd_node*);
-  int tdd_unsat_size (tdd_manager *, tdd_node*);
-  theory_t *tdd_syntactic_implication_theory (theory_t *t);
-  void tdd_var_occurrences (tdd_manager *, tdd_node *, int*);
-  tdd_node *tdd_bdd_exist_abstract (tdd_manager*,tdd_node*,tdd_node*);
-  tdd_node *tdd_terms_with_vars (tdd_manager*, int*);
-  tdd_node *tdd_over_abstract (tdd_manager *,tdd_node*,int*);
-  void tdd_support_var_occurrences(tdd_manager*,tdd_node*,int*);
-  tdd_manager * tdd_bddlike_manager (tdd_manager *);
-  tdd_node* tdd_exist_abstract_v3 (tdd_manager*, tdd_node*, int);
-  tdd_node * tdd_mv_exist_abstract (tdd_manager*, tdd_node *, int * , size_t );
-  tdd_node * tdd_box_extrapolate (tdd_manager*, tdd_node*, tdd_node*);
-  tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, constant_t, constant_t, constant_t, constant_t);
-  tdd_node* tdd_term_minmax_approx(tdd_manager*, tdd_node*);
-  tdd_node* tdd_term_constrain (tdd_manager*, tdd_node*, 
+tdd_node *tdd_sat_reduce (tdd_manager *, tdd_node*, int);
+bool tdd_is_sat (tdd_manager *, tdd_node*);
+int tdd_unsat_size (tdd_manager *, tdd_node*);
+theory_t *tdd_syntactic_implication_theory (theory_t *t);
+void tdd_var_occurrences (tdd_manager *, tdd_node *, int*);
+tdd_node *tdd_bdd_exist_abstract (tdd_manager*,tdd_node*,tdd_node*);
+tdd_node *tdd_terms_with_vars (tdd_manager*, int*);
+tdd_node *tdd_over_abstract (tdd_manager *,tdd_node*,int*);
+void tdd_support_var_occurrences(tdd_manager*,tdd_node*,int*);
+tdd_manager * tdd_bddlike_manager (tdd_manager *);
+tdd_node* tdd_exist_abstract_v3 (tdd_manager*, tdd_node*, int);
+tdd_node * tdd_mv_exist_abstract (tdd_manager*, tdd_node *, int * , size_t );
+tdd_node * tdd_box_extrapolate (tdd_manager*, tdd_node*, tdd_node*);
+tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, constant_t, constant_t, constant_t, constant_t);
+tdd_node* tdd_term_minmax_approx(tdd_manager*, tdd_node*);
+tdd_node* tdd_term_constrain (tdd_manager*, tdd_node*, 
 				linterm_t, linterm_t, constant_t);
-  tdd_nodeset* tdd_empty_nodeset (tdd_manager*);
-  tdd_nodeset* tdd_nodeset_union (tdd_manager*, tdd_nodeset*, tdd_nodeset*);
-  tdd_nodeset* tdd_nodeset_add (tdd_manager*, tdd_nodeset*, tdd_node*);
-
+tdd_nodeset* tdd_empty_nodeset (tdd_manager*);
+tdd_nodeset* tdd_nodeset_union (tdd_manager*, tdd_nodeset*, tdd_nodeset*);
+tdd_nodeset* tdd_nodeset_add (tdd_manager*, tdd_nodeset*, tdd_node*);
   
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
