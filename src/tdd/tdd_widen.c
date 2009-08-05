@@ -379,42 +379,57 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
   
   if (F == DD_ONE (CUDD)) 
     {
-      if (t2 == NULL && f == DD_ONE(CUDD))
+      if (t2 == NULL && f == DD_ONE(CUDD) &&
+          (kmin != NULL || kmax != NULL))
 	{
+          /* add   kmin <= t1 <= kmax */
+
 	  lincons_t maxCons;
 	  lincons_t minCons;
 	  DdNode *tmp1, *tmp2;
 	  
-	  maxCons = THEORY->create_cons (THEORY->dup_term (t1), 0,
-					 THEORY->dup_cst (kmax));
-	  if (maxCons == NULL) return NULL;
 
-	  res = to_tdd (tdd, maxCons);
-	  THEORY->destroy_lincons (maxCons);
-	  if (res == NULL) return NULL;
-	  cuddRef (res);
+          res = DD_ONE(CUDD);
+          cuddRef (res);
+          
+          if (kmax != NULL)
+            {
+              maxCons = THEORY->create_cons (THEORY->dup_term (t1), 0,
+                                             THEORY->dup_cst (kmax));
+              if (maxCons == NULL) return NULL;
+          
+              Cudd_IterDerefBdd (CUDD, res); 
+              res = NULL;
+              res = to_tdd (tdd, maxCons);
+              THEORY->destroy_lincons (maxCons);
+              if (res == NULL) return NULL;
+              cuddRef (res);
+            }
 
-	  minCons = THEORY->create_cons (THEORY->negate_term (t1), 0,
-					 THEORY->negate_cst (kmin));
-	  if (minCons == NULL) 
-	    {
-	      Cudd_IterDerefBdd (CUDD, res);
-	      return NULL;
-	    }
-	  tmp1 = to_tdd (tdd, minCons);
-	  if (tmp1 == NULL)
-	    {
-	      Cudd_IterDerefBdd (CUDD, res);
-	      return NULL;
-	    }
-	  cuddRef (tmp1);
+          if (kmin != NULL)
+            {
+              minCons = THEORY->create_cons (THEORY->negate_term (t1), 0,
+                                             THEORY->negate_cst (kmin));
+              if (minCons == NULL) 
+                {
+                  Cudd_IterDerefBdd (CUDD, res);
+                  return NULL;
+                }
+              tmp1 = to_tdd (tdd, minCons);
+              if (tmp1 == NULL)
+                {
+                  Cudd_IterDerefBdd (CUDD, res);
+                  return NULL;
+                }
+              cuddRef (tmp1);
 
-	  tmp2 = tdd_and_recur (tdd, res, tmp1);
-	  if (tmp2 != NULL) cuddRef (tmp2);
-	  Cudd_IterDerefBdd (CUDD, res);
-	  Cudd_IterDerefBdd (CUDD, tmp1);
-	  if (tmp2 == NULL) return NULL;
-	  res = tmp2;
+              tmp2 = tdd_and_recur (tdd, res, tmp1);
+              if (tmp2 != NULL) cuddRef (tmp2);
+              Cudd_IterDerefBdd (CUDD, res);
+              Cudd_IterDerefBdd (CUDD, tmp1);
+              if (tmp2 == NULL) return NULL;
+              res = tmp2;
+            }
 
 	  cuddDeref (res);
 	  return res;
@@ -466,54 +481,60 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
   /* if top constraint is  t2 < c, add t1 < amax*c + kmax to the THEN branch
    * and !(t1 < amin*c + kmin) to the ELSE branch of the result
    */
-  if (THEORY->term_equals (fTerm, t2))
+  if (t2 != NULL && THEORY->term_equals (fTerm, t2))
     {
       DdNode *tmp, *d;
       constant_t fCst, tmpCst, nCst;
       lincons_t newCons;
       
       fCst = THEORY->get_constant (fCons);
-
-
-      /* nCst = amax * fCst + kmax */
-      tmpCst = THEORY->mul_cst (amax, fCst);
-      nCst = THEORY->add_cst (tmpCst, kmax);
-      THEORY->destroy_cst (tmpCst);
-      tmpCst = NULL;
+      d = NULL;
+      if (amax != NULL && kmax != NULL)
+        {
+          /* nCst = amax * fCst + kmax */
+          tmpCst = THEORY->mul_cst (amax, fCst);
+          nCst = THEORY->add_cst (tmpCst, kmax);
+          THEORY->destroy_cst (tmpCst);
+          tmpCst = NULL;
       
-      newCons = THEORY->create_cons (THEORY->dup_term (t1), 
-				     THEORY->is_strict (fCons), 
-				     nCst);
-      /* nCst is now managed by createCons */
+          /* newCons is  t1 <= aMax * fCst + kmax, where t2 <= fCst */
+          newCons = THEORY->create_cons (THEORY->dup_term (t1), 
+                                         THEORY->is_strict (fCons), 
+                                         nCst);
+          /* nCst is now managed by createCons */
 
-      d = to_tdd (tdd, newCons);
-      THEORY->destroy_lincons (newCons);
-      newCons = NULL;
-      if (d == NULL)
-	{
-	  Cudd_IterDerefBdd (CUDD, rootT);
-	  Cudd_IterDerefBdd (CUDD, rootE);
-	  return NULL;
-	}
-      cuddRef (d);
+          d = to_tdd (tdd, newCons);
+          THEORY->destroy_lincons (newCons);
+          newCons = NULL;
+          if (d == NULL)
+            {
+              Cudd_IterDerefBdd (CUDD, rootT);
+              Cudd_IterDerefBdd (CUDD, rootE);
+              return NULL;
+            }
+          cuddRef (d);
 
-      /* add d to the THEN branch */
-      tmp = tdd_and_recur (tdd, rootT, d);
-      if (tmp != NULL) cuddRef (tmp);
-      Cudd_IterDerefBdd (CUDD, rootT);
-      if (tmp == NULL)
-	{
-	  Cudd_IterDerefBdd (CUDD, rootE);
-	  Cudd_IterDerefBdd (CUDD, d);
-	  return NULL;
-	}
-      rootT = tmp;
-      tmp = NULL;
+          /* add d to the THEN branch */
+          tmp = tdd_and_recur (tdd, rootT, d);
+          if (tmp != NULL) cuddRef (tmp);
+          Cudd_IterDerefBdd (CUDD, rootT);
+          if (tmp == NULL)
+            {
+              Cudd_IterDerefBdd (CUDD, rootE);
+              Cudd_IterDerefBdd (CUDD, d);
+              return NULL;
+            }
+          rootT = tmp;
+          tmp = NULL;
+        }
+
 
       /* compute d for the ELSE branch */
-      if (amin != amax || kmin != kmax)
+      if ((amin != amax || kmin != kmax) &&
+          (amin != NULL && kmin != NULL) )
 	{
-	  Cudd_IterDerefBdd (CUDD, d);
+          if (d != NULL)
+            Cudd_IterDerefBdd (CUDD, d);
 	  d = NULL;
 	  
 	  /* nCst = amin * fCst + kmin */
@@ -522,6 +543,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
 	  THEORY->destroy_cst (tmpCst);
 	  tmpCst = NULL;
       
+          /* create: t1 <= amin*fCst + kmin */
 	  newCons = THEORY->create_cons (THEORY->dup_term (t1), 
 					 THEORY->is_strict (fCons), 
 					 nCst);
@@ -538,21 +560,22 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
 	    }
 	  cuddRef (d);
 	}
-
-      /* add d to the ELSE branch */
-      tmp = tdd_and_recur (tdd, rootE, Cudd_Not (d));
-      if (tmp != NULL) cuddRef (tmp);
-      Cudd_IterDerefBdd (CUDD, rootE);
-      if (tmp == NULL)
-	{
-	  Cudd_IterDerefBdd (CUDD, rootT);
-	  Cudd_IterDerefBdd (CUDD, d);
-	  return NULL;
-	}
-      rootE = tmp;
-
-      Cudd_IterDerefBdd (CUDD, d);
-
+      
+      if (d != NULL)
+        {
+          /* add d to the ELSE branch */
+          tmp = tdd_and_recur (tdd, rootE, Cudd_Not (d));
+          if (tmp != NULL) cuddRef (tmp);
+          Cudd_IterDerefBdd (CUDD, rootE);
+          if (tmp == NULL)
+            {
+              Cudd_IterDerefBdd (CUDD, rootT);
+              Cudd_IterDerefBdd (CUDD, d);
+              return NULL;
+            }
+          rootE = tmp;
+          Cudd_IterDerefBdd (CUDD, d);
+        }
     }
   
       
