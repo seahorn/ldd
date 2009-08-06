@@ -63,8 +63,12 @@ ICFLAGS	= -g -O6
 #
 # Gcc 2.8.1 or higher on i686.
 #XCFLAGS	= -mcpu=pentiumpro -malign-double -DHAVE_IEEE_754 -DBSD
+
 # Gcc 3.2.2 or higher on i686.
-XCFLAGS	= -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD
+#XXX: got rid of -malign-double
+#XCFLAGS	= -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD
+XCFLAGS	= -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
+
 # Icc on i686.
 #XCFLAGS	= -ansi -align -ip -DHAVE_IEEE_754 -DBSD
 # Gcc on ia64.

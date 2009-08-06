@@ -2,7 +2,7 @@ CUDD=../../cudd-2.4.1
 CC = gcc
 FLEX = flex
 BISON = bison
-CFLAGS = -Wall -I$(CUDD)/include -I../include -g  -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD
+CFLAGS = -Wall -I$(CUDD)/include -I../include -g  -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
 AR = ar -rcs
 OBJS = smt_lexer.yy.o smt_parser.tab.o smt_formula.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))

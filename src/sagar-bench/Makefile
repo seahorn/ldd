@@ -1,5 +1,5 @@
 CUDD = ../../cudd-2.4.1
-CPPFLAGS = -Wall -I$(CUDD)/include -I../include -g  -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD
+CPPFLAGS = -Wall -I$(CUDD)/include -I../include -g  -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
 LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp \
 	  -L../tdd -L../tdd-ddd -L../tdd-oct 
 LDLIBS = -lcudd -ltdd-ddd -ltdd-oct -ltdd -lst -lutil -lmtr -lepd -ldddmp -lgmp -lm

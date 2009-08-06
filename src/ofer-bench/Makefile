@@ -2,7 +2,7 @@ CUDD=../../cudd-2.4.1
 CC = gcc
 FLEX = flex
 BISON = bison
-CFLAGS = -pg -Wall -I$(CUDD)/include -I../include  -g  -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD -O2
+CFLAGS = -pg -Wall -I$(CUDD)/include -I../include  -g  -mtune=pentium4 -DHAVE_IEEE_754 -DBSD -O2
 AR = ar -rcs
 OBJS = lexer.yy.o parser.tab.o qelim1.o qelim2.o jobsolve.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
