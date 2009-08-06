@@ -1,7 +1,6 @@
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
-#include "tddInt.h"
 #include "tdd-ddd.h"
 
 
@@ -44,6 +43,9 @@ void test1 ()
 
   int i = 0;
 
+  
+  fprintf (stdout, "\n\nTEST 1\n");
+  
   /* 0: x2 <= -1 */
   d[i] = to_tdd (tdd, CONS (x2,4,-1));
   tdd_ref (d[i++]);
@@ -97,6 +99,17 @@ void test1 ()
   
  
 
+  {
+    tdd_node *a;
+    
+    a = tdd_and (tdd, Cudd_Not (d[0]), d[4]);
+    tdd_ref (a);
+    and_accum (&a, Cudd_Not (d[2]));
+
+    assert (a == r4);
+    
+  }
+  
 
 }
 void test0 ()
@@ -121,6 +134,9 @@ void test0 ()
   tdd_node *d1, *d2, *d3, *d4;
 
   tdd_node *box1, *box2, *box3, *box4, *box5;
+
+  fprintf (stdout, "\n\nTEST 0\n");
+
 
   l1 = CONS(xMz, 3, 3);
   d1 = to_tdd (tdd, l1);
@@ -195,6 +211,7 @@ int main(void)
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
   t = ddd_create_int_theory (4);
   tdd = tdd_init (cudd, t);
+  test0 ();
   test1 ();  
 
   return 0;
