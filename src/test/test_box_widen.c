@@ -1,6 +1,7 @@
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
+#include "tddInt.h"
 #include "tdd-ddd.h"
 
 
@@ -16,6 +17,88 @@ theory_t *t;
 #define CONS(tm,n,c) t->create_cons (T(tm,n),0,C(c))
   
 
+
+void and_accum (tdd_node **r, tdd_node *n)
+{
+  /* compute: r <- r && n */
+  tdd_node *tmp;
+
+  tmp = tdd_and (tdd, *r, n);
+  tdd_ref (tmp);
+
+  tdd_recursiveDeref (tdd, *r); 
+  *r = tmp;
+}
+
+
+void test1 ()
+{
+  int x2[4] = {1,-1,0,0};
+  int x3[4] = {1,0,-1,0};
+  int x7[4] = {1,0,0,-1};
+
+
+  tdd_node *d[5];
+
+  tdd_node *r1, *r2, *r3, *r4;
+
+  int i = 0;
+
+  /* 0: x2 <= -1 */
+  d[i] = to_tdd (tdd, CONS (x2,4,-1));
+  tdd_ref (d[i++]);
+
+  /* 1: x2 <= 1 */
+  d[i] = to_tdd (tdd, CONS (x2,4,1));
+  tdd_ref (d[i++]);
+
+  /* 2: x3 <= 0 */
+  d[i] = to_tdd (tdd, CONS (x3,4,0));
+  tdd_ref (d[i++]);
+
+  /* 3: x7 <= 0 */
+  d[i] = to_tdd (tdd, CONS (x7,4,0));
+  tdd_ref (d[i++]);
+
+  /* 4: x2 <= 4 */
+  d[i] = to_tdd (tdd, CONS (x2,4,4));
+  tdd_ref (d[i++]);
+
+
+  r1 = tdd_and (tdd, Cudd_Not(d[0]), d[1]);
+  tdd_ref(r1);
+
+  and_accum (&r1, Cudd_Not(d[2]));
+  and_accum (&r1, Cudd_Not (d[3]));
+
+  r2 = tdd_and (tdd, Cudd_Not (d[1]), d[4]);
+  tdd_ref (r2);
+  
+  and_accum (&r2, Cudd_Not (d[2]));
+  and_accum (&r2, d[3]);
+
+  tdd_print_minterm (tdd, r1);
+  tdd_print_minterm (tdd, r2);
+
+  r3 = tdd_or (tdd, r1, r2);
+  tdd_ref (r3);
+
+  printf ("r3\n");
+  tdd_print_minterm (tdd, r3);
+
+
+
+  r4 = tdd_term_minmax_approx (tdd, r3);
+  tdd_ref (r4);
+
+
+  printf ("r4\n");
+  tdd_print_minterm (tdd, r4);
+  
+ 
+
+
+}
 void test0 ()
 {
   /*  1 <= x <= 3 ==   (x-z <= 3) && (z-x <= -1)
@@ -110,9 +193,9 @@ void test0 ()
 int main(void)
 {
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  t = ddd_create_int_theory (3);
+  t = ddd_create_int_theory (4);
   tdd = tdd_init (cudd, t);
-  test0 ();  
+  test1 ();  
 
   return 0;
 }

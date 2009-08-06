@@ -725,7 +725,7 @@ tdd_term_minmax_approx_recur (tdd_manager *tdd,
   while (!cuddIsConstant (Cudd_Regular (h)))
     {
       lincons_t hCons;
-      DdNode *H, *tmp;
+      DdNode *H, *tmp, *ht;
       
       H = Cudd_Regular (h);
       hCons = tdd->ddVars [H->index];
@@ -734,9 +734,12 @@ tdd_term_minmax_approx_recur (tdd_manager *tdd,
       
       maxCons = hCons;
       maxIndex = H->index;
+      
+      /* THEN branch of h */
+      ht = Cudd_NotCond (cuddT(H), H != h);
 
-      /* k = OR (k, h) */
-      tmp = tdd_and_recur (tdd, Cudd_Not (k), Cudd_Not (h));
+      /* k = OR (k, ht) */
+      tmp = tdd_and_recur (tdd, Cudd_Not (k), Cudd_Not (ht));
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, k);
       if (tmp == NULL) return NULL;
@@ -805,6 +808,7 @@ tdd_term_minmax_approx_recur (tdd_manager *tdd,
       tmp = tdd_ite_recur (tdd, root, zero, r);
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, r);
+      Cudd_IterDerefBdd (CUDD, root);
       if (tmp == NULL) return NULL;
       r = tmp;
     }
