@@ -700,11 +700,7 @@ tdd_term_minmax_approx_recur (tdd_manager *tdd,
     if (r != NULL) return(r);
   }
   
-  /* Get the levels */
-  /* Here we can skip the use of cuddI, because the operands are known
-  ** to be non-constant.
-  */
-  minIndex = manager->perm[F->index];
+  minIndex = F->index;
 
   fv = Cudd_NotCond (cuddT(F), F != f);
   fnv = Cudd_NotCond (cuddE(F), F != f);
