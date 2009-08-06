@@ -7,6 +7,12 @@ static void tdd_update_cudd_mtr_tree (DdManager *, tdd_node *, tdd_node * );
 /* static void tdd_debug_print_mtr (MtrNode* tree);*/
 
 
+DdManager * tdd_get_cudd (tdd_manager *tdd)
+{
+  return tdd->cudd;
+}
+
+
 tdd_node *tdd_get_true (tdd_manager *tdd)
 {
   return DD_ONE (CUDD);

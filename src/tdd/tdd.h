@@ -232,7 +232,7 @@ struct theory
 
 #define tdd_ref(X) Cudd_Ref(X)
 #define tdd_deref(X) Cudd_Deref(X)
-#define tdd_recursiveDeref(T,X) Cudd_IterDerefBdd(T->cudd,X)
+#define tdd_recursiveDeref(T,X) Cudd_IterDerefBdd(tdd_get_cudd(T),X)
 
 #define tdd_nodeset_ref(X) Cudd_Ref(X)
 #define tdd_nodeset_deref(X) Cudd_Deref(X)
@@ -290,7 +290,8 @@ tdd_nodeset* tdd_empty_nodeset (tdd_manager*);
 tdd_nodeset* tdd_nodeset_union (tdd_manager*, tdd_nodeset*, tdd_nodeset*);
 tdd_nodeset* tdd_nodeset_add (tdd_manager*, tdd_nodeset*, tdd_node*);
   int tdd_print_minterm(tdd_manager*, tdd_node*);
-  
+
+  DdManager * tdd_get_cudd (tdd_manager *);
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
 #ifdef __cplusplus
