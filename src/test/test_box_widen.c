@@ -42,23 +42,24 @@ void test0 ()
   l1 = CONS(xMz, 3, 3);
   d1 = to_tdd (tdd, l1);
   Cudd_Ref (d1);  
-  Cudd_PrintMinterm (cudd, d1);
+  /* Cudd_PrintMinterm (cudd, d1);*/
+  tdd_print_minterm (tdd, d1);
   
   l2 = CONS(zMx, 3, -1);
   d2 = to_tdd(tdd, l2);
   Cudd_Ref (d2);
-  Cudd_PrintMinterm (cudd, d2);
+  tdd_print_minterm (tdd, d2);
 
   l3 = CONS (xMz, 3, 5);
   d3 = to_tdd(tdd, l3);
   Cudd_Ref (d3);  
-  Cudd_PrintMinterm (cudd, d3);
+  tdd_print_minterm (tdd, d3);
 
 
   l4 = CONS (zMx, 3, 0);
   d4 = to_tdd(tdd, l4);
   Cudd_Ref (d4);
-  Cudd_PrintMinterm (cudd, d4);
+  tdd_print_minterm (tdd, d4);
 
   box1 = tdd_and (tdd, d1, d2);
   Cudd_Ref (box1);
@@ -75,17 +76,34 @@ void test0 ()
   box5 = tdd_box_extrapolate (tdd, box1, box4);
   Cudd_Ref (box5);
 
+
+  printf ("d1\n");
+  tdd_print_minterm (tdd, d1);
   Cudd_PrintMinterm (cudd, d1);
+  printf ("d2\n");
+  tdd_print_minterm (tdd, d2);
   Cudd_PrintMinterm (cudd, d2);
+  printf ("d3\n");
+  tdd_print_minterm (tdd, d3);
   Cudd_PrintMinterm (cudd, d3);
+  printf ("d4\n");
+  tdd_print_minterm (tdd, d4);
   Cudd_PrintMinterm (cudd, d4);
+  printf ("box1\n");
+  tdd_print_minterm (tdd, box1);
   Cudd_PrintMinterm (cudd, box1);
+  printf ("box2\n");
+  tdd_print_minterm (tdd, box2);
   Cudd_PrintMinterm (cudd, box2);
-  Cudd_PrintMinterm (cudd, box3);
+  printf ("box3\n");
+  tdd_print_minterm (tdd, box3);
 
 
   assert (box3 == d2);
   assert (box5 == d1);
+
+  tdd_manager_debug_dump (tdd);
+  
 }
 
 

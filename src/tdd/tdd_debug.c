@@ -18,7 +18,7 @@ tdd_manager_debug_dump (tdd_manager* tdd)
 
   for (i = 0; i < tdd->varsSize; i++)
     {
-      fprintf (stderr, "\t %d: ", i);
+      fprintf (stderr, "\t %d: %d: ", i, CUDD->perm[i]);
       if (tdd->ddVars [i] == NULL)
 	fprintf (stderr, "(nil)");
       else

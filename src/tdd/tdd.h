@@ -289,6 +289,7 @@ tdd_node* tdd_term_constrain (tdd_manager*, tdd_node*,
 tdd_nodeset* tdd_empty_nodeset (tdd_manager*);
 tdd_nodeset* tdd_nodeset_union (tdd_manager*, tdd_nodeset*, tdd_nodeset*);
 tdd_nodeset* tdd_nodeset_add (tdd_manager*, tdd_nodeset*, tdd_node*);
+  int tdd_print_minterm(tdd_manager*, tdd_node*);
   
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
