@@ -59,6 +59,11 @@ struct theory
   /** Returns true if c is negative infinity */
   int (*is_ninf_cst)(constant_t c);
 
+  /** True if c is 0 */
+  int (*is_zero_cst)(constant_t c);
+  /* True if c is positive, i.e., c f>= 0 */
+  int (*is_pos_cst)(constant_t c);
+
   /** Destroy a constant */
   void (*destroy_cst) (constant_t c);
 
@@ -282,7 +287,7 @@ tdd_manager * tdd_bddlike_manager (tdd_manager *);
 tdd_node* tdd_exist_abstract_v3 (tdd_manager*, tdd_node*, int);
 tdd_node * tdd_mv_exist_abstract (tdd_manager*, tdd_node *, int * , size_t );
 tdd_node * tdd_box_extrapolate (tdd_manager*, tdd_node*, tdd_node*);
-tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, constant_t, constant_t, constant_t, constant_t);
+tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, constant_t, constant_t, constant_t);
 tdd_node* tdd_term_minmax_approx(tdd_manager*, tdd_node*);
 tdd_node* tdd_term_constrain (tdd_manager*, tdd_node*, 
 				linterm_t, linterm_t, constant_t);

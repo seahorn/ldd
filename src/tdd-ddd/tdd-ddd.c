@@ -253,6 +253,35 @@ bool ddd_is_pinf_cst(constant_t c)
     }
 }
 
+
+bool ddd_is_zero_cst (constant_t c)
+{
+  ddd_cst_t *x = (ddd_cst_t*)c;
+  switch (x->type)
+    {
+    case DDD_INT:
+      return x->int_val == 0;
+    default:
+      assert (0);
+    }
+  return 0;
+}
+
+bool ddd_is_pos_cst (constant_t c)
+{
+  ddd_cst_t *x = (ddd_cst_t*)c;
+  switch (x->type)
+    {
+    case DDD_INT:
+      return x->int_val >= 0;
+    default:
+      assert (0);
+    }
+  return 0;
+}
+
+
+
 /**********************************************************************
  * return true if the argument is negative infinity
  *********************************************************************/
@@ -961,6 +990,8 @@ ddd_theory_t *ddd_create_theory_common(size_t vn)
   res->base.dup_cst = ddd_dup_cst_external;
   res->base.is_pinf_cst = ddd_is_pinf_cst;
   res->base.is_ninf_cst = ddd_is_ninf_cst;
+  res->base.is_zero_cst = ddd_is_zero_cst;
+  res->base.is_pos_cst = ddd_is_pos_cst;
   res->base.destroy_cst = ddd_destroy_cst;
   res->base.create_linterm = ddd_create_linterm;
   res->base.dup_term = ddd_dup_term_external;

@@ -22,17 +22,43 @@ tdd_box_extrapolate (tdd_manager *tdd, tdd_node *f, tdd_node *g)
 }
 
 /**
- * Apply t1 <- [amin,amax]*t2 + [kmin,kmax], i.e, replace all
+ * Apply t1 <- a*t2 + [kmin,kmax], i.e, replace all
  * constraints on term t1 with a linear combination on constraints
- * with term t2
+ * with term t2.
+ *
+ * t2 can be NULL, in which case a is ignored
+ * kmin == NULL means kmin is negative infinity
+ * kmax == NULL means kmax is positive infinity
  */
 tdd_node * 
 tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1, 
-		  linterm_t t2, constant_t amin, constant_t amax, 
-		  constant_t kmin, constant_t kmax)
+		  linterm_t t2, constant_t a, constant_t kmin, constant_t kmax)
 {
   tdd_node *res;
   DdHashTable * table;
+
+  /* local copy of t2 */
+  linterm_t lt2;
+  /* local copy of a */
+  constant_t la;
+  
+
+  /* if (t2 != NULL) then a != NULL */
+  assert (t2 == NULL || a != NULL);
+  /* if t2 != NULL then at least one of kmin or kmax is not NULL */
+  assert (t2 == NULL || (kmin != NULL || kmax != NULL));
+  
+  /* simplify */
+  if (THEORY->is_zero_cst (a))
+    {
+      lt2 = NULL;
+      la = NULL;
+    }
+  else
+    {
+      lt2 = t2;
+      la = a;
+    }
   
   do 
     {
@@ -40,8 +66,8 @@ tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = tdd_term_replace_recur (tdd, f, t1, t2, 
-				    amin, amax, kmin, kmax,table);
+      res = tdd_term_replace_recur (tdd, f, t1, lt2, 
+				    la, kmin, kmax,table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -364,7 +390,7 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
 tdd_node * 
 tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f, 
 			linterm_t t1, linterm_t t2, 
-			constant_t amin, constant_t amax, 
+			constant_t a,
 			constant_t kmin, constant_t kmax,
 			DdHashTable* table)
 {
@@ -379,8 +405,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
   
   if (F == DD_ONE (CUDD)) 
     {
-      if (t2 == NULL && f == DD_ONE(CUDD) &&
-          (kmin != NULL || kmax != NULL))
+      if (t2 == NULL && f == DD_ONE(CUDD))
 	{
           /* add   kmin <= t1 <= kmax */
 
@@ -388,15 +413,11 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
 	  lincons_t minCons;
 	  DdNode *tmp1, *tmp2;
 	  
-
-          res = DD_ONE(CUDD);
-          cuddRef (res);
-          
+	  res = NULL;
+	  
+	  /* kmax is not +oo */
           if (kmax != NULL)
             {
-              Cudd_IterDerefBdd (CUDD, res); 
-              res = NULL;
-
               maxCons = THEORY->create_cons (THEORY->dup_term (t1), 0,
                                              THEORY->dup_cst (kmax));
               if (maxCons == NULL) 
@@ -405,9 +426,18 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
               res = to_tdd (tdd, maxCons);
               THEORY->destroy_lincons (maxCons);
               if (res == NULL) return NULL;
-              cuddRef (res); /* res count 1 */
+              cuddRef (res); 
             }
+	  else
+	    {
+	      /* simplify reference counting */
+	      res = DD_ONE(CUDD);
+	      cuddRef (res);
+	    }
+	  
+	  /* here, ref count of res is 1 */
 
+	  /* kmin is not -oo */
           if (kmin != NULL)
             {
               minCons = THEORY->create_cons (THEORY->negate_term (t1), 0,
@@ -480,74 +510,49 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
     }
   
   
-  /* if top constraint is  t2 < c, add t1 < amax*c + kmax to the THEN branch
-   * and !(t1 < amin*c + kmin) to the ELSE branch of the result
+  /* if top constraint is  t2 < c and a >0 
+   *       add t1 < a*c + kmax to the THEN branch
+   *      and !(t1 < a*c + kmin) to the ELSE branch 
+   *
+   * if top constraint is t2 < c and a < 0
+   *     add t1 > a*c + kmin to the THEN branch
+   *     and t1 < a*c + kmax to the ELSE branch
    */
   if (t2 != NULL && THEORY->term_equals (fTerm, t2))
     {
       DdNode *tmp, *d;
       constant_t fCst, tmpCst, nCst;
       lincons_t newCons;
+
+      int pos; int strict;
       
+      pos = THEORY->is_pos_cst (a);
+      strict = THEORY->is_strict (fCons);
       fCst = THEORY->get_constant (fCons);
+
       d = NULL;
-      if (amax != NULL && kmax != NULL)
-        {
-          /* nCst = amax * fCst + kmax */
-          tmpCst = THEORY->mul_cst (amax, fCst);
-          nCst = THEORY->add_cst (tmpCst, kmax);
-          THEORY->destroy_cst (tmpCst);
-          tmpCst = NULL;
+
       
-          /* newCons is  t1 <= aMax * fCst + kmax, where t2 <= fCst */
-          newCons = THEORY->create_cons (THEORY->dup_term (t1), 
-                                         THEORY->is_strict (fCons), 
-                                         nCst);
-          /* nCst is now managed by createCons */
-
-          d = to_tdd (tdd, newCons);
-          THEORY->destroy_lincons (newCons);
-          newCons = NULL;
-          if (d == NULL)
-            {
-              Cudd_IterDerefBdd (CUDD, rootT);
-              Cudd_IterDerefBdd (CUDD, rootE);
-              return NULL;
-            }
-          cuddRef (d);
-
-          /* add d to the THEN branch */
-          tmp = tdd_and_recur (tdd, rootT, d);
-          if (tmp != NULL) cuddRef (tmp);
-          Cudd_IterDerefBdd (CUDD, rootT);
-          if (tmp == NULL)
-            {
-              Cudd_IterDerefBdd (CUDD, rootE);
-              Cudd_IterDerefBdd (CUDD, d);
-              return NULL;
-            }
-          rootT = tmp;
-          tmp = NULL;
-        }
-
-
-      /* compute d for the ELSE branch */
-      if ((amin != amax || kmin != kmax) &&
-          (amin != NULL && kmin != NULL) )
+      /* kmax == NULL means kmax is positive infinity, same for kmin
+       * Don't add constraints if the constant is infinity
+       */
+      if ((pos && kmax != NULL) || (!pos && kmin != NULL))
 	{
-          if (d != NULL)
-            Cudd_IterDerefBdd (CUDD, d);
-	  d = NULL;
-	  
-	  /* nCst = amin * fCst + kmin */
-	  tmpCst = THEORY->mul_cst (amin, fCst);
-	  nCst = THEORY->add_cst (tmpCst, kmin);
+	  /* nCst = a * fCst + kmax */
+	  tmpCst = THEORY->mul_cst (a, fCst);
+	  nCst = THEORY->add_cst (tmpCst, pos ? kmax : kmin);
 	  THEORY->destroy_cst (tmpCst);
 	  tmpCst = NULL;
-      
-          /* create: t1 <= amin*fCst + kmin */
+
+	  if (!pos) strict = !strict;
+
+	  /* since t2 < fCst, 
+	     newCons is  
+                 t1 < a * fCst + kmax, if a>0, and
+	         t1 <= a * fCst + kmin, if a<0
+	   */
 	  newCons = THEORY->create_cons (THEORY->dup_term (t1), 
-					 THEORY->is_strict (fCons), 
+					 strict, 
 					 nCst);
 	  /* nCst is now managed by createCons */
 
@@ -561,29 +566,94 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
 	      return NULL;
 	    }
 	  cuddRef (d);
+
+	  /* if a<0, need negation of newCons */
+	  d = Cudd_NotCond (d, !pos);
+
+	  /* add d to the THEN branch */
+	  tmp = tdd_and_recur (tdd, rootT, d);
+	  if (tmp != NULL) cuddRef (tmp);
+	  Cudd_IterDerefBdd (CUDD, rootT);
+	  if (tmp == NULL)
+	    {
+	      Cudd_IterDerefBdd (CUDD, rootE);
+	      Cudd_IterDerefBdd (CUDD, d);
+	      return NULL;
+	    }
+	  rootT = tmp;
+	  tmp = NULL;
+	}
+
+      /* have a lower bound */
+      if ((pos && kmin != NULL) || (!pos && kmax != NULL))
+	{
+	  /* if t2 is not NULL then kmin and kmax cannot be both NULL */
+	  if (kmin == kmax)
+	    /* Same min and max bounds. 
+	     * Use negation of the THEN constraint */
+	    d = Cudd_Not (d);
+	  else /* kmin != kmax */
+	    /* compute d for the ELSE branch */
+	    {
+	      if (d != NULL)
+		Cudd_IterDerefBdd (CUDD, d);
+	      d = NULL;
+	  
+	      /* nCst = a * fCst + kmin */
+	      tmpCst = THEORY->mul_cst (a, fCst);
+	      nCst = THEORY->add_cst (tmpCst, pos ? kmin : kmax);
+	      THEORY->destroy_cst (tmpCst);
+	      tmpCst = NULL;
+      
+	      /* since !(t2 <= fCst),
+		  newCons is 
+		    t1 <=  a*fCst + kmin if a>0, and
+                    t1 < a*fCst + kmax if a<0 
+		    
+		 Note that newCons is used negated if a>0, and as is otherwise
+	      */
+	      newCons = THEORY->create_cons (THEORY->dup_term (t1), 
+					     strict,
+					     nCst);
+	      /* nCst is now managed by createCons */
+
+	      d = to_tdd (tdd, newCons);
+	      THEORY->destroy_lincons (newCons);
+	      newCons = NULL;
+	      if (d == NULL)
+		{
+		  Cudd_IterDerefBdd (CUDD, rootT);
+		  Cudd_IterDerefBdd (CUDD, rootE);
+		  return NULL;
+		}
+	      cuddRef (d);
+	      /* if a>0, need negation of newCons */
+	      d = Cudd_NotCond (d, pos);
+	    }
+      
+	  if (d != NULL)
+	    {
+	      /* add d to the ELSE branch */
+	      tmp = tdd_and_recur (tdd, rootE, d);
+	      if (tmp != NULL) cuddRef (tmp);
+	      Cudd_IterDerefBdd (CUDD, rootE);
+	      if (tmp == NULL)
+		{
+		  Cudd_IterDerefBdd (CUDD, rootT);
+		  Cudd_IterDerefBdd (CUDD, d);
+		  return NULL;
+		}
+	      rootE = tmp;
+	      Cudd_IterDerefBdd (CUDD, d);
+	    }
 	}
       
-      if (d != NULL)
-        {
-          /* add d to the ELSE branch */
-          tmp = tdd_and_recur (tdd, rootE, Cudd_Not (d));
-          if (tmp != NULL) cuddRef (tmp);
-          Cudd_IterDerefBdd (CUDD, rootE);
-          if (tmp == NULL)
-            {
-              Cudd_IterDerefBdd (CUDD, rootT);
-              Cudd_IterDerefBdd (CUDD, d);
-              return NULL;
-            }
-          rootE = tmp;
-          Cudd_IterDerefBdd (CUDD, d);
-        }
     }
   
       
   /* recursive step */
 
-  t = tdd_term_replace_recur (tdd, fv, t1, t2, amin, amax, kmin, kmax, table);
+  t = tdd_term_replace_recur (tdd, fv, t1, t2, a, kmin, kmax, table);
   if (t == NULL)
     {
       Cudd_IterDerefBdd (CUDD, rootT);
@@ -592,7 +662,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
     }
   cuddRef (t);
   
-  e = tdd_term_replace_recur (tdd, fnv, t1, t2, amin, amax, kmin, kmax, table);
+  e = tdd_term_replace_recur (tdd, fnv, t1, t2, a, kmin, kmax, table);
   if (e == NULL)
     {
       Cudd_IterDerefBdd (CUDD, rootT);

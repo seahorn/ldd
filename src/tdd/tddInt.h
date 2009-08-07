@@ -69,8 +69,9 @@ int tdd_fix_mtr_tree (DdManager*, const char *, void*);
 tdd_node* tdd_box_extrapolate_recur (tdd_manager*, tdd_node*, tdd_node*);
 tdd_node* tdd_term_replace_recur (tdd_manager*, tdd_node*, 
 				  linterm_t, linterm_t, 
+				  constant_t, 
 				  constant_t, constant_t, 
-				  constant_t, constant_t, DdHashTable*);
+				  DdHashTable*);
 tdd_node* tdd_term_minmax_approx_recur (tdd_manager*, tdd_node*);
 tdd_node* tdd_term_constrain_recur (tdd_manager*, tdd_node*, 
 				    linterm_t, linterm_t, constant_t,
