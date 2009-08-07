@@ -49,7 +49,7 @@ tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1,
   assert (t2 == NULL || (kmin != NULL || kmax != NULL));
   
   /* simplify */
-  if (THEORY->is_zero_cst (a))
+  if (a != NULL && THEORY->is_zero_cst (a))
     {
       lt2 = NULL;
       la = NULL;
@@ -697,7 +697,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
     {
       DdNode *tmp;
       tmp = tdd_and_recur (tdd, rootE, e);
-      if (t != NULL) cuddRef (tmp);
+      if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, rootE);
       Cudd_IterDerefBdd (CUDD, e);
       if (tmp == NULL)
