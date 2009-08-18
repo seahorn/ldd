@@ -294,23 +294,22 @@ tdd_box_extrapolate_recur (tdd_manager *tdd,
 
     {
       DdNode *h, *k, *w;
-      lincons_t fnvCons, gnvCons, fCons;
+      lincons_t fCons;
       
       fnv = cuddE (F);
       fnv = Cudd_NotCond (fnv, F != f);
       Fnv = Cudd_Regular (fnv);
       
-      
-      fnvCons = tdd->ddVars [Fnv->index];
-      gnvCons = tdd->ddVars [Gnv->index];
       fCons = tdd->ddVars [F->index];
       
-      if (THEORY->is_stronger_cons (fCons, fnvCons))
+      if (Fnv->index != CUDD_CONST_INDEX && 
+          THEORY->is_stronger_cons (fCons, tdd->ddVars [Fnv->index]))
 	h = Cudd_NotCond (cuddT(Fnv), Fnv != fnv);
       else
 	h = fnv;
       
-      if (THEORY->is_stronger_cons (vCons, gnvCons))
+      if (Gnv->index != CUDD_CONST_INDEX && 
+          THEORY->is_stronger_cons (vCons, tdd->ddVars [Gnv->index]))
 	k = Cudd_NotCond (cuddT (Gnv), Gnv != gnv);
       else
 	k = gnv;
