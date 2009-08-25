@@ -1,7 +1,8 @@
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
-#include "tdd-ddd.h"
+/* #include "tdd-ddd.h" */
+#include "box.h"
 
 
 #include <stdio.h>
@@ -32,9 +33,9 @@ void and_accum (tdd_node **r, tdd_node *n)
 
 void test1 ()
 {
-  int x2[4] = {1,-1,0,0};
-  int x3[4] = {1,0,-1,0};
-  int x7[4] = {1,0,0,-1};
+  int x2[4] = {0,1,0,0};
+  int x3[4] = {0,0,1,0};
+  int x7[4] = {0,0,0,1};
 
 
   tdd_node *d[5];
@@ -114,48 +115,46 @@ void test1 ()
 }
 void test0 ()
 {
-  /*  1 <= x <= 3 ==   (x-z <= 3) && (z-x <= -1)
-      1 <= x <= 5 ==   (x-z <= 5) && (z-x <= -1)
-
-      0 <= x <= 3 ==   (x-z <= 3) && (z-x <= 0)
+  /*  1 <= x <= 3 ==   (x <= 3) && (-x <= -1)
+      1 <= x <= 5 ==   (x <= 5) && (-x <= -1)
+      0 <= x <= 3 ==   (x <= 3) && (-x <= 0)
   */
 
 
   /* variable ordering:
    * 0:z, 1:x, 2:y 
-   * z is used as a special ZERO variable
    */
 
-  int xMz[3] = {-1, 1, 0};
-  int zMx[3] = {1, -1, 0};
+  int x[3] = {0, 1, 0};
+  int nx[3] = {0, -1, 0};
   
   lincons_t l1, l2, l3, l4;
   
   tdd_node *d1, *d2, *d3, *d4;
 
   tdd_node *box1, *box2, *box3, *box4, *box5;
-
+  
   fprintf (stdout, "\n\nTEST 0\n");
 
 
-  l1 = CONS(xMz, 3, 3);
+  l1 = CONS(x, 3, 3);
   d1 = to_tdd (tdd, l1);
   Cudd_Ref (d1);  
   /* Cudd_PrintMinterm (cudd, d1);*/
   tdd_print_minterm (tdd, d1);
   
-  l2 = CONS(zMx, 3, -1);
+  l2 = CONS(nx, 3, -1);
   d2 = to_tdd(tdd, l2);
   Cudd_Ref (d2);
   tdd_print_minterm (tdd, d2);
 
-  l3 = CONS (xMz, 3, 5);
+  l3 = CONS (x, 3, 5);
   d3 = to_tdd(tdd, l3);
   Cudd_Ref (d3);  
   tdd_print_minterm (tdd, d3);
 
 
-  l4 = CONS (zMx, 3, 0);
+  l4 = CONS (nx, 3, 0);
   d4 = to_tdd(tdd, l4);
   Cudd_Ref (d4);
   tdd_print_minterm (tdd, d4);
@@ -209,7 +208,8 @@ void test0 ()
 int main(void)
 {
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  t = ddd_create_int_theory (4);
+  /* t = ddd_create_int_theory (4);*/
+  t = box_create_theory (4);
   tdd = tdd_init (cudd, t);
   test0 ();
   test1 ();  
