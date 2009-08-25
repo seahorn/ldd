@@ -53,10 +53,16 @@ tdd_print_minterm_aux (tdd_manager *tdd, tdd_node *n, int* list)
 		fprintf (stderr, "%sb%d", (v == 0 ? "!" : " "), p);
 	      else if (v == 0) 
 		{
-		  fprintf (CUDD->out, "!(");
-		  THEORY->print_lincons (CUDD->out, 
-					 tdd->ddVars [p]);
-		  fprintf (CUDD->out, ") ");
+		  lincons_t c;
+		  c = THEORY->negate_cons (tdd->ddVars [p]);
+		  THEORY->print_lincons (CUDD->out, c);
+		  THEORY->destroy_lincons (c);
+		  fprintf (CUDD->out, " ");
+		  
+		  /* fprintf (CUDD->out, "!("); */
+		  /* THEORY->print_lincons (CUDD->out,  */
+		  /* 			 tdd->ddVars [p]); */
+		  /* fprintf (CUDD->out, ") "); */
 		}
 	      else if (v == 1)
 		{
