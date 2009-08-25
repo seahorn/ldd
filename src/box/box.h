@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
   theory_t *box_create_theory (size_t vn);
-  void box_destroy_theory (tdd_manager*, theory_t*);
+  void box_destroy_theory (theory_t*);
 
 #ifdef __cplusplus
 }

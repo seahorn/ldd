@@ -240,7 +240,7 @@ box_create_cons (box_term_t t, bool s, box_cst_t k)
   if (s)
     mpz_sub_ui (*(t->cst), *(t->cst), 1);
   
-  t->strict = s;
+  t->strict = 0;
   
   return (box_cons_t)t;
 }
@@ -304,8 +304,6 @@ box_negate_cons (box_cons_t c)
       r->strict = 0;
       mpz_sub_ui (*(r->cst), *(r->cst), 1);
     }
-  
-  
   return r;
 }
 
@@ -533,7 +531,7 @@ box_create_theory (size_t vn)
 }
 
 void 
-box_destroy_theory (tdd_manager *tdd, theory_t *theory)
+box_destroy_theory (theory_t *theory)
 {
   box_theory_t* t;
   int i;
@@ -551,7 +549,6 @@ box_destroy_theory (tdd_manager *tdd, theory_t *theory)
 	{
 	  box_list_node_t* next;
 	  next = p->next;
-	  tdd_recursiveDeref (tdd, p->dd);
 	  free (p);
 	  p = next;
 	}
