@@ -260,7 +260,7 @@ ddd_sgn_cst (ddd_cst_t *c)
   switch (c->type)
     {
     case DDD_INT:
-      return x->int_val < 0 ? -1 : (x->int_val > 0 ? 1 : 0);
+      return c->int_val < 0 ? -1 : (c->int_val > 0 ? 1 : 0);
     default:
       assert (0);
     }
