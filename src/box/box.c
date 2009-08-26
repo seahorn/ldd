@@ -492,9 +492,7 @@ box_create_theory (size_t vn)
   t->base.destroy_cst = (void(*)(constant_t))box_destroy_cst;
   t->base.add_cst = (constant_t(*)(constant_t,constant_t))box_add_cst;
   t->base.mul_cst = (constant_t(*)(constant_t,constant_t))box_mul_cst;
-  t->base.is_zero_cst = (int(*)(constant_t))box_is_zero_cst;
-  t->base.is_pos_cst = (int(*)(constant_t))box_is_pos_cst;
-  t->base.box_sgn_cst = (int(*)(constant_t))box_sgn_cst;
+  t->base.sgn_cst = (int(*)(constant_t))box_sgn_cst;
 
   t->base.create_linterm = (linterm_t(*)(int*,size_t))box_create_linterm;
   t->base.dup_term = (linterm_t(*)(linterm_t))box_dup_term;
