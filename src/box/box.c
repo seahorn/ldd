@@ -360,7 +360,7 @@ box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
       ln->prev = NULL;
       ln->next = NULL;
       ln->cons = box_dup_cons (c);
-      ln->dd = tdd_new_var (m, (lincons_t)ln->cons);
+      ln->dd = tdd_new_var_at_top (m, (lincons_t)ln->cons);
       tdd_ref (ln->dd);
 
       /* wire ln into the map */
