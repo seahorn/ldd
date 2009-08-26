@@ -360,7 +360,7 @@ box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
       ln->prev = NULL;
       ln->next = NULL;
       ln->cons = box_dup_cons (c);
-      ln->dd = tdd_new_var_at_top (m, (lincons_t)ln->cons);
+      ln->dd = tdd_new_var (m, (lincons_t)ln->cons);
       assert (ln->dd != NULL);
       tdd_ref (ln->dd);
 
@@ -397,15 +397,18 @@ box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
       n->next = p;
       n->prev = p->prev;
       p->prev = n;
+
+      /* add n to the list */
+      if (n->prev != NULL) /* mid list */
+        n->prev->next = n;
+      else /* head of list */
+        t->map [c->var] = n;
 	      
       n->cons = box_dup_cons (c);
       n->dd = tdd_new_var_before (m, p->dd, (lincons_t)n->cons);
       assert (n->dd != NULL);
       tdd_ref (n->dd);
 
-      /* update the head of the list if needed */
-      if (t->map [c->var] == p)
-	t->map [c->var] = n;
 
       return n->dd;      
     }
