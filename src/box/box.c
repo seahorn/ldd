@@ -55,6 +55,9 @@ box_cst_t
 box_add_cst (box_cst_t k1, box_cst_t k2)
 {
   mpz_t *r;
+
+  r = (mpz_t*)malloc (sizeof (mpz_t));
+  if (r == NULL) return NULL;
   
   mpz_init (*r);
   mpz_add (*r, *k1, *k2);
@@ -65,6 +68,9 @@ box_cst_t
 box_mul_cst (box_cst_t k1, box_cst_t k2)
 {
   mpz_t *r;
+
+  r = (mpz_t*)malloc (sizeof (mpz_t));
+  if (r == NULL) return NULL;
   
   mpz_init (*r);
   mpz_mul (*r, *k1, *k2);
