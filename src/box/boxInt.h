@@ -33,8 +33,6 @@ extern "C" {
     int var;
     /* the constant */
     box_cst_t cst;
-    /* weather the inequality is strict or not */
-    bool strict;
   };
   
   typedef struct box_cons*  box_cons_t;
@@ -70,8 +68,7 @@ extern "C" {
   box_cst_t box_dup_cst (box_cst_t);
   box_cst_t box_add_cst (box_cst_t,box_cst_t);
   box_cst_t box_mul_cst (box_cst_t,box_cst_t);
-  int box_is_pos_cst (box_cst_t);
-  int box_is_zero_cst (box_cst_t);
+  int box_sgn_cst (box_cst_t);
   void box_destroy_cst (box_cst_t);
   void box_print_cst (FILE*, box_cst_t);
   

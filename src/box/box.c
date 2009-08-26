@@ -56,7 +56,7 @@ box_add_cst (box_cst_t k1, box_cst_t k2)
 {
   mpz_t *r;
 
-  r = (mpz_t*)malloc (sizeof (mpz_t));
+  r = new_cst ();
   if (r == NULL) return NULL;
   
   mpz_init (*r);
@@ -69,7 +69,7 @@ box_mul_cst (box_cst_t k1, box_cst_t k2)
 {
   mpz_t *r;
 
-  r = (mpz_t*)malloc (sizeof (mpz_t));
+  r = new_cst ();
   if (r == NULL) return NULL;
   
   mpz_init (*r);
@@ -84,19 +84,6 @@ int
 box_sgn_cst (box_cst_t k)
 {
   return mpz_sgn (*k);
-}
-
-
-int
-box_is_pos_cst (box_cst_t k)
-{
-  return mpz_sgn (*k) >= 0;
-}
-
-int
-box_is_zero_cst (box_cst_t k)
-{
-  return mpz_sgn (*k) == 0;
 }
 
 
@@ -200,10 +187,10 @@ box_print_cons (FILE *f, box_cons_t c)
   if (c->negative) 
     { 
       mpz_neg (k, k);
-      op = (c->strict ? ">" : ">=");
+      op = ">=";
     }
   else
-    op = (c->strict ? "<" : "<=");
+    op = "<=";
 
   fprintf (f, "x%d%s", c->var, op);
   mpz_out_str (f, 10, k);
@@ -221,6 +208,9 @@ box_dup_term (box_term_t t)
   return r;
 }
 
+/**
+ * Returns term for -1*t
+ */
 box_term_t
 box_negate_term (box_term_t t)
 {
@@ -254,9 +244,7 @@ box_create_cons (box_term_t t, bool s, box_cst_t k)
 
   /* Integers:  x < k IFF  x <= k */
   if (s)
-    mpz_sub_ui (*(t->cst), *(t->cst), 1);
-  
-  t->strict = 0;
+    mpz_sub_ui (*(t->cst), *(t->cst), 1);  
   
   return (box_cons_t)t;
 }
@@ -264,7 +252,7 @@ box_create_cons (box_term_t t, bool s, box_cst_t k)
 bool
 box_is_strict (box_cons_t c)
 {
-  return c->strict;
+  return 0;
 }
 
 box_term_t 
@@ -294,7 +282,6 @@ box_dup_cons (box_cons_t c)
   box_cons_t r;
   
   r = new_cons ();
-  r->strict = c->strict;
   r->negative = c->negative;
   r->var = c->var;
   r->cst = new_cst ();
@@ -308,18 +295,21 @@ box_cons_t
 box_negate_cons (box_cons_t c)
 {
   box_cons_t r;
-  
-  r = box_dup_cons (c);
-  mpz_neg (*(r->cst), *(r->cst));
-  r->strict = !r->strict;
-  r->negative = !r->negative;
 
-  /* normalize constraint if it became strict inequality */
-  if (r->strict)
-    {
-      r->strict = 0;
-      mpz_sub_ui (*(r->cst), *(r->cst), 1);
-    }
+  /**
+     Apply !(x <= k) === (-1*x <= -k-1)
+   */
+
+  /* copy constraint */
+  r = box_dup_cons (c);
+
+  /* negate term */
+  r->negative = !c->negative;
+
+  /* compute constant */
+  mpz_neg (*(r->cst), *(r->cst));
+  mpz_sub_ui (*(r->cst), *(r->cst), 1);
+
   return r;
 }
 
