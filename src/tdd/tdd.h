@@ -59,10 +59,8 @@ struct theory
   /** Returns true if c is negative infinity */
   int (*is_ninf_cst)(constant_t c);
 
-  /** True if c is 0 */
-  int (*is_zero_cst)(constant_t c);
-  /* True if c is positive, i.e., c f>= 0 */
-  int (*is_pos_cst)(constant_t c);
+  /* Sign of the constant. -1 if c < 0, 1 if c > 0, 0 if c = 0 */
+  int (*sgn_cst)(constant_t c);
 
   /** Destroy a constant */
   void (*destroy_cst) (constant_t c);
@@ -249,6 +247,7 @@ void tdd_quit (tdd_manager* tdd);
 tdd_node* to_tdd(tdd_manager* m, lincons_t l);
 
 tdd_node* tdd_new_var(tdd_manager* m, lincons_t l);
+tdd_node* tdd_new_var_at_top (tdd_manager* m, lincons_t l);
 tdd_node* tdd_new_var_before (tdd_manager* m, tdd_node* v, lincons_t l);
 tdd_node* tdd_new_var_after (tdd_manager* m, tdd_node* v, lincons_t l);
 

@@ -49,7 +49,7 @@ tdd_term_replace (tdd_manager *tdd, tdd_node *f, linterm_t t1,
   assert (t2 == NULL || (kmin != NULL || kmax != NULL));
   
   /* simplify */
-  if (a != NULL && THEORY->is_zero_cst (a))
+  if (a != NULL && THEORY->sgn_cst (a) == 0)
     {
       lt2 = NULL;
       la = NULL;
@@ -525,7 +525,7 @@ tdd_term_replace_recur (tdd_manager * tdd, tdd_node *f,
 
       int pos; int strict;
       
-      pos = THEORY->is_pos_cst (a);
+      pos = (THEORY->sgn_cst (a) >= 0);
       strict = THEORY->is_strict (fCons);
       fCst = THEORY->get_constant (fCons);
 

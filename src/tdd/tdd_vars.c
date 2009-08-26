@@ -7,25 +7,46 @@ static void tdd_update_cudd_mtr_tree (DdManager *, tdd_node *, tdd_node * );
 /* static void tdd_debug_print_mtr (MtrNode* tree);*/
 
 
-DdManager * tdd_get_cudd (tdd_manager *tdd)
+/**
+ * Returns DdManager corresponding to a tdd_manager.
+ * Can be used to call CUDD functions directly.
+ */
+DdManager * 
+tdd_get_cudd (tdd_manager *tdd)
 {
   return tdd->cudd;
 }
 
 
-tdd_node *tdd_get_true (tdd_manager *tdd)
+/**
+ * Returns TDD for TRUE
+ */
+tdd_node *
+tdd_get_true (tdd_manager *tdd)
 {
   return DD_ONE (CUDD);
 }
 
+/**
+ * Returns TDD for FALSE
+ */
 tdd_node *tdd_get_false (tdd_manager *tdd)
 {
   return tdd_not (DD_ONE (CUDD));
 }
 
 
-
-tdd_node* tdd_new_var (tdd_manager * tdd, lincons_t l)
+/**
+ * Returns a new TDD for a linear constraint. The new node is at the
+ * bottom of DD node ordering.
+ * Requires: 
+ *  1. l is in a canonical form
+ *  2. tdd has no node for l
+ * Side-effect: 
+ *  A copy of l is stored
+ */
+tdd_node* 
+tdd_new_var (tdd_manager * tdd, lincons_t l)
 {
   tdd_node * n;
   int reorderSave;
@@ -37,7 +58,6 @@ tdd_node* tdd_new_var (tdd_manager * tdd, lincons_t l)
 
   if (n == NULL)
     return NULL;
-  
   
   n = tdd_assoc_node (tdd, n, l);
 
@@ -61,7 +81,36 @@ tdd_node* tdd_new_var (tdd_manager * tdd, lincons_t l)
   return n;
 }
 
+/**
+ * Same as tdd_new_var, but the new variable is at the top of variable
+ * ordering.
+ */
+tdd_node*
+tdd_new_var_at_top (tdd_manager* tdd, lincons_t l)
+{
+  tdd_node *n;
+  int rs;
+  
+  rs = CUDD->autoDyn;
+  CUDD->autoDyn = 0;
+  
+  n = Cudd_bddNewVarAtLevel (CUDD, 0);
+  CUDD->autoDyn = rs;
 
+  if (n == NULL) return NULL;
+  
+  n = tdd_assoc_node (tdd, n, l);
+  Cudd_MakeTreeNode (CUDD, n->index, 1, MTR_FIXED);
+  
+  return n;
+}
+
+
+/**
+ * Returns a new TDD for a linear constraint. The new node appears
+ * immediately before node v in the DD ordering.
+ * 
+ */
 tdd_node * 
 tdd_new_var_before (tdd_manager * tdd, tdd_node * v, lincons_t l)
 {

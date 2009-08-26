@@ -77,6 +77,16 @@ box_mul_cst (box_cst_t k1, box_cst_t k2)
   return r;
 }
 
+/**
+ * Returns 1 if k > 0, 0 if k = 0, and -1 if k < 0
+ */
+int 
+box_sgn_cst (box_cst_t k)
+{
+  return mpz_sgn (*k);
+}
+
+
 int
 box_is_pos_cst (box_cst_t k)
 {
@@ -484,6 +494,7 @@ box_create_theory (size_t vn)
   t->base.mul_cst = (constant_t(*)(constant_t,constant_t))box_mul_cst;
   t->base.is_zero_cst = (int(*)(constant_t))box_is_zero_cst;
   t->base.is_pos_cst = (int(*)(constant_t))box_is_pos_cst;
+  t->base.box_sgn_cst = (int(*)(constant_t))box_sgn_cst;
 
   t->base.create_linterm = (linterm_t(*)(int*,size_t))box_create_linterm;
   t->base.dup_term = (linterm_t(*)(linterm_t))box_dup_term;
