@@ -58,6 +58,9 @@ tdd_print_minterm_aux (tdd_manager *tdd, tdd_node *n, int* list)
 	      /* let v be the value of p */
 	      v = list [p];
 
+	      /* skip don't care */
+	      if (v == 2) continue;
+
 	      if (v == 0 && tdd->ddVars [p] != NULL)
 		{
 		  lincons_t c;
