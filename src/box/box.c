@@ -123,7 +123,7 @@ box_create_linterm (int* coeff, size_t n)
 	  coeff [i] == -1)
 	{
 	  t->var = i;
-	  t->negative = (coeff [i] == -1);
+	  t->negative = (coeff [i] == -1 ? 1 : 0);
 	  break;
 	}
       assert (coeff [i] == 0 && "Legal coefficients are {-1,0,1}");
@@ -217,7 +217,7 @@ box_negate_term (box_term_t t)
   box_term_t r;
   
   r = box_dup_term (t);
-  r->negative = !r->negative;
+  r->negative = t->negative ? 0 : 1;
   return r;
 }
 
@@ -304,7 +304,7 @@ box_negate_cons (box_cons_t c)
   r = box_dup_cons (c);
 
   /* negate term */
-  r->negative = !c->negative;
+  r->negative = c->negative ? 0 : 1;
 
   /* compute constant */
   mpz_neg (*(r->cst), *(r->cst));
