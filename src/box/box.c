@@ -194,7 +194,7 @@ box_print_cons (FILE *f, box_cons_t c)
 
   fprintf (f, "x%d%s", c->var, op);
   mpz_out_str (f, 10, k);
-  mpq_clear (k);
+  mpz_clear (k);
 }
 
 box_term_t
