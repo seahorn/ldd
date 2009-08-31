@@ -409,8 +409,130 @@ tvpi_is_stronger_cons (tvpi_cons_t c1, tvpi_cons_t c2)
 tvpi_cons_t
 tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 {
-  /* XXX: TODO */
-  return NULL;
+  /* index of x in c1 and c2, respectively */
+  int idx_xc1;
+  int idx_xc2;
+  int idx_nxc1;
+  int idx_nxc2;
+
+  /* coefficient in the resolvent of the of NOT x variable in c1 */
+  mpq_t coeff_nxc1;
+  /* coeffcient in the resolvent of the of NOT x variable in c2 */
+  mpq_t coeff_nxc2;
+
+  mpq_t coeff_xc1;
+  mpq_t coeff_xc2;
+  mpq_t tmp;
+
+  tvpi_cons_t c;
+
+
+  c = new_cons ();
+  c->fst_coeff = NULL;
+  c->strict = ((!c1->strict) && (!c2->strict));
+  c->cst = new_cst ();
+  
+  assert (c1->var[0] == x || c1->var[1] == x);
+  assert (c2->var[0] == x || c2->var[1] == x);
+  assert (IS_VAR (c1->var [1]) && IS_VAR (c2->var [1]));
+
+  /* XXX: It is possible that c1->var [1] == c2->var [1]. This case is
+     not handled properly right now!
+  */
+
+  idx_xc1 = (c1->var [0] == x) ? 0 : 1;
+  idx_xc2 = (c2->var [0] == x) ? 0 : 1;
+  idx_nxc1 = 1 - idx_xc1;
+  idx_nxc2 = 1 - idx_xc2;
+  
+  mpq_init (coeff_xc1);
+  mpq_init (coeff_xc2);
+  
+  if (idx_c1 == 0)
+    mpq_set_si (coeff_xc1, 1, 1);
+  else
+    {
+      mpq_set (coeff_xc1, *c1->coeff);
+      mpq_abs (coeff_xc1, coeff_xc1);
+  
+  if (idx_c2 == 0)
+    mpq_set_si (coeff_xc2, 1, 1);
+  else
+    {
+      mpq_set (coeff_xc2, *c2->coeff);
+      mpq_abs (coeff_xc2, coeff_xc2);
+    }
+
+  
+  /* compute constant */
+  mpq_init (*c->cst);
+  mpq_mul (*c->cst, coeff_xc2, *c1->cst);
+  
+  mpq_init (tmp);
+  mpq_mul (tmp, coeff_xc1, *c2->cst);
+
+  mpq_add (*c->cst, *c->cst, tmp);
+  mpq_clear (tmp);
+  
+  /* compute coefficient of nxc1 */
+  mpq_init (coeff_nxc1);
+  if (idx_nxc1 == 0)
+    {
+      mpq_set (coeff_nxc1, coeff_xc2);
+      if (c1->negative)
+	mpq_neg (coeff_nxc1, coeff_nxc1);
+    }
+  else
+    mpq_mul (coeff_nxc1, coeff_xc2, c1->coeff);
+
+  /* compute coefficient of nxc2 */
+  mpq_init (coeff_nxc2);
+  if (idx_nxc2 == 0)
+    {
+      mpq_set (coeff_nxc2, coeff_xc1);
+      if (c2->negative)
+	mpq_neg (coeff_nxc2, coeff_nxc2);
+    }
+  else
+    mpq_mul (coeff_nxc2, coeff_xc1, c2->coeff);
+
+  c->coeff = new_cst ();
+  mpq_init (*c->coeff);
+  
+  /* at least one of coeff_nxc1 and coeff_nxc2 cannot be 0 */
+  if (c1->var[idx_nxc1] < c2->var[idx_nxc2] && 
+      mpq_sgn (coeff_nxc1) != 0)
+    {
+      c->var [0] = c1->var [idx_nxc1];
+      c->var [1] = c2->var [dix_nxc2];
+      c->negative = (mpq_sgn (coeff_nxc1) < 0);
+      if (c->negative)
+	mpq_neg (coeff_nxc1, coeff_nxc1);
+      
+      mpq_div (*c->coeff, coeff_nxc2, coeff_nxc1);
+      mpq_div (*c->cst, coeff_nxc1);
+    }
+  else 
+    {
+      c->var [0] = c1->var [idx_nxc2];
+      c->var [1] = c2->var [dix_nxc1];
+      c->negative = (mpq_sgn (coeff_nxc2) < 0);
+      if (c->negative)
+	mpq_neg (coeff_nxc2, coeff_nxc2);
+      
+      mpq_div (*c->coeff, coeff_nxc1, coeff_nxc2);
+      mpq_div (*c->cst, coeff_nxc2);
+    }
+
+  mpq_clear (coeff_xc1);
+  mpq_clear (coeff_nxc1);
+  mpq_clear (coeff_xc2);
+  mpq_clear (coeff_nxc2);
+
+  /* c->coeff can be 0. Make sure that var[1] is unset in that case */
+  if (mpq_sgn (*c->coeff) == 0) c->var[1] = -1;
+
+  return c;
 }
 
 void
