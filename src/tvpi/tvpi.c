@@ -49,6 +49,19 @@ tvpi_create_si_rat_cst (int num, int den)
   return r;
 }
 
+tvpi_cst_t
+tvpi_create_d_cst (double d)
+{
+  mpq_t *r;
+  r = new_cst ();
+  if (r == NULL) return NULL;
+  
+  mpq_init (*r);
+  mpq_set_d (*r, d);
+
+  return r;
+}
+
 tvpi_cst_t 
 tvpi_negate_cst (tvpi_cst_t c)
 {
@@ -105,11 +118,58 @@ alwasy_false_cst (tvpi_cst_t k)
   return 0;
 }
 
+/**
+ * Checks whether t1 and t2 have a resolvent on x.
+ * Returns >1 if t1 resolves with t2
+ * Returns <1 if t1 resolves with -t2
+ * Return 0 if there is no resolvent.
+ * Requires: t1 and t2 are normalized terms.
+ */
 int
 tvpi_terms_have_resolvent (tvpi_term_t t1, tvpi_term_t t2, int x)
 {
-  /* XXX: TODO */
-  return 0;
+
+  int sgn_x_in_t1;
+  int sgn_x_in_t2;
+  
+  assert (!t1->negative && !t2->negative && 
+	  t1->fst_coeff == NULL && t2->fst_coeff == NULL);
+
+
+  /* a term with a single variable has not resolvents with anything */
+  if (!IS_VAR (t1->var [1]) || !IS_VAR (t2->var [1])) return 0;
+  
+
+  sgn_x_in_t1 = 0;
+  sgn_x_in_t2 = 0;
+
+  /* compute sign of x in t1 */
+  if (t1->var[0] == x) sgn_x_in_t1 = t1->negative ? -1 : 1;
+  else if (t1->var [1] == x) sgn_x_in_t1 = mpq_sgn (*t1->coeff);
+  
+  /* no x in t1, can't resolve */
+  if (sgn_x_in_t1 == 0) return 0;
+  
+  /* compute sign of x in t2 */
+  if (t2->var[0] == x) sgn_x_in_t2 = t2->negative ? -1 : 1;
+  else if (t2->var [1] == x) sgn_x_in_t2 = mpq_sgn (*t1->coeff);
+  
+  /* no x in t2, can't resolve */
+  if (sgn_x_in_t2 == 0) return 0;
+
+  /* sign of x differs in t1 and t2, so can resolve */
+  if (sgn_x_in_t1 != sgn_x_in_t2) return 1;
+
+  /* x has the same sign in both t1 and t2. Can resolve t1 and -t2, but only if 
+   * t1 != t2 
+   */
+
+  /* check whether t1 == t2 */
+  if (t1->var [0] == t2->var[0] && 
+      t1->var [1] == t2->var[1] &&
+      mpq_cmp (*t1->coeff, *t2->coeff) == 0) return 0;
+
+  return -1;
 }
 
 
@@ -123,7 +183,7 @@ tvpi_destroy_cst (tvpi_cst_t k)
 
 
 tvpi_term_t 
-tvpi_create_linterm (int* coeff, size_t n)
+tvpi_create_term (int* coeff, size_t n)
 {
   /* term to be created */
   tvpi_term_t t;
@@ -330,7 +390,8 @@ tvpi_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
   if (t->fst_coeff != NULL)
     {
       mpq_div (*t->cst, *t->cst, *t->fst_coeff);
-      mpq_div (*t->coeff, *t->coeff, *t->fst_coeff);
+      if (IS_VAR (t->var [1]))
+	mpq_div (*t->coeff, *t->coeff, *t->fst_coeff);
       tvpi_destroy_cst (t->fst_coeff);
       t->fst_coeff = NULL;
     }
@@ -406,133 +467,168 @@ tvpi_is_stronger_cons (tvpi_cons_t c1, tvpi_cons_t c2)
   return tvpi_term_equlas (c1, c2) && mpq_cmp (*(c1->cst), *(c2->cst)) <= 0;
 }
 
+/** 
+ * Requires: c1 and c2 are either normalized constraints or negation
+ * of a normalized constraint. c1 and c2 have a resolvent on x.
+ */
 tvpi_cons_t
 tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 {
-  /* index of x in c1 and c2, respectively */
-  int idx_xc1;
-  int idx_xc2;
-  int idx_nxc1;
-  int idx_nxc2;
-
-  /* coefficient in the resolvent of the of NOT x variable in c1 */
-  mpq_t coeff_nxc1;
-  /* coeffcient in the resolvent of the of NOT x variable in c2 */
-  mpq_t coeff_nxc2;
-
-  mpq_t coeff_xc1;
-  mpq_t coeff_xc2;
-  mpq_t tmp;
-
+  /* index of x in c1 */
+  int idx_x_c1;
+  /* index of x in c2 */
+  int idx_x_c2;
+  /* index of the other variable in c1 */
+  int idx_o_c1;
+  /* index of the other variant in c2 */
+  int idx_o_c2;
+  
+  /* the constraint for the result */
   tvpi_cons_t c;
 
-
-  c = new_cons ();
-  c->fst_coeff = NULL;
-  c->strict = ((!c1->strict) && (!c2->strict));
-  c->cst = new_cst ();
+  /* set to >0 if the magnitude of the coefficient of x is the same in c1 and c2 */
+  int same_coeff;
   
+
   assert (c1->var[0] == x || c1->var[1] == x);
   assert (c2->var[0] == x || c2->var[1] == x);
   assert (IS_VAR (c1->var [1]) && IS_VAR (c2->var [1]));
 
-  /* XXX: It is possible that c1->var [1] == c2->var [1]. This case is
-     not handled properly right now!
-  */
+  idx_o_c1 = c1->var [0] == x ? 1 : 0;
+  idx_o_c2 = c2->var [0] == x ? 1 : 0;
 
-  idx_xc1 = (c1->var [0] == x) ? 0 : 1;
-  idx_xc2 = (c2->var [0] == x) ? 0 : 1;
-  idx_nxc1 = 1 - idx_xc1;
-  idx_nxc2 = 1 - idx_xc2;
-  
-  mpq_init (coeff_xc1);
-  mpq_init (coeff_xc2);
-  
-  if (idx_c1 == 0)
-    mpq_set_si (coeff_xc1, 1, 1);
-  else
+  /* ensure that the other variable in c1 precedes the other variable
+   * in c2 in the variable order */
+  if (c1->var [idx_o_c1] > c2->var [idx_o_c2])
     {
-      mpq_set (coeff_xc1, *c1->coeff);
-      mpq_abs (coeff_xc1, coeff_xc1);
-  
-  if (idx_c2 == 0)
-    mpq_set_si (coeff_xc2, 1, 1);
-  else
-    {
-      mpq_set (coeff_xc2, *c2->coeff);
-      mpq_abs (coeff_xc2, coeff_xc2);
+      tvpi_cons_t swp;
+      swp = c1;
+      c1 = c2;
+      c2 = swp;
     }
 
-  
-  /* compute constant */
-  mpq_init (*c->cst);
-  mpq_mul (*c->cst, coeff_xc2, *c1->cst);
-  
-  mpq_init (tmp);
-  mpq_mul (tmp, coeff_xc1, *c2->cst);
+  /* compute idx of x in c1 and c2 */
+  idx_x_c1 = 1 - idx_o_c1;
+  idx_x_c2 = 1 - idx_o_c2;
 
-  mpq_add (*c->cst, *c->cst, tmp);
-  mpq_clear (tmp);
-  
-  /* compute coefficient of nxc1 */
-  mpq_init (coeff_nxc1);
-  if (idx_nxc1 == 0)
+  /* compute same_coeff flag */
+  if (idx_x_c1 == 0)
     {
-      mpq_set (coeff_nxc1, coeff_xc2);
-      if (c1->negative)
-	mpq_neg (coeff_nxc1, coeff_nxc1);
-    }
-  else
-    mpq_mul (coeff_nxc1, coeff_xc2, c1->coeff);
-
-  /* compute coefficient of nxc2 */
-  mpq_init (coeff_nxc2);
-  if (idx_nxc2 == 0)
-    {
-      mpq_set (coeff_nxc2, coeff_xc1);
-      if (c2->negative)
-	mpq_neg (coeff_nxc2, coeff_nxc2);
-    }
-  else
-    mpq_mul (coeff_nxc2, coeff_xc1, c2->coeff);
-
-  c->coeff = new_cst ();
-  mpq_init (*c->coeff);
-  
-  /* at least one of coeff_nxc1 and coeff_nxc2 cannot be 0 */
-  if (c1->var[idx_nxc1] < c2->var[idx_nxc2] && 
-      mpq_sgn (coeff_nxc1) != 0)
-    {
-      c->var [0] = c1->var [idx_nxc1];
-      c->var [1] = c2->var [dix_nxc2];
-      c->negative = (mpq_sgn (coeff_nxc1) < 0);
-      if (c->negative)
-	mpq_neg (coeff_nxc1, coeff_nxc1);
-      
-      mpq_div (*c->coeff, coeff_nxc2, coeff_nxc1);
-      mpq_div (*c->cst, coeff_nxc1);
+      if (idx_x_c2 == 0) same_coeff = 1;
+      else
+	/* note that we compare  c2->coeff with -coeff of x in c1 */
+	same_coeff = (mpq_cmp_si (*c2->coeff, c1->negative ? 1 : -1, 1) == 0);
     }
   else 
     {
-      c->var [0] = c1->var [idx_nxc2];
-      c->var [1] = c2->var [dix_nxc1];
-      c->negative = (mpq_sgn (coeff_nxc2) < 0);
-      if (c->negative)
-	mpq_neg (coeff_nxc2, coeff_nxc2);
-      
-      mpq_div (*c->coeff, coeff_nxc1, coeff_nxc2);
-      mpq_div (*c->cst, coeff_nxc2);
+      if (idx_x_c2 == 0)
+	/* note that we compare c1->coeff with -coeff of x in c2 */
+	same_coeff = (mpq_cmp_si (*c1->coeff, c2->negative ? 1 : -1, 1) == 0);
+      else
+	{
+	  mpq_t v1,v2;
+	  mpq_init (v1);
+	  mpq_init (v2);
+	  
+	  mpq_abs (v1, *c1->coeff);
+	  mpq_abs (v2, *c2->coeff);
+	  same_coeff = (mpq_cmp (v1, v2) == 0);
+	  mpq_clear (v1);
+	  mpq_clear (v2);
+	}
     }
+  
+  
+  
+  /** allocate the new constraint and it's constants */
+  c = new_cons ();
+  c->fst_coeff = new_cst ();
+  mpq_init (*c->fst_coeff);
+  c->coeff = new_cst ();
+  mpq_init (*c->coeff);
+  c->cst = new_cst ();
+  mpq_init (*c->cst);
 
-  mpq_clear (coeff_xc1);
-  mpq_clear (coeff_nxc1);
-  mpq_clear (coeff_xc2);
-  mpq_clear (coeff_nxc2);
+  /* the resolvent is strict if either one of the arguments is strict */
+  c->strict = ((!c1->strict) && (!c2->strict));
 
-  /* c->coeff can be 0. Make sure that var[1] is unset in that case */
-  if (mpq_sgn (*c->coeff) == 0) c->var[1] = -1;
+  
+  /* variables of the new constraint */
+  c->var[0] = c1->var[idx_o_c1];
+  c->var[1] = c2->var[idx_o_c2];
+  
+  /* coefficient of c->var[0] is coeff(c1->var[idx_o_c1]) if
+   * coefficients of x have same absolute value in c1 and c2, or
+   * coeff (c1->var[idx_o_c1]) * coeff (c2->var[idx_x_c2])
+   */
+  
+  if (idx_o_c1 == 0)
+    mpq_set_d (*c->fst_coeff, c1->negative ? -1.0 : 1.0);
+  else
+    mpq_set (*c->fst_coeff, *c1->coeff);
+  
+  mpq_set (*c->cst, *c1->cst);
+  
+  if (!same_coeff && idx_x_c2 != 0)
+    {
+      /* multiply everything by coeff (c2->var[idx_x_c2]) */
+      mpq_t v;
+      mpq_init (v);
+      mpq_abs (v, *c2->coeff);
+      mpq_mul (*c1->fst_coeff, *c1->fst_coeff, v);
+      mpq_mul (*c1->cst, *c1->cst, v);
+      mpq_clear (v);
+    }
+  
+  /* do the same thing for c->var[1] */
+  if (idx_o_c2 == 0)
+    mpq_set_d (*c->coeff, c2->negative ? -1.0 : 1.0);
+  else
+    mpq_set (*c->coeff, *c2->coeff);
+  
+  if (!same_coeff && idx_x_c1 != 0)
+    {
+      mpq_t v, u;
+      mpq_init (v);
+      mpq_init (u);
 
-  return c;
+      mpq_abs (v, *c1->coeff);
+      mpq_mul (*c1->coeff, *c1->coeff, v);
+
+      mpq_mul (u, v, *c2->cst);
+      mpq_add (*c->cst, *c->cst, u);
+      mpq_clear (u);
+      mpq_clear (v);
+    }
+  else
+    mpq_add (*c->cst, *c->cst, *c2->cst);
+
+  /* normalize the constraint */
+
+  /* if both variables are the same, add up the coefficients and
+     remove second occurrence of the variable */
+  if (c->var [0] == c->var[1]) 
+    { 
+      mpq_add (*c->fst_coeff, *c->fst_coeff, *c->coeff);
+      c->var [1] = -1; 
+      mpq_set_d (*c->coeff, 0.0); 
+    }
+  
+  /* set the negative flag and absolute value of the first coefficient */
+  c->negative = (mpq_sgn (*c->fst_coeff) < 0);
+  if (c->negative)
+    mpq_abs (*c->fst_coeff, *c->fst_coeff);
+  
+  /* divide everything by first coefficient */
+  if (IS_VAR (c->var [1]))
+    mpq_div (*c->coeff, *c->coeff, *c->fst_coeff);
+  mpq_div (*c->cst, *c->cst, *c->fst_coeff);
+  
+  /* get rid of first coefficient, it is no longer needed */
+  tvpi_destroy_cst (c->fst_coeff);
+  c->fst_coeff = NULL;
+
+  return c;  
 }
 
 void
@@ -598,6 +694,7 @@ tvpi_create_theory (size_t vn)
   
   t->base.create_int_cst =  (constant_t(*)(int)) tvpi_create_si_cst;
   t->base.create_rat_cst = (constant_t(*)(int,int)) tvpi_create_si_rat_cst;
+  t->base.create_double_cst = (constant_t(*)(double)) tvpi_create_d_cst;
   t->base.dup_cst = (constant_t(*)(constant_t)) tvpi_dup_cst;
   t->base.negate_cst = (constant_t(*)(constant_t)) tvpi_negate_cst;
   t->base.is_pinf_cst = (int(*)(constant_t))alwasy_false_cst;
@@ -608,7 +705,7 @@ tvpi_create_theory (size_t vn)
   t->base.mul_cst = (constant_t(*)(constant_t,constant_t))tvpi_mul_cst;
   t->base.sgn_cst = (int(*)(constant_t))tvpi_sgn_cst;
 
-  t->base.create_linterm = (linterm_t(*)(int*,size_t))tvpi_create_linterm;
+  t->base.create_linterm = (linterm_t(*)(int*,size_t))tvpi_create_term;
   t->base.dup_term = (linterm_t(*)(linterm_t))tvpi_dup_term;
   t->base.term_equals = (int(*)(linterm_t,linterm_t))tvpi_term_equlas;
   t->base.term_has_var = (int(*)(linterm_t,int)) tvpi_term_has_var;
@@ -644,7 +741,6 @@ tvpi_create_theory (size_t vn)
 
   
   /* unimplemented */
-  t->base.create_double_cst = NULL;
   t->base.theory_debug_dump = NULL;
   t->base.qelim_init = NULL;
   t->base.qelim_push = NULL;
