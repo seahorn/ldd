@@ -2,7 +2,7 @@
 #include "cudd.h"
 #include "tdd.h"
 #include "tdd-ddd.h"
-
+#include "tvpi.h"
 
 #include <stdio.h>
 
@@ -101,23 +101,33 @@ void test0 ()
   Cudd_Ref (box6);
 
   
-  Cudd_PrintMinterm (cudd, box3);
+  tdd_print_minterm (tdd, box3);
   printf ("\n");
   
-  Cudd_PrintMinterm (cudd, box4);
+  tdd_print_minterm (tdd, box4);
   printf ("\n");
-  Cudd_PrintMinterm (cudd, box6);
+  tdd_print_minterm (tdd, box6);
   
   assert (box6 == box4);
   printf ("SUCCESS\n");
 
 }
 
+int t_type = 1;
 
-int main(void)
+int main(int argc, char** argv)
 {
+  
+  if (argc > 1)
+    if (argv[1][0] == 't')
+      t_type = 2;
+  
+  
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  t = ddd_create_int_theory (3);
+  if (t_type == 2)
+    t = tvpi_create_theory (3);
+  else
+    t = ddd_create_int_theory (3);
   tdd = tdd_init (cudd, t);
   test0 ();  
 

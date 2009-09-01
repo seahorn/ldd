@@ -2,11 +2,12 @@
 #include "cudd.h"
 #include "tdd.h"
 #include "tdd-oct.h"
+#include "tvpi.h"
 
 
 #include <stdio.h>
 
-int main(void)
+int main(int argc, char** argv)
 {
   
   DdManager *cudd;
@@ -24,9 +25,19 @@ int main(void)
 
   tdd_node *d1, *d2, *d3, *d4, *d5, *d6, *d7;
 
+  /* 1 is DDD, 2 is TVPI, 3 is OCT */
+  int t_type = 3;
+  if (argc > 1)
+    if (argv [1][0] == 't')
+      t_type = 2;
+
   printf ("Creating the world...\n");
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  t = oct_create_int_theory (3);
+  if (t_type == 2)
+    t = tvpi_create_theory (3);
+  else
+    t = oct_create_int_theory (3);
+
   tdd = tdd_init (cudd, t);
 
 
@@ -48,7 +59,7 @@ int main(void)
   Cudd_Ref (d1);
 
   printf ("d1 is:\n");
-  Cudd_PrintMinterm (cudd, d1);
+  tdd_print_minterm (tdd, d1);
   
   /* 
      y-z <= 10
@@ -58,7 +69,7 @@ int main(void)
   d2 = to_tdd (tdd, l2);
   Cudd_Ref (d2);
   printf ("d2 is:\n");
-  Cudd_PrintMinterm (cudd, d2);
+  tdd_print_minterm (tdd, d2);
 
   /* 
      x-z <= 15
@@ -68,18 +79,18 @@ int main(void)
   d3 = to_tdd (tdd, l3);
   Cudd_Ref (d3);
   printf ("d3 is:\n");
-  Cudd_PrintMinterm (cudd, d3);
+  tdd_print_minterm (tdd, d3);
   
   
   d4 = tdd_and (tdd, d1, d2);
   Cudd_Ref (d4);
   printf ("d4 is:\n");
-  Cudd_PrintMinterm (cudd, d4);
+  tdd_print_minterm (tdd, d4);
 
   d5 = tdd_or (tdd, d1, d2);
   Cudd_Ref (d5);
   printf ("d5 is:\n");
-  Cudd_PrintMinterm (cudd, d5);
+  tdd_print_minterm (tdd, d5);
   
   /*
     x -y <=5 && y - z <= 10 => x-z <= 15
@@ -88,25 +99,28 @@ int main(void)
   d6 = tdd_or (tdd, tdd_not (d4), d3);
   Cudd_Ref (d6);
   printf ("d6 is:\n");
-  Cudd_PrintMinterm (cudd, d6);
+  tdd_print_minterm (tdd, d6);
   
   {
     d7 = tdd_univ_abstract (tdd, d6, 0);
     d7 = tdd_univ_abstract (tdd, d7, 1);
     d7 = tdd_univ_abstract (tdd, d7, 2);
     printf ("univ d7 is:\n");
-    Cudd_PrintMinterm (cudd, d7);
+    tdd_print_minterm (tdd, d7);
 
     d7 = tdd_exist_abstract (tdd, d6, 0);
     d7 = tdd_exist_abstract (tdd, d7, 1);
     d7 = tdd_exist_abstract (tdd, d7, 2);
     printf ("exist d7 is:\n");
-    Cudd_PrintMinterm (cudd, d7);
+    tdd_print_minterm (tdd, d7);
   }
 
   printf ("Destroying the world...\n");
   tdd_quit (tdd);
-  oct_destroy_theory (t);
+  if (t_type == 2)
+    tvpi_destroy_theory (t);
+  else
+    oct_destroy_theory (t);
   Cudd_Quit (cudd);
   
   return 0;

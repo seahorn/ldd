@@ -2,11 +2,11 @@
 #include "cudd.h"
 #include "tdd.h"
 #include "tdd-ddd.h"
-
+#include "tvpi.h"
 
 #include <stdio.h>
 
-int main(void)
+int main(int argc, char** argv)
 {
   
   DdManager *cudd;
@@ -24,9 +24,20 @@ int main(void)
 
   tdd_node *d1, *d2, *d3;
 
+
+  /* 1 is DDD, 2 is TVPI */
+  int t_type = 1;
+  if (argc > 1)
+    if (argv [1][0] == 't')
+      t_type = 2;
+
+
   printf ("Creating the world...\n");
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  t = ddd_create_int_theory (3);
+  if (t_type == 2)
+    t = tvpi_create_theory (3);
+  else
+    t = ddd_create_int_theory (3);
   tdd = tdd_init (cudd, t);
 
 
@@ -51,7 +62,7 @@ int main(void)
   Cudd_Ref (d1);
 
   printf ("d1 is:\n");
-  Cudd_PrintMinterm (cudd, d1);
+  tdd_print_minterm (tdd, d1);
   
   /* 
      y - x <= -5
@@ -61,17 +72,20 @@ int main(void)
   d2 = to_tdd (tdd, l2);
   Cudd_Ref (d2);
   printf ("d2 is:\n");
-  Cudd_PrintMinterm (cudd, d2);
+  tdd_print_minterm (tdd, d2);
 
 
   d3 = tdd_or (tdd, d1, d2);
   printf ("d3: d1 || d2 is:\n");
-  Cudd_PrintMinterm (cudd, d3);
+  tdd_print_minterm (tdd, d3);
       
 
   printf ("Destroying the world...\n");
   tdd_quit (tdd);
-  ddd_destroy_theory (t);
+  if (t_type == 2)
+    tvpi_destroy_theory (t);
+  else
+    ddd_destroy_theory (t);
   Cudd_Quit (cudd);
   
   return 0;

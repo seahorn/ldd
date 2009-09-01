@@ -1,7 +1,7 @@
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
-#include "tdd-tvpi.h"
+#include "tvpi.h"
 
 #include <stdio.h>
 
@@ -34,7 +34,7 @@ void test(testcase_t *tc)
 {
   printf ("Creating the world...\n");
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  theory = tvpi_create_int_theory (tc->varnum);
+  theory = tvpi_create_theory (tc->varnum);
   tdd = tdd_init (cudd, theory);
   
   //create antecedent

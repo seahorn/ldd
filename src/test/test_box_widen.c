@@ -204,15 +204,53 @@ void test0 ()
   
 }
 
-
-int main(void)
+void test2()
 {
-  cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
-  /* t = ddd_create_int_theory (4);*/
-  t = box_create_theory (4);
+  int x[3] = {0, 1, 0};
+  int nx[3] = {0, -1, 0};
+  
+  lincons_t l1, l2, l3, l4;
+  
+  tdd_node *d1, *d2, *d3, *d4;
+
+  tdd_node *box1, *box2, *box3, *box4, *box5;
+  
+  fprintf (stdout, "\n\nTEST 2\n");
+
+
+  l1 = CONS(x, 3, 3);
+  d1 = to_tdd (tdd, l1);
+  Cudd_Ref (d1);  
+
+  d2 = to_tdd (tdd, l1);
+  Cudd_Ref (d2);
+  
+  assert (d1 == d2);
+
+  d3 = to_tdd (tdd, l1);
+  assert (d2 == d3);
+
+  tdd_manager_debug_dump (tdd);
+}
+
+int t_type = 4;
+
+int main(int argc, char** argv)
+{
+
+  if (argc > 1)
+    if (argv[1][0] == 't')
+      t_type = 2;
+
+  
+  cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);  
+  if (t_type == 2)
+    t = tvpi_create_theory (4);
+  else
+    t = box_create_theory (4);
   tdd = tdd_init (cudd, t);
   test0 ();
   test1 ();  
-
+  test2 ();
   return 0;
 }
