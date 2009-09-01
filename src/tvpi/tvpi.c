@@ -1,6 +1,6 @@
 #include "tvpiInt.h"
 
-tvpi_cst_t 
+static tvpi_cst_t 
 new_cst ()
 {
   mpq_t *r;
@@ -8,7 +8,7 @@ new_cst ()
   return r;
 }
 
-tvpi_cons_t
+static tvpi_cons_t
 new_cons ()
 {
   
@@ -20,7 +20,7 @@ new_cons ()
 
 }
 
-tvpi_term_t 
+static tvpi_term_t 
 new_term ()
 {
   return new_cons ();
@@ -112,8 +112,8 @@ tvpi_sgn_cst (tvpi_cst_t k)
 }
 
 
-bool 
-alwasy_false_cst (tvpi_cst_t k)
+static bool 
+always_false_cst (tvpi_cst_t k)
 {
   return 0;
 }
@@ -850,8 +850,8 @@ tvpi_create_theory (size_t vn)
   t->base.create_double_cst = (constant_t(*)(double)) tvpi_create_d_cst;
   t->base.dup_cst = (constant_t(*)(constant_t)) tvpi_dup_cst;
   t->base.negate_cst = (constant_t(*)(constant_t)) tvpi_negate_cst;
-  t->base.is_pinf_cst = (int(*)(constant_t))alwasy_false_cst;
-  t->base.is_ninf_cst = (int(*)(constant_t))alwasy_false_cst;
+  t->base.is_pinf_cst = (int(*)(constant_t))always_false_cst;
+  t->base.is_ninf_cst = (int(*)(constant_t))always_false_cst;
 
   t->base.destroy_cst = (void(*)(constant_t))tvpi_destroy_cst;
   t->base.add_cst = (constant_t(*)(constant_t,constant_t))tvpi_add_cst;

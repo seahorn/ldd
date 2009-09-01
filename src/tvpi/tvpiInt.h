@@ -70,9 +70,6 @@ extern "C" {
   } tvpi_theory_t;
   
 
-  tvpi_cst_t new_cst();
-  tvpi_cons_t new_cons ();
-  tvpi_term_t new_term ();
   tvpi_cst_t tvpi_create_si_cst(int);
   tvpi_cst_t tvpi_negate_cst (tvpi_cst_t);
   tvpi_cst_t tvpi_dup_cst (tvpi_cst_t);
@@ -107,8 +104,6 @@ extern "C" {
   
 
   size_t tvpi_num_of_vars (tvpi_theory_t *);
-  
-  bool always_false_cst (tvpi_cst_t k);
   
   
   
