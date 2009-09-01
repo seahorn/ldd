@@ -17,7 +17,7 @@ using namespace std;
 #endif
 #include "tdd-ddd.h"
 #include "tdd-oct.h"
-#include "tdd-tvpi.h"
+#include "tvpi.h"
 #include "smt_formula.h"
 
 /**
@@ -244,7 +244,7 @@ void CreateManagers()
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
   if(tddType == DIA_DDD) theory = ddd_create_int_theory (totalVarNum);
   if(tddType == DIA_OCT) theory = oct_create_int_theory (totalVarNum);
-  if(tddType == DIA_TVPI) theory = tvpi_create_int_theory (totalVarNum);
+  if(tddType == DIA_TVPI) theory = tvpi_create_theory (totalVarNum);
   tdd = tdd_init (cudd, theory);  
 }
 

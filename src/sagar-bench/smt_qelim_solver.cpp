@@ -11,7 +11,7 @@ using namespace std;
 #include "tdd.h"
 #include "tdd-ddd.h"
 #include "tdd-oct.h"
-#include "tdd-tvpi.h"
+#include "tvpi.h"
 #include "smt_formula.h"
 
 /**********************************************************************
@@ -48,7 +48,7 @@ tdd_node* (*exist_abstract)(tdd_manager*,tdd_node*,int) = &tdd_exist_abstract;
 
 
 
-enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI } 
+enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI, QSLV_UTVPIZ } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
 
 /*********************************************************************/
@@ -71,6 +71,7 @@ void Usage(char *cmd)
   printf("\t--qelim2 : use QELIM algorithm that relies on a theory solver\n");
   printf("\t--oct : use octagon theory\n");
   printf("\t--tvpi : use TVPI theory\n");
+  printf("\t--utvpiz: use UTVPI(Z) theory\n");
   printf("\t--qelim-occur: use Least Occurrences First Quantified heuristic\n");
   printf("\t--noqelim: do not do quantifier elimination\n");
   printf("\t--qelim-approx: Approximate using BDD quantification\n");
@@ -134,6 +135,7 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--noqelim")) noqelim=true;
     else if(!strcmp(argv[i],"--oct")) tddType = QSLV_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = QSLV_TVPI;
+    else if(!strcmp(argv[i],"--utvpiz")) tddType = QSLV_UTVPIZ;
     else if(strstr(argv[i],".smt") == (argv[i] + strlen(argv[i]) - 4)) fileNames.push_back(argv[i]);
     else {
       Usage(argv[0]);
@@ -150,8 +152,10 @@ void CreateManagers()
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
 
   if(tddType == QSLV_DDD) theory = ddd_create_int_theory (totalVarNum);
-  if(tddType == QSLV_OCT) theory = oct_create_int_theory (totalVarNum);
-  if(tddType == QSLV_TVPI) theory = tvpi_create_int_theory (totalVarNum);
+  else if(tddType == QSLV_OCT) theory = oct_create_int_theory (totalVarNum);
+  else if(tddType == QSLV_TVPI) theory = tvpi_create_theory (totalVarNum);
+  else if(tddType == QSLV_UTVPIZ) theory = tvpi_create_utvpiz_theory (totalVarNum);
+
 
   if (use_syntactic_theory)
     theory = tdd_syntactic_implication_theory (theory);    
@@ -179,6 +183,8 @@ void DestroyManagers()
   if(tddType == QSLV_DDD) ddd_destroy_theory(theory);
   if(tddType == QSLV_OCT) oct_destroy_theory(theory);
   if(tddType == QSLV_TVPI) tvpi_destroy_theory(theory);
+  if(tddType == QSLV_UTVPIZ) tvpi_destroy_theory(theory);
+
   Cudd_Quit(cudd);
 }
 
