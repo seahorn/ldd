@@ -27,16 +27,23 @@ int main(int argc, char** argv)
   tdd_node *d1, *d2, *d3, *d4, *d5, *d6, *d7;
 
 
-  /* 1 is DDD, 2 is TVPI */
+  /* 1 is DDD, 2 is TVPI , 5 is UTVPI(Z)*/
   int t_type = 1;
   if (argc > 1)
-    if (argv [1][0] == 't')
-      t_type = 2;
-
+    {
+      if (argv [1][0] == 't')
+	t_type = 2;
+      else if (argv [1][0] == 'u')
+	t_type = 5;
+    }
+  
+      
   printf ("Creating the world...\n");
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
   if (t_type == 2)
     t = tvpi_create_theory (3);
+  else if (t_type == 5)
+    t = tvpi_create_utvpiz_theory (3);
   else
     t = ddd_create_int_theory (3);
 
@@ -121,7 +128,7 @@ int main(int argc, char** argv)
 
   printf ("Destroying the world...\n");
   tdd_quit (tdd);
-  if (t_type == 2)
+  if (t_type == 2 || t_type == 5)
     tvpi_destroy_theory (t);
   else
     ddd_destroy_theory (t);
