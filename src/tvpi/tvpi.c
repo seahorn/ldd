@@ -207,9 +207,14 @@ tvpi_create_term (int* coeff, size_t n)
 	  t->var [v] = i;
 	  if (v == 0) 
 	    {
+	      /* absolute value of the coefficient */
+	      int abs;
 	      t->negative = (coeff [i] < 0);
-	      t->fst_coeff = 
-		tvpi_create_si_cst (t->negative ? -coeff[i] : coeff[i]);
+	      abs = t->negative ? -coeff [i] : coeff [i];
+	      /* if |coeff| == 1, then ignore it since will not need to divide
+	       * by it to normalize a constraint 
+	       */
+	      t->fst_coeff = (abs == 1 ? NULL : tvpi_create_si_cst (abs));
 	    }
 	  else 
 	    t->coeff = tvpi_create_si_cst (coeff [i]);
@@ -286,7 +291,17 @@ tvpi_print_term (FILE *f, tvpi_term_t t)
     {
       if (mpq_sgn (*t->coeff) >= 0)
 	fprintf (f, "+");
-      tvpi_print_cst (f, t->coeff);
+      
+      if (mpq_cmp_si (*t->coeff, 1, 1) == 0)
+	;
+      else if (mpq_cmp_si (*t->coeff, -1, 1) == 0)
+	fprintf (f, "-");
+      else
+	{   
+	  tvpi_print_cst (f, t->coeff);
+	  fprintf (f, "*");
+	}
+      
       fprintf (f, "x%d", t->var [1]);
     }
 }
@@ -320,9 +335,9 @@ tvpi_print_cons (FILE *f, tvpi_cons_t c)
        * print '-' from -1
        * print 'k*' for any other constant k
        */
-      if (mpq_sgn (k1) > 0 && mpq_cmp_si (k1, 1, 1) == 0)
+      if (mpq_cmp_si (k1, 1, 1) == 0)
 	;
-      else if (mpq_sgn (k1) < 0 && mpq_cmp_si (k1, -1, 1) == 0)
+      else if (mpq_cmp_si (k1, -1, 1) == 0)
 	fprintf (f, "-");
       else
 	{
@@ -417,6 +432,8 @@ tvpi_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
   return (tvpi_cons_t)t;
 }
 
+
+
 bool
 tvpi_is_strict (tvpi_cons_t c)
 {
@@ -473,6 +490,8 @@ tvpi_negate_cons (tvpi_cons_t c)
   return r;
 }
 
+
+
 bool
 tvpi_is_neg_cons (tvpi_cons_t c)
 {
@@ -482,8 +501,22 @@ tvpi_is_neg_cons (tvpi_cons_t c)
 bool
 tvpi_is_stronger_cons (tvpi_cons_t c1, tvpi_cons_t c2)
 {
-  return tvpi_term_equlas (c1, c2) && mpq_cmp (*(c1->cst), *(c2->cst)) <= 0;
+  if (tvpi_term_equlas (c1, c2)) 
+    {
+      /* t <= k IMPLIES t <= m  iff k <= m 
+       * t <= k DOES NOT IMPLY t < k
+       */
+      int i;
+      i = mpq_cmp (*c1->cst, *c2->cst);
+      if (i < 0) return 1;
+      else if (i == 0) return c1->strict || !c2->strict;
+    }
+
+  return 0;
 }
+
+  
+
 
 /** 
  * Requires: c1 and c2 are either normalized constraints or negation
@@ -568,8 +601,7 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   mpq_init (*c->cst);
 
   /* the resolvent is strict if either one of the arguments is strict */
-  c->strict = ((!c1->strict) && (!c2->strict));
-
+  c->strict = (c1->strict || c2->strict);
   
   /* variables of the new constraint */
   c->var[0] = c1->var[idx_o_c1];
@@ -636,11 +668,14 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   c->negative = (mpq_sgn (*c->fst_coeff) < 0);
   if (c->negative)
     mpq_abs (*c->fst_coeff, *c->fst_coeff);
-  
-  /* divide everything by first coefficient */
-  if (IS_VAR (c->var [1]))
-    mpq_div (*c->coeff, *c->coeff, *c->fst_coeff);
-  mpq_div (*c->cst, *c->cst, *c->fst_coeff);
+
+  if (mpq_cmp_si (*c->fst_coeff, 1, 1) != 0)
+    {
+      /* divide everything by first coefficient */
+      if (IS_VAR (c->var [1]))
+	mpq_div (*c->coeff, *c->coeff, *c->fst_coeff);
+      mpq_div (*c->cst, *c->cst, *c->fst_coeff);
+    }
   
   /* get rid of first coefficient, it is no longer needed */
   tvpi_destroy_cst (c->fst_coeff);
@@ -655,6 +690,60 @@ tvpi_destroy_cons (tvpi_cons_t c)
   mpq_clear (*(c->cst));
   free (c);
 }
+
+/**
+ * Creates constraint in UTVPI(Z) theory. 
+ */
+tvpi_cons_t
+tvpi_uz_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
+{
+  tvpi_cons_t c;
+  /* check that the coefficient in t and constant k are integers */
+  assert (!IS_VAR (t->var[1]) || mpz_cmp_si (mpq_denref (*t->coeff), 1) == 0);
+  assert (mpz_cmp_si (mpq_denref (*k), 1) == 0);
+  
+  c = tvpi_create_cons (t, s, k);
+  if (c == NULL) return NULL;
+  
+  if (c->strict)
+    {
+      mpq_t one;
+      mpq_init (one);
+      mpq_set_ui (one, 1, 1);
+      c->strict = 0;
+      mpq_sub (*c->cst, *c->cst, one);
+      mpq_clear (one);
+    }
+
+  return c;  
+}
+
+/**
+ * Negates a constraint in UTVPI(Z) theory. 
+ */
+tvpi_cons_t
+tvpi_uz_negate_cons (tvpi_cons_t c)
+{
+  tvpi_cons_t r;
+  
+  r = tvpi_negate_cons (c);
+  if (r == NULL) return NULL;
+  
+  if (r->strict)
+    {
+      mpq_t one;
+      mpq_init (one);
+      mpq_set_ui (one, 1, 1);
+      r->strict = 0;
+      mpq_sub (*r->cst, *r->cst, one);
+      mpq_clear (one);
+    }
+
+  return r;
+}
+
+
+
 
 
 /**
@@ -937,4 +1026,28 @@ tvpi_destroy_theory (theory_t *theory)
   free (t->map);
   t->map = NULL;
   free (t);
+}
+
+
+/**
+ * Creates a theory UTVPI(Z). The constraints are of the form 
+ * +-x +-y <= k, where k is in Z
+ */
+theory_t*
+tvpi_create_utvpiz_theory (size_t vn)
+{
+  tvpi_theory_t* t;
+  
+  t = (tvpi_theory_t*)tvpi_create_theory (vn);
+  if (t == NULL) return NULL;
+  
+
+  /* update UTVPI(Z) specific functions.
+   * The unique feature of UTVPI(Z) is that t < k is equivalent to t <= (k-1).
+   * These following functions ensure that no strict inequalities are created.
+   */
+  t->base.create_cons = (lincons_t(*)(linterm_t,int,constant_t))tvpi_uz_create_cons;
+  t->base.negate_cons = (lincons_t(*)(lincons_t))tvpi_uz_negate_cons;  
+
+  return (theory_t*)t;
 }
