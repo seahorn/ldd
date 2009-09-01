@@ -638,13 +638,139 @@ tvpi_destroy_cons (tvpi_cons_t c)
   free (c);
 }
 
+
 /**
  * Returns a DD representing a constraint.
  */
 tdd_node*
 tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
 {
-  return NULL;
+  tvpi_list_node_t *ln;
+  tvpi_list_node_t *p;
+  
+  /* keys into the map */
+  int var0, var1;
+  int i,j;
+  
+  var0 = c->var[0];
+  /* if there is no second variable, use var0 */
+  var1 = IS_VAR (c->var [1]) ? c->var[1] : var0;
+  
+  /* get the head of a link list that holds all constraints with the
+     variables of c */
+  ln = t->map[var0][var1];
+
+  /* first constraint ever */
+  if (ln == NULL)
+    {
+      ln = (tvpi_list_node_t*) malloc (sizeof (tvpi_list_node_t));
+      if (ln == NULL) return NULL;
+      
+      ln->prev = ln->next = NULL;
+      ln->cons = tvpi_dup_cons (c);
+      ln->dd = tdd_new_var (m, (lincons_t)(ln->cons));
+      assert (ln->dd != NULL);
+      tdd_ref (ln->dd);
+      
+      /* wire into the map */
+      t->map [var0][var1] = ln;
+      return ln->dd;
+    }
+  
+  assert (ln != NULL);
+  
+  /* find a place to insert c */
+  p = ln;
+  
+  while (1)
+    {
+      i = mpq_cmp (*(p->cons->coeff), *(c->coeff));
+      
+      if (i > 0) break;
+
+      /* same coefficient, check the constant */
+      if (i == 0)
+	{
+	  j = mpq_cmp (*(p->cons->cst), *(c->cst));
+	  if (j >= 0) break;
+	}
+      /* reached end of list */
+      if (p->next == NULL) break;
+      /* advance */
+      p = p->next;
+    }
+
+  /* i is the result of comparing the coefficients of p->cons and c
+   * if i == 0, then j is the result of comparing the constants of p->cons and c 
+   */
+  
+  /* p->cons equals c */
+  if (i == 0 && j == 0)
+    {
+      return p->dd;
+    }
+  /* c precedes p->cons, insert before p->cons */
+  else if (i > 0 || (i == 0 && j > 0))
+    {
+      tvpi_list_node_t *n;
+      
+      n = (tvpi_list_node_t*) malloc (sizeof (tvpi_list_node_t));
+      if (n == NULL) return NULL;
+      
+      n->next = p;
+      n->prev = p->prev;
+      p->prev = n;
+      
+      /* add n to the lsit */
+      if (n->prev != NULL) /* mid list */
+	n->prev->next = n;
+      else /* head of the list */
+	t->map [var0][var1] = n;
+      
+      n->cons = tvpi_dup_cons (c);
+
+      /* if this is the first constraint with this term, get a new variable.
+       * otherwise, get a new variable that follows p->dd in dd order.
+       */
+      if (i == 0)
+	n->dd = tdd_new_var_before (m, p->dd, (lincons_t)n->cons);
+      else
+	n->dd = tdd_new_var (m, (lincons_t) n->cons);
+
+      assert (n->dd != NULL);
+      tdd_ref (n->dd);
+
+      return n->dd;	  
+    }
+  /* p->cons precedes c */
+  else if (i < 0 || (i == 0 && j < 0))
+    {
+      tvpi_list_node_t *n;
+      
+      n = (tvpi_list_node_t*) malloc (sizeof (tvpi_list_node_t));
+      if (n == NULL) return NULL;
+      
+      n->prev = p;
+      n->next = p->next;
+      p->next = n;
+      
+      n->cons = tvpi_dup_cons (c);
+
+      /* if this is the first constraint with this term, get a new variable.
+       * otherwise, get a new variable that follows p->dd in dd order.
+       */
+      if (i == 0)
+	n->dd = tdd_new_var_after (m, p->dd, (lincons_t)n->cons);
+      else
+	n->dd = tdd_new_var (m, (lincons_t) n->cons);
+      
+      assert (n->dd != NULL);
+      tdd_ref (n->dd);
+      return n->dd;
+    }
+  
+
+  assert (0 && "UNREACHABLE");
 }
 
 tdd_node*
@@ -675,21 +801,30 @@ theory_t *
 tvpi_create_theory (size_t vn)
 {
   tvpi_theory_t * t;
-  int i;
+  int i, j;
   
   t = (tvpi_theory_t*) malloc (sizeof (tvpi_theory_t));
   if (t == NULL) return NULL;
 
-  /* initialize the map */
   t->var_num = vn;
-  /* t->map = (tvpi_list_node_t**) malloc (sizeof (tvpi_list_node_t*) * t->var_num); */
+
+  /* allocate and initialize the map */  
+  t->map = (tvpi_list_node_t***) malloc (sizeof (tvpi_list_node_t**) * t->var_num);
   if (t->map == NULL)
     {
       free (t);
       return NULL;
     }
+
   for (i = 0; i < t->var_num; i++)
-    t->map [i] = NULL;
+    {
+      t->map [i] = 
+	(tvpi_list_node_t**) malloc (t->var_num * sizeof (tvpi_list_node_t*));
+      /* XXX: handle malloc == NULL */
+      for (j = 0; j < t->var_num; j++)
+	t->map [i][j] = NULL;
+    }
+  
   
   
   t->base.create_int_cst =  (constant_t(*)(int)) tvpi_create_si_cst;
@@ -755,26 +890,32 @@ void
 tvpi_destroy_theory (theory_t *theory)
 {
   tvpi_theory_t* t;
-  /* int i; */
+  int i, j;
   
   t = (tvpi_theory_t*)theory;
 
-  /* destroy the map */
-  /* for (i = 0; i < t->var_num; i++) */
-  /*   { */
-  /*     tvpi_list_node_t* p; */
-  /*     if (t->map [i] == NULL) continue; */
-      
-  /*     p = t->map [i]; */
-  /*     while (p != NULL) */
-  /* 	{ */
-  /* 	  tvpi_list_node_t* next; */
-  /* 	  next = p->next; */
-  /* 	  free (p); */
-  /* 	  p = next; */
-  /* 	} */
-  /*     t->map [i] = NULL; */
-  /*   } */
+  for (i = 0; i < t->var_num; i++)
+    {
+      for (j = 0; j < t->var_num; j++)
+	{
+	  tvpi_list_node_t *p;
+	  
+	  p = t->map [i][j];
+
+	  while (p != NULL)
+	    {
+	      tvpi_list_node_t *next;
+	      
+	      next = p->next;
+	      tvpi_destroy_cons (p->cons);
+	      free (p);
+	      p = next;
+	    }
+	  t->map[i][j] = NULL;
+	}
+      free (t->map [i]);
+      t->map [i] = NULL;
+    }  
   free (t->map);
   t->map = NULL;
   free (t);
