@@ -15,6 +15,7 @@ new_cons ()
   tvpi_cons_t c;
   
   c = (tvpi_cons_t) malloc (sizeof (struct tvpi_cons));
+  c->fst_coeff = NULL;
   return c;
 
 }
@@ -67,12 +68,11 @@ tvpi_negate_cst (tvpi_cst_t c)
 {
   mpq_t *r;
   
-  r = (mpq_t*)malloc (sizeof (mpq_t));
+  r = new_cst ();
   if (r == NULL) return NULL;
   
   mpq_init (*r);
-  mpq_set (*r, *c);
-  mpq_neg (*r, *r);
+  mpq_neg (*r, *c);
   return r;
 }
 
@@ -313,7 +313,25 @@ tvpi_print_cons (FILE *f, tvpi_cons_t c)
 
   op1 =  (mpq_sgn (k1) >= 0) ? "+" : "";
   if (IS_VAR (c->var [1]))
-    fprintf (f, "x%d%sx%d%s", c->var[0], op1, c->var[1], op2);
+    {
+      fprintf (f, "x%d%s", c->var[0], op1);
+
+      /* print the coefficient: print nothing for 1
+       * print '-' from -1
+       * print 'k*' for any other constant k
+       */
+      if (mpq_sgn (k1) > 0 && mpq_cmp_si (k1, 1, 1) == 0)
+	;
+      else if (mpq_sgn (k1) < 0 && mpq_cmp_si (k1, -1, 1) == 0)
+	fprintf (f, "-");
+      else
+	{
+	  mpq_out_str (f, 10, k1);
+	  fprintf (f, "*");
+	}
+
+      fprintf (f, "x%d%s", c->var[1], op2);
+    }  
   else
     fprintf (f, "x%d%s", c->var[0], op2);
   mpq_out_str (f, 10, k2);
@@ -450,7 +468,7 @@ tvpi_negate_cons (tvpi_cons_t c)
   /* negate the term constraint */
   r = tvpi_negate_term (c);
   
-  r->strict = !r->strict;
+  r->strict = c->strict ? 0 : 1;
   r->cst = tvpi_negate_cst (c->cst);
   return r;
 }
