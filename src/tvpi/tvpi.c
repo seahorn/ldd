@@ -699,6 +699,106 @@ tvpi_destroy_cons (tvpi_cons_t c)
 
 /**
  * Converts a constraint over rationals to constraint over integers.
+ * Requires: r is TVPI
+ */
+tvpi_cons_t
+tvpi_convert_q_to_z (tvpi_cons_t c)
+{
+  /* new constant */
+  mpq_t k;
+  
+  /* input constraint is of the form 
+   * +-x + (n/d)*y op z, where op is < or <=
+   * 
+   * over integers, it is equivalent to 
+   * +-x + (n/d)*y <= (floor(d*z)-s)/d, where s=0 if op is <= and s=1 otherwise
+   */
+
+  /* k = 0/1 */
+  mpq_init (k);
+
+  /* if d != 1 */
+  if (mpz_cmp_ui (mpq_denref (*c->coeff), 1) != 0)
+    {
+      mpz_t tmp;
+     
+      mpz_init (tmp);
+      mpz_mul (tmp, mpq_denref (*c->coeff), mpq_numref (*c->cst));
+
+      /* k = (floor(d*c->cst))/1 */
+      mpz_fdiv_q (mpq_numref (k), tmp, mpq_denref (*c->cst));
+
+      mpz_clear (tmp);
+    }
+  else
+    mpz_fdiv_q (mpq_numref (k), mpq_numref (*c->cst), mpq_denref (*c->cst));
+
+  
+  if (c->strict)
+    {
+       mpz_sub_ui (mpq_numref (k), mpq_numref (k), 1); 
+      c->strict = 0;
+    }
+  
+  /* divide by d if we multiplied by it in the previous step */
+  if (mpz_cmp_ui (mpq_denref (*c->coeff), 1) != 0)
+    {
+      mpz_set (mpq_denref (k), mpq_denref (*c->coeff));
+      /* if multiplied and divided by d, must canonicalize */
+      mpq_canonicalize (k);
+    }
+  
+  /* set the constant */
+  mpq_set (*c->cst, k);
+  /* clear temporary storage */
+  mpq_clear (k);
+
+  return c;
+}
+
+
+
+/**
+ * Creates constraint in TVPI(Z) theory. 
+ */
+tvpi_cons_t
+tvpi_z_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
+{
+  tvpi_cons_t c;
+
+  c = tvpi_create_cons (t, s, k);
+  if (c == NULL) return NULL;
+ 
+  return tvpi_convert_q_to_z (c);
+}
+
+/**
+ * Negates a constraint in TVPI(Z) theory. 
+ */
+tvpi_cons_t
+tvpi_z_negate_cons (tvpi_cons_t c)
+{
+  tvpi_cons_t r;
+  
+  r = tvpi_negate_cons (c);
+  if (r == NULL) return NULL;
+  
+  return tvpi_convert_q_to_z (r);
+}
+
+tvpi_cons_t
+tvpi_z_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
+{
+  tvpi_cons_t r;
+  
+  r = tvpi_resolve_cons (c1, c2, x);
+  if (r == NULL) return NULL;
+  
+  return tvpi_convert_q_to_z (r);
+}
+
+/**
+ * Converts a constraint over rationals to constraint over integers.
  * Requires: r is UTVPI 
  */
 tvpi_cons_t
@@ -759,6 +859,8 @@ tvpi_uz_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   
   return tvpi_convert_uq_to_uz (r);
 }
+
+
 
 
 /**
@@ -1068,6 +1170,34 @@ tvpi_create_utvpiz_theory (size_t vn)
 
   return (theory_t*)t;
 }
+
+/**
+ * Creates a theory TVPI(Z). The constraints are of the form +-d*x
+ * +-n*y <= k, where d, n, k are in Z, and d and n have no common
+ * divisors.
+ *
+ * XXX Unproven. Use at your own risk.
+ */
+theory_t*
+tvpi_create_tvpiz_theory (size_t vn)
+{
+  tvpi_theory_t* t;
+  
+  t = (tvpi_theory_t*)tvpi_create_theory (vn);
+  if (t == NULL) return NULL;
+  
+
+  /* update UTVPI(Z) specific functions.
+   * The unique feature of UTVPI(Z) is that t < k is equivalent to t <= (k-1).
+   * These following functions ensure that no strict inequalities are created.
+   */
+  t->base.create_cons = (lincons_t(*)(linterm_t,int,constant_t))tvpi_z_create_cons;
+  t->base.negate_cons = (lincons_t(*)(lincons_t))tvpi_z_negate_cons;  
+  t->base.resolve_cons = (lincons_t(*)(lincons_t,lincons_t,int))tvpi_z_resolve_cons;
+
+  return (theory_t*)t;
+}
+
 
 
 #ifdef OCT_DEBUG
