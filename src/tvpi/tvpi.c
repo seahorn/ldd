@@ -1,5 +1,9 @@
 #include "tvpiInt.h"
 
+#ifdef OCT_DEBUG 
+#include "tdd-octInt.h" /* enable for debugging */
+#endif
+
 static tvpi_cst_t 
 new_cst ()
 {
@@ -16,6 +20,7 @@ new_cons ()
   
   c = (tvpi_cons_t) malloc (sizeof (struct tvpi_cons));
   c->fst_coeff = NULL;
+  c->strict = 0;
   return c;
 
 }
@@ -691,6 +696,28 @@ tvpi_destroy_cons (tvpi_cons_t c)
   free (c);
 }
 
+
+/**
+ * Converts a constraint over rationals to constraint over integers.
+ * Requires: r is UTVPI 
+ */
+tvpi_cons_t
+tvpi_convert_uq_to_uz (tvpi_cons_t r)
+{
+  if (r->strict)
+    {
+      mpq_t one;
+      mpq_init (one);
+      mpq_set_ui (one, 1, 1);
+      r->strict = 0;
+      mpq_sub (*r->cst, *r->cst, one);
+      mpq_clear (one);
+    }
+  return r;
+}
+
+
+
 /**
  * Creates constraint in UTVPI(Z) theory. 
  */
@@ -701,21 +728,11 @@ tvpi_uz_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
   /* check that the coefficient in t and constant k are integers */
   assert (!IS_VAR (t->var[1]) || mpz_cmp_si (mpq_denref (*t->coeff), 1) == 0);
   assert (mpz_cmp_si (mpq_denref (*k), 1) == 0);
-  
+
   c = tvpi_create_cons (t, s, k);
   if (c == NULL) return NULL;
-  
-  if (c->strict)
-    {
-      mpq_t one;
-      mpq_init (one);
-      mpq_set_ui (one, 1, 1);
-      c->strict = 0;
-      mpq_sub (*c->cst, *c->cst, one);
-      mpq_clear (one);
-    }
-
-  return c;  
+ 
+  return tvpi_convert_uq_to_uz (c);
 }
 
 /**
@@ -729,21 +746,19 @@ tvpi_uz_negate_cons (tvpi_cons_t c)
   r = tvpi_negate_cons (c);
   if (r == NULL) return NULL;
   
-  if (r->strict)
-    {
-      mpq_t one;
-      mpq_init (one);
-      mpq_set_ui (one, 1, 1);
-      r->strict = 0;
-      mpq_sub (*r->cst, *r->cst, one);
-      mpq_clear (one);
-    }
-
-  return r;
+  return tvpi_convert_uq_to_uz (r);
 }
 
-
-
+tvpi_cons_t
+tvpi_uz_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
+{
+  tvpi_cons_t r;
+  
+  r = tvpi_resolve_cons (c1, c2, x);
+  if (r == NULL) return NULL;
+  
+  return tvpi_convert_uq_to_uz (r);
+}
 
 
 /**
@@ -893,7 +908,7 @@ tvpi_to_tdd(tdd_manager *m, tvpi_cons_t c)
 
   theory = (tvpi_theory_t*) (m->theory);
 
-  nc = c->negative ? tvpi_negate_cons (c) : c;
+  nc = c->negative ? theory->base.negate_cons (c) : c;
 
   res = tvpi_get_dd (m, theory, nc);
   
@@ -1048,6 +1063,106 @@ tvpi_create_utvpiz_theory (size_t vn)
    */
   t->base.create_cons = (lincons_t(*)(linterm_t,int,constant_t))tvpi_uz_create_cons;
   t->base.negate_cons = (lincons_t(*)(lincons_t))tvpi_uz_negate_cons;  
+  t->base.resolve_cons = (lincons_t(*)(lincons_t,lincons_t,int))tvpi_uz_resolve_cons;
+
 
   return (theory_t*)t;
 }
+
+
+#ifdef OCT_DEBUG
+/**********************************************************************
+ * Commented out. Used for debugging to compare against tdd-oct 
+ * implementation.
+ **********************************************************************/
+oct_cons_t*
+tvpi_to_oct (tvpi_cons_t c1)
+{
+  oct_cons_t* oct;
+  
+  oct = (oct_cons_t*) malloc (sizeof (oct_cons_t));
+
+  oct->strict = c1->strict;
+  
+  oct->term.var1 = c1->var[0];
+  oct->term.var2 = c1->var[1];
+  
+  oct->term.coeff1 = c1->negative ? -1 : 1;
+  
+  if (mpq_cmp_si (*c1->coeff, 1, 1) == 0)
+    oct->term.coeff2 = 1;
+  else  if (mpq_cmp_si (*c1->coeff, -1, 1) == 0)
+    oct->term.coeff2 = -1;
+  else
+    assert (0 && "c1->coeff is not in {-1, 1}");
+
+  oct->cst.type = OCT_INT;
+  oct->cst.int_val = (int) mpz_get_si (mpq_numref (*c1->cst));
+
+  return oct;
+}
+
+bool 
+tvpi_oct_equals (tvpi_cons_t tvpi, oct_cons_t *oct)
+{
+  if (oct->term.var1 != tvpi->var [0] ||
+      oct->term.var2 != tvpi->var [1]) return 0;
+  
+  if ((!tvpi->negative && oct->term.coeff1 == -1) ||
+      (tvpi->negative && oct->term.coeff1 == 1))
+    return 0;
+
+
+  if (mpq_cmp_si (*tvpi->coeff, oct->term.coeff2, 1) != 0) return 0;
+  
+  if ((tvpi->strict && !oct->strict) || (!tvpi->strict && oct->strict))
+    return 0;
+  
+  return mpq_cmp_si (*tvpi->cst, oct->cst.int_val, 1) == 0;
+}
+
+
+tvpi_cons_t
+tvpi_debug_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
+{
+  tvpi_cons_t tvpi;
+  oct_cons_t *oc1, *oc2, *oct;
+  
+  tvpi = tvpi_uz_resolve_cons (c1, c2, x);
+  
+  oc1 = tvpi_to_oct (c1);
+  assert (tvpi_oct_equals (c1, oc1));
+  oc2 = tvpi_to_oct (c2);
+  assert (tvpi_oct_equals (c2, oc2));
+  oct = oct_resolve_int_cons (oc1, oc2, x);
+  
+  if (!tvpi_oct_equals (tvpi, oct))
+    {
+
+      fprintf (stderr, "TVPI: ");
+      tvpi_print_cons (stderr, c1);
+      fprintf (stderr, " ");
+      tvpi_print_cons (stderr, c2);
+      fprintf (stderr, " --> ");
+      tvpi_print_cons (stderr, tvpi);
+      fprintf (stderr, "\n");
+
+      fprintf (stderr, "OCT: ");
+      oct_print_cons (stderr, oc1);
+      fprintf (stderr, " ");
+      oct_print_cons (stderr, oc2);
+      fprintf (stderr, " --> ");
+      oct_print_cons (stderr, oct);
+      fprintf (stderr, "\n");
+      
+
+      assert (0);
+    }
+  
+  oct_destroy_lincons (oc1);
+  oct_destroy_lincons (oc2);
+  oct_destroy_lincons (oct);
+  return tvpi;
+}
+#endif
+
