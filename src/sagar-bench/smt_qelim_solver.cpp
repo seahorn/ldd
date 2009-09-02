@@ -48,7 +48,7 @@ tdd_node* (*exist_abstract)(tdd_manager*,tdd_node*,int) = &tdd_exist_abstract;
 
 
 
-enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI, QSLV_UTVPIZ } 
+enum TddType { QSLV_DDD, QSLV_OCT, QSLV_TVPI, QSLV_TVPIZ, QSLV_UTVPIZ } 
   tddType = QSLV_DDD,consType = QSLV_DDD;
 
 /*********************************************************************/
@@ -135,6 +135,7 @@ void ProcessInputs(int argc,char *argv[])
     else if(!strcmp(argv[i],"--noqelim")) noqelim=true;
     else if(!strcmp(argv[i],"--oct")) tddType = QSLV_OCT;
     else if(!strcmp(argv[i],"--tvpi")) tddType = QSLV_TVPI;
+    else if(!strcmp(argv[i],"--tvpiz")) tddType = QSLV_TVPIZ;
     else if(!strcmp(argv[i],"--utvpiz")) tddType = QSLV_UTVPIZ;
     else if(strstr(argv[i],".smt") == (argv[i] + strlen(argv[i]) - 4)) fileNames.push_back(argv[i]);
     else {
@@ -154,6 +155,7 @@ void CreateManagers()
   if(tddType == QSLV_DDD) theory = ddd_create_int_theory (totalVarNum);
   else if(tddType == QSLV_OCT) theory = oct_create_int_theory (totalVarNum);
   else if(tddType == QSLV_TVPI) theory = tvpi_create_theory (totalVarNum);
+  else if(tddType == QSLV_TVPIZ) theory = tvpi_create_tvpiz_theory (totalVarNum);
   else if(tddType == QSLV_UTVPIZ) theory = tvpi_create_utvpiz_theory (totalVarNum);
 
 
@@ -183,6 +185,7 @@ void DestroyManagers()
   if(tddType == QSLV_DDD) ddd_destroy_theory(theory);
   if(tddType == QSLV_OCT) oct_destroy_theory(theory);
   if(tddType == QSLV_TVPI) tvpi_destroy_theory(theory);
+  if(tddType == QSLV_TVPIZ) tvpi_destroy_theory(theory);
   if(tddType == QSLV_UTVPIZ) tvpi_destroy_theory(theory);
 
   Cudd_Quit(cudd);
