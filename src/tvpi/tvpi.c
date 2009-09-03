@@ -141,8 +141,8 @@ tvpi_terms_have_resolvent (tvpi_term_t t1, tvpi_term_t t2, int x)
 	  t1->fst_coeff == NULL && t2->fst_coeff == NULL);
 
 
-  /* a term with a single variable has not resolvents with anything */
-  if (!IS_VAR (t1->var [1]) || !IS_VAR (t2->var [1])) return 0;
+  /* if both terms have only one variable, cannot resolve on it */
+  if (!IS_VAR (t1->var [1]) && !IS_VAR (t2->var [1])) return 0;
   
 
   sgn_x_in_t1 = 0;
@@ -150,14 +150,16 @@ tvpi_terms_have_resolvent (tvpi_term_t t1, tvpi_term_t t2, int x)
 
   /* compute sign of x in t1 */
   if (t1->var[0] == x) sgn_x_in_t1 = t1->negative ? -1 : 1;
-  else if (t1->var [1] == x) sgn_x_in_t1 = mpq_sgn (*t1->coeff);
+  else if (IS_VAR(t1->var[1]) &&t1->var [1] == x) 
+    sgn_x_in_t1 = mpq_sgn (*t1->coeff);
   
   /* no x in t1, can't resolve */
   if (sgn_x_in_t1 == 0) return 0;
   
   /* compute sign of x in t2 */
   if (t2->var[0] == x) sgn_x_in_t2 = t2->negative ? -1 : 1;
-  else if (t2->var [1] == x) sgn_x_in_t2 = mpq_sgn (*t1->coeff);
+  else if (IS_VAR(t2->var[1]) && t2->var [1] == x) 
+    sgn_x_in_t2 = mpq_sgn (*t1->coeff);
   
   /* no x in t2, can't resolve */
   if (sgn_x_in_t2 == 0) return 0;
@@ -546,9 +548,9 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   int same_coeff;
   
 
-  assert (c1->var[0] == x || c1->var[1] == x);
-  assert (c2->var[0] == x || c2->var[1] == x);
-  assert (IS_VAR (c1->var [1]) && IS_VAR (c2->var [1]));
+
+  assert (c1->var[0] == x || (IS_VAR(c1->var[1]) && c1->var[1] == x));
+  assert (c2->var[0] == x || (IS_VAR(c2->var[1]) && c2->var[1] == x));
 
   idx_o_c1 = c1->var [0] == x ? 1 : 0;
   idx_o_c2 = c2->var [0] == x ? 1 : 0;
@@ -566,6 +568,66 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   /* compute idx of x in c1 and c2 */
   idx_x_c1 = 1 - idx_o_c1;
   idx_x_c2 = 1 - idx_o_c2;
+
+  /** allocate the new constraint and it's constants */
+  c = new_cons ();
+  c->coeff = new_cst ();
+  mpq_init (*c->coeff);
+  c->cst = new_cst ();
+  mpq_init (*c->cst);
+
+  /* the resolvent is strict if either one of the arguments is strict */
+  c->strict = (c1->strict || c2->strict);
+  
+
+  
+  /* special case when !IS_VAR(c1->var[1]) */
+  if (!IS_VAR (c1->var [1]))
+    {
+      /* c1 only has x, c2 has x and some other variable */
+      c->var [0] = c2->var[idx_o_c2];
+      c->var [1] = -1;
+      c->fst_coeff = NULL;
+      
+      if (idx_o_c2 == 0)
+	{
+	  c->negative = c2->negative;
+	  
+	  /* let c1: -x <= k, c2: z + n*x <= m 
+	   * resolvent is   z <= |n|*k+m 
+	   */
+	  mpq_abs (*c->cst, *c2->coeff);
+	  mpq_mul (*c->cst, *c->cst, *c1->cst);
+	  mpq_add (*c->cst, *c->cst, *c2->cst);
+	}
+      else
+	{ 
+	  mpq_t tmp;
+	  c->negative = (mpq_sgn (*c2->coeff) < 0);
+	  
+	  /* let c1: -x = k, c2: x +n*y <= m
+	   * resolvent is:  sgn(n) * y <= (m+k)/|n|
+	   */
+	  mpq_abs (*c->cst, *c->coeff);
+	  mpq_inv (*c->cst, *c->cst);
+
+	  mpq_init (tmp);
+	  mpq_add (tmp, *c1->cst, *c2->cst);
+	  mpq_mul (*c->cst, *c->cst, tmp);
+	  mpq_clear (tmp);
+	}
+      return c;
+    }
+  
+  
+  c->fst_coeff = new_cst ();
+  mpq_init (*c->fst_coeff);
+  
+  /* variables of the new constraint */
+  c->var[0] = c1->var[idx_o_c1];
+  c->var[1] = c2->var[idx_o_c2];
+
+
 
   /* compute same_coeff flag */
   if (idx_x_c1 == 0)
@@ -595,22 +657,6 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
     }
   
   
-  
-  /** allocate the new constraint and it's constants */
-  c = new_cons ();
-  c->fst_coeff = new_cst ();
-  mpq_init (*c->fst_coeff);
-  c->coeff = new_cst ();
-  mpq_init (*c->coeff);
-  c->cst = new_cst ();
-  mpq_init (*c->cst);
-
-  /* the resolvent is strict if either one of the arguments is strict */
-  c->strict = (c1->strict || c2->strict);
-  
-  /* variables of the new constraint */
-  c->var[0] = c1->var[idx_o_c1];
-  c->var[1] = c2->var[idx_o_c2];
   
   /* coefficient of c->var[0] is coeff(c1->var[idx_o_c1]) if
    * coefficients of x have same absolute value in c1 and c2, or
@@ -809,9 +855,19 @@ tvpi_convert_uq_to_uz (tvpi_cons_t r)
       /* using (n/d)-1 == (n-d)/d 
        * no need to canonicalize because  gcd(n,d)==1 IMPLIES gcd (n-d,d)==1
        */
-      mpq_sub (mpq_numref (*r->cst), mpq_numref (*r->cst), mpq_denref (*r->cst));
+      mpz_sub (mpq_numref (*r->cst), mpq_numref (*r->cst), mpq_denref (*r->cst));
       r->strict = 0;
     }
+  
+  /* floor fractional constants */
+  if (mpz_cmp_ui(mpq_denref (*r->cst), 1) != 0)
+    {
+      mpz_fdiv_q (mpq_numref (*r->cst), 
+		  mpq_numref (*r->cst),
+		  mpq_denref (*r->cst));
+      mpz_set_ui (mpq_denref (*r->cst), 1);
+    }
+  
   
   return r;
 }
