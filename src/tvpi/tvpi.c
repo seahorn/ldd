@@ -806,13 +806,13 @@ tvpi_convert_uq_to_uz (tvpi_cons_t r)
 {
   if (r->strict)
     {
-      mpq_t one;
-      mpq_init (one);
-      mpq_set_ui (one, 1, 1);
+      /* using (n/d)-1 == (n-d)/d 
+       * no need to canonicalize because  gcd(n,d)==1 IMPLIES gcd (n-d,d)==1
+       */
+      mpq_sub (mpq_numref (*r->cst), mpq_numref (*r->cst), mpq_denref (*r->cst));
       r->strict = 0;
-      mpq_sub (*r->cst, *r->cst, one);
-      mpq_clear (one);
     }
+  
   return r;
 }
 
