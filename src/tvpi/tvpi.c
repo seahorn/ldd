@@ -20,7 +20,7 @@ new_cons ()
   
   c = (tvpi_cons_t) malloc (sizeof (struct tvpi_cons));
   c->fst_coeff = NULL;
-  c->strict = 0;
+  c->op = LEQ;
   return c;
 
 }
@@ -137,7 +137,7 @@ tvpi_terms_have_resolvent (tvpi_term_t t1, tvpi_term_t t2, int x)
   int sgn_x_in_t1;
   int sgn_x_in_t2;
   
-  assert (!t1->negative && !t2->negative && 
+  assert (t1->sgn > 0 && t2->sgn > 0 &&
 	  t1->fst_coeff == NULL && t2->fst_coeff == NULL);
 
 
@@ -149,7 +149,7 @@ tvpi_terms_have_resolvent (tvpi_term_t t1, tvpi_term_t t2, int x)
   sgn_x_in_t2 = 0;
 
   /* compute sign of x in t1 */
-  if (t1->var[0] == x) sgn_x_in_t1 = t1->negative ? -1 : 1;
+  if (t1->var[0] == x) sgn_x_in_t1 = t1->sgn;
   else if (IS_VAR(t1->var[1]) &&t1->var [1] == x) 
     sgn_x_in_t1 = mpq_sgn (*t1->coeff);
   
@@ -157,7 +157,7 @@ tvpi_terms_have_resolvent (tvpi_term_t t1, tvpi_term_t t2, int x)
   if (sgn_x_in_t1 == 0) return 0;
   
   /* compute sign of x in t2 */
-  if (t2->var[0] == x) sgn_x_in_t2 = t2->negative ? -1 : 1;
+  if (t2->var[0] == x) sgn_x_in_t2 = t2->sgn;
   else if (IS_VAR(t2->var[1]) && t2->var [1] == x) 
     sgn_x_in_t2 = mpq_sgn (*t1->coeff);
   
@@ -216,8 +216,8 @@ tvpi_create_term (int* coeff, size_t n)
 	    {
 	      /* absolute value of the coefficient */
 	      int abs;
-	      t->negative = (coeff [i] < 0);
-	      abs = t->negative ? -coeff [i] : coeff [i];
+	      t->sgn = (coeff [i] < 0) ? -1 : 1;
+	      abs = (coeff [i] < 0) ? -coeff [i] : coeff [i];
 	      /* if |coeff| == 1, then ignore it since will not need to divide
 	       * by it to normalize a constraint 
 	       */
@@ -243,7 +243,7 @@ tvpi_create_term (int* coeff, size_t n)
 bool
 tvpi_term_equlas (tvpi_term_t t1, tvpi_term_t t2)
 {
-  return t1->negative == t2->negative &&
+  return ((t1->sgn > 0 && t2->sgn > 0) || (t1->sgn < 0 && t2->sgn < 0)) &&
     t1->var [0] == t2->var [0] &&
     t1->var [1] == t2->var [1] &&
     mpq_cmp (*t1->coeff, *t2->coeff) == 0 &&
@@ -287,7 +287,7 @@ tvpi_print_cst (FILE *f, tvpi_cst_t k)
 void
 tvpi_print_term (FILE *f, tvpi_term_t t)
 {
-  if (t->negative)
+  if (t->sgn < 0)
     fprintf (f, "%s", "-");
   
   if (t->fst_coeff != NULL)
@@ -324,14 +324,14 @@ tvpi_print_cons (FILE *f, tvpi_cons_t c)
   mpq_init (k2);
   mpq_set (k2, *(c->cst));
 
-  if (c->negative) 
+  if (c->sgn < 0) 
     { 
       mpq_neg (k1, k1);
       mpq_neg (k2, k2);
-      op2 = c->strict ? ">" : ">=";
+      op2 = c->op == LT ? ">" : ">=";
     }
   else
-    op2 = c->strict ? "<" : "<=";
+    op2 = c->op == LT ? "<" : "<=";
 
   op1 =  (mpq_sgn (k1) >= 0) ? "+" : "";
   if (IS_VAR (c->var [1]))
@@ -368,7 +368,7 @@ tvpi_dup_term (tvpi_term_t t)
   tvpi_term_t r;
   
   r = new_term ();
-  r->negative = t->negative;
+  r->sgn = t->sgn;
   r->var[0] = t->var[0];
   r->var[1] = t->var[1];
   
@@ -395,7 +395,7 @@ tvpi_negate_term (tvpi_term_t t)
   tvpi_term_t r;
   
   r = tvpi_dup_term (t);
-  r->negative = t->negative ? 0 : 1;
+  r->sgn = -t->sgn;
   if (IS_VAR (t->var [1])) mpq_neg (*r->coeff, *r->coeff);
   return r;
 }
@@ -425,7 +425,7 @@ tvpi_cons_t
 tvpi_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
 {
   t->cst = k;
-  t->strict = s;
+  t->op = s ? LT : LEQ;
   /* divide everything by the coefficient of var[0], if there is one */
   if (t->fst_coeff != NULL)
     {
@@ -444,7 +444,7 @@ tvpi_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
 bool
 tvpi_is_strict (tvpi_cons_t c)
 {
-  return c->strict;
+  return c->op == LT;
 }
 
 tvpi_term_t 
@@ -475,7 +475,7 @@ tvpi_dup_cons (tvpi_cons_t c)
   tvpi_cons_t r;
 
   r = tvpi_dup_term (c);
-  r->strict = c->strict;
+  r->op = c->op;
   r->cst = new_cst ();
   mpq_init (*r->cst);
   mpq_set (*(r->cst), *(c->cst));
@@ -492,7 +492,7 @@ tvpi_negate_cons (tvpi_cons_t c)
   /* negate the term constraint */
   r = tvpi_negate_term (c);
   
-  r->strict = c->strict ? 0 : 1;
+  r->op = c->op == LT ? LEQ : LT;
   r->cst = tvpi_negate_cst (c->cst);
   return r;
 }
@@ -502,7 +502,7 @@ tvpi_negate_cons (tvpi_cons_t c)
 bool
 tvpi_is_neg_cons (tvpi_cons_t c)
 {
-  return c->negative;
+  return c->sgn < 0;
 }
 
 bool
@@ -516,7 +516,7 @@ tvpi_is_stronger_cons (tvpi_cons_t c1, tvpi_cons_t c2)
       int i;
       i = mpq_cmp (*c1->cst, *c2->cst);
       if (i < 0) return 1;
-      else if (i == 0) return c1->strict || !c2->strict;
+      else if (i == 0) return c1->op == LT || c2->op == LEQ;
     }
 
   return 0;
@@ -576,9 +576,8 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   c->cst = new_cst ();
   mpq_init (*c->cst);
 
-  /* the resolvent is strict if either one of the arguments is strict */
-  c->strict = (c1->strict || c2->strict);
-  
+  /* the resolvent is LT if either one of the arguments is LT */
+  c->op = (c1->op == LEQ && c2->op == LEQ) ? LEQ : LT;
 
   
   /* special case when !IS_VAR(c1->var[1]) */
@@ -591,7 +590,7 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
       
       if (idx_o_c2 == 0)
 	{
-	  c->negative = c2->negative;
+	  c->sgn = c2->sgn;
 	  
 	  /* let c1: -x <= k, c2: z + n*x <= m 
 	   * resolvent is   z <= |n|*k+m 
@@ -603,7 +602,7 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
       else
 	{ 
 	  mpq_t tmp;
-	  c->negative = (mpq_sgn (*c2->coeff) < 0);
+	  c->sgn = mpq_sgn (*c2->coeff);
 	  
 	  /* let c1: -x = k, c2: x +n*y <= m
 	   * resolvent is:  sgn(n) * y <= (m+k)/|n|
@@ -635,13 +634,13 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
       if (idx_x_c2 == 0) same_coeff = 1;
       else
 	/* note that we compare  c2->coeff with -coeff of x in c1 */
-	same_coeff = (mpq_cmp_si (*c2->coeff, c1->negative ? 1 : -1, 1) == 0);
+	same_coeff = (mpq_cmp_si (*c2->coeff, c1->sgn < 0 ? 1 : -1, 1) == 0);
     }
   else 
     {
       if (idx_x_c2 == 0)
 	/* note that we compare c1->coeff with -coeff of x in c2 */
-	same_coeff = (mpq_cmp_si (*c1->coeff, c2->negative ? 1 : -1, 1) == 0);
+	same_coeff = (mpq_cmp_si (*c1->coeff, c2->sgn < 0 ? 1 : -1, 1) == 0);
       else
 	{
 	  mpq_t v1,v2;
@@ -664,7 +663,7 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
    */
   
   if (idx_o_c1 == 0)
-    mpq_set_d (*c->fst_coeff, c1->negative ? -1.0 : 1.0);
+    mpq_set_si (*c->fst_coeff, c1->sgn < 0 ? -1 : 1, 1);
   else
     mpq_set (*c->fst_coeff, *c1->coeff);
   
@@ -683,7 +682,7 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   
   /* do the same thing for c->var[1] */
   if (idx_o_c2 == 0)
-    mpq_set_d (*c->coeff, c2->negative ? -1.0 : 1.0);
+    mpq_set_si (*c->coeff, c2->sgn < 0 ? -1 : 1, 1);
   else
     mpq_set (*c->coeff, *c2->coeff);
   
@@ -716,8 +715,8 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
     }
   
   /* set the negative flag and absolute value of the first coefficient */
-  c->negative = (mpq_sgn (*c->fst_coeff) < 0);
-  if (c->negative)
+  c->sgn = mpq_sgn (*c->fst_coeff);
+  if (c->sgn < 0)
     mpq_abs (*c->fst_coeff, *c->fst_coeff);
 
   if (mpq_cmp_si (*c->fst_coeff, 1, 1) != 0)
@@ -780,10 +779,10 @@ tvpi_convert_q_to_z (tvpi_cons_t c)
     mpz_fdiv_q (mpq_numref (k), mpq_numref (*c->cst), mpq_denref (*c->cst));
 
   
-  if (c->strict)
+  if (c->op == LT)
     {
        mpz_sub_ui (mpq_numref (k), mpq_numref (k), 1); 
-      c->strict = 0;
+       c->op = LEQ;
     }
   
   /* divide by d if we multiplied by it in the previous step */
@@ -850,13 +849,13 @@ tvpi_z_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 tvpi_cons_t
 tvpi_convert_uq_to_uz (tvpi_cons_t r)
 {
-  if (r->strict)
+  if (r->op == LT)
     {
       /* using (n/d)-1 == (n-d)/d 
        * no need to canonicalize because  gcd(n,d)==1 IMPLIES gcd (n-d,d)==1
        */
       mpz_sub (mpq_numref (*r->cst), mpq_numref (*r->cst), mpq_denref (*r->cst));
-      r->strict = 0;
+      r->op = LEQ;
     }
   
   /* floor fractional constants */
@@ -1066,14 +1065,14 @@ tvpi_to_tdd(tdd_manager *m, tvpi_cons_t c)
 
   theory = (tvpi_theory_t*) (m->theory);
 
-  nc = c->negative ? theory->base.negate_cons (c) : c;
+  nc = c->sgn < 0 ? theory->base.negate_cons (c) : c;
 
   res = tvpi_get_dd (m, theory, nc);
   
-  if (c->negative)
+  if (c->sgn < 0)
     tvpi_destroy_cons (nc);
   
-  return  (c->negative && res != NULL ? tdd_not (res) : res);
+  return  (c->sgn < 0 && res != NULL ? tdd_not (res) : res);
 }
 
 
@@ -1268,12 +1267,12 @@ tvpi_to_oct (tvpi_cons_t c1)
   
   oct = (oct_cons_t*) malloc (sizeof (oct_cons_t));
 
-  oct->strict = c1->strict;
+  oct->strict = (c1-> == LT);
   
   oct->term.var1 = c1->var[0];
   oct->term.var2 = c1->var[1];
   
-  oct->term.coeff1 = c1->negative ? -1 : 1;
+  oct->term.coeff1 = c1->sgn < 0 ? -1 : 1;
   
   if (mpq_cmp_si (*c1->coeff, 1, 1) == 0)
     oct->term.coeff2 = 1;
@@ -1294,14 +1293,14 @@ tvpi_oct_equals (tvpi_cons_t tvpi, oct_cons_t *oct)
   if (oct->term.var1 != tvpi->var [0] ||
       oct->term.var2 != tvpi->var [1]) return 0;
   
-  if ((!tvpi->negative && oct->term.coeff1 == -1) ||
-      (tvpi->negative && oct->term.coeff1 == 1))
+  if ((tvpi->sgn > 0 && oct->term.coeff1 == -1) ||
+      (tvpi->sgn < 0 && oct->term.coeff1 == 1))
     return 0;
 
 
   if (mpq_cmp_si (*tvpi->coeff, oct->term.coeff2, 1) != 0) return 0;
   
-  if ((tvpi->strict && !oct->strict) || (!tvpi->strict && oct->strict))
+  if ((tvpi->op == LT && !oct->strict) || (tvpi->op == LEQ && oct->strict))
     return 0;
   
   return mpq_cmp_si (*tvpi->cst, oct->cst.int_val, 1) == 0;

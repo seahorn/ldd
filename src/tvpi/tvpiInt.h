@@ -21,28 +21,36 @@ extern "C" {
 #endif
 
   typedef mpq_t* tvpi_cst_t;
+
+  /* type of the comparison operator in a constraint */
+  typedef enum {LT, LEQ} op_t;    
   
   
   /* represents a constraint  var[0] + coeff*var[1] <= cst */
   struct tvpi_cons
   {
-    /* negative or positive coefficient of var[0]  */
-    bool negative;
-    /* strict (<) or non-strict (<=) inequality */
-    bool strict;
+    /* sign of the constraint, i.e., the sign of the coefficient of
+       var[0]. <0 for negative, >0 for positive. Must not be =0. */
+    int sgn;
+    
+    /* Comparison operator: strict (LT) or non-strict (LEQ) */
+    op_t op;
     /* the variables */
     int var[2];
-    /* the coefficient */
+    /* the coefficient of var[1] */
     tvpi_cst_t coeff;
     /* the constant */
     tvpi_cst_t cst;
 
-    /* Coefficient of var[0]. Only used for terms. a
-     * Must be NULL in normalized constraints 
+    /* The coefficient of var[0]. If fst_coeff != NULL then sgn is ignored.
+     * A constraint is normalized iff fst_coeff == NULL and sgn > 0
      */
     tvpi_cst_t fst_coeff;
   };
   
+  /**
+   * True if X is a legal variable identifier 
+   */
 #define IS_VAR(X) ((X)>=0)
 
   typedef struct tvpi_cons*  tvpi_cons_t;
