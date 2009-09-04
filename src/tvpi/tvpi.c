@@ -547,8 +547,6 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   /* set to >0 if the magnitude of the coefficient of x is the same in c1 and c2 */
   int same_coeff;
   
-
-
   assert (c1->var[0] == x || (IS_VAR(c1->var[1]) && c1->var[1] == x));
   assert (c2->var[0] == x || (IS_VAR(c2->var[1]) && c2->var[1] == x));
 
@@ -563,6 +561,10 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
       swp = c1;
       c1 = c2;
       c2 = swp;
+
+      /* re-establish index of the other variable */
+      idx_o_c1 = c1->var [0] == x ? 1 : 0;
+      idx_o_c2 = c2->var [0] == x ? 1 : 0;
     }
 
   /* compute idx of x in c1 and c2 */
@@ -710,6 +712,9 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   if (c->var [0] == c->var[1]) 
     { 
       mpq_add (*c->fst_coeff, *c->fst_coeff, *c->coeff);
+
+      assert (mpq_sgn (*c->fst_coeff) != 0 && "First coefficient becomes 0");
+      
       c->var [1] = -1; 
       mpq_set_d (*c->coeff, 0.0); 
     }
