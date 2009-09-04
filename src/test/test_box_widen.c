@@ -3,6 +3,7 @@
 #include "tdd.h"
 /* #include "tdd-ddd.h" */
 #include "box.h"
+#include "tvpi.h"
 
 
 #include <stdio.h>
@@ -207,13 +208,11 @@ void test0 ()
 void test2()
 {
   int x[3] = {0, 1, 0};
-  int nx[3] = {0, -1, 0};
-  
-  lincons_t l1, l2, l3, l4;
-  
-  tdd_node *d1, *d2, *d3, *d4;
 
-  tdd_node *box1, *box2, *box3, *box4, *box5;
+  lincons_t l1;
+  
+  tdd_node *d1, *d2, *d3;
+
   
   fprintf (stdout, "\n\nTEST 2\n");
 
