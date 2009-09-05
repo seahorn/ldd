@@ -5,7 +5,9 @@
 #include "cudd.h"
 
 #ifndef __cplusplus
+#ifndef SWIG
 typedef int bool;
+#endif
 #endif
 
 
@@ -290,12 +292,12 @@ tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, const
 tdd_node* tdd_term_minmax_approx(tdd_manager*, tdd_node*);
 tdd_node* tdd_term_constrain (tdd_manager*, tdd_node*, 
 				linterm_t, linterm_t, constant_t);
-tdd_nodeset* tdd_empty_nodeset (tdd_manager*);
+/* tdd_nodeset* tdd_empty_nodeset (tdd_manager*); */
 tdd_nodeset* tdd_nodeset_union (tdd_manager*, tdd_nodeset*, tdd_nodeset*);
 tdd_nodeset* tdd_nodeset_add (tdd_manager*, tdd_nodeset*, tdd_node*);
-  int tdd_print_minterm(tdd_manager*, tdd_node*);
+int tdd_print_minterm(tdd_manager*, tdd_node*);
 
-  DdManager * tdd_get_cudd (tdd_manager *);
+DdManager * tdd_get_cudd (tdd_manager *);
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
 #ifdef __cplusplus
