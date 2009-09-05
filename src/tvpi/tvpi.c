@@ -275,7 +275,7 @@ tvpi_var_occurrences (tvpi_cons_t c, int *o)
 size_t
 tvpi_num_of_vars (tvpi_theory_t *self)
 {
-  return self->var_num;
+  return self->size;
 }
 
 void
@@ -920,7 +920,49 @@ tvpi_uz_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
   return tvpi_convert_uq_to_uz (r);
 }
 
+/**
+ * Ensures that theory has space for a variable
+ */
+static void
+tvpi_ensure_capacity (tvpi_theory_t *t, int var)
+{
+  tvpi_list_node_t ***new_map;
+  size_t new_size, i, j;
 
+  /** all is good */
+  if (var < t->size) return;
+
+  /* need to re-allocate */
+  new_size = var + 1;
+  new_map = (tvpi_list_node_t***) 
+    malloc (sizeof (tvpi_list_node_t**) * new_size);
+  assert (new_map != NULL && "Unexpected out of memory");
+  
+  for (i = 0; i < new_size; i++)
+    {
+      new_map [i] = (tvpi_list_node_t**) 
+	malloc (new_size * sizeof (tvpi_list_node_t*));
+      assert (new_map [i] != NULL && "Unexpected out of memory");
+      for (j = 0; j < new_size; j++)
+	{
+	  /* copy all the entries from the old map */
+	  if (i < t->size && j < t->size)
+	    new_map [i][j] = t->map [i][j];
+	  else
+	    /* set new entries to NULL */
+	    new_map [i][j] = NULL;
+	}
+      /* free row i from the old map */
+      if (i < t->size) free (t->map [i]);
+    }
+
+  /* at this point, all rows are freed, just kill the container */
+  free (t->map);
+
+  /* install a new map */
+  t->map = new_map;
+  t->size = new_size;
+}
 
 
 /**
@@ -939,6 +981,8 @@ tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
   var0 = c->var[0];
   /* if there is no second variable, use var0 */
   var1 = IS_VAR (c->var [1]) ? c->var[1] : var0;
+
+  tvpi_ensure_capacity (t, var0 > var1 ? var0 : var1);
   
   /* get the head of a link list that holds all constraints with the
      variables of c */
@@ -1090,22 +1134,23 @@ tvpi_create_theory (size_t vn)
   t = (tvpi_theory_t*) malloc (sizeof (tvpi_theory_t));
   if (t == NULL) return NULL;
 
-  t->var_num = vn;
+  t->size = vn;
 
   /* allocate and initialize the map */  
-  t->map = (tvpi_list_node_t***) malloc (sizeof (tvpi_list_node_t**) * t->var_num);
+  t->map = (tvpi_list_node_t***) 
+    malloc (sizeof (tvpi_list_node_t**) * t->size);
   if (t->map == NULL)
     {
       free (t);
       return NULL;
     }
 
-  for (i = 0; i < t->var_num; i++)
+  for (i = 0; i < t->size; i++)
     {
       t->map [i] = 
-	(tvpi_list_node_t**) malloc (t->var_num * sizeof (tvpi_list_node_t*));
+	(tvpi_list_node_t**) malloc (t->size * sizeof (tvpi_list_node_t*));
       /* XXX: handle malloc == NULL */
-      for (j = 0; j < t->var_num; j++)
+      for (j = 0; j < t->size; j++)
 	t->map [i][j] = NULL;
     }
   
@@ -1178,9 +1223,9 @@ tvpi_destroy_theory (theory_t *theory)
   
   t = (tvpi_theory_t*)theory;
 
-  for (i = 0; i < t->var_num; i++)
+  for (i = 0; i < t->size; i++)
     {
-      for (j = 0; j < t->var_num; j++)
+      for (j = 0; j < t->size; j++)
 	{
 	  tvpi_list_node_t *p;
 	  

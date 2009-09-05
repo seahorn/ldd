@@ -71,8 +71,8 @@ extern "C" {
   {
     /* the base interface */
     theory_t base;
-    /* # of variables */
-    size_t var_num;
+    /* size in # of variables */
+    size_t size;
     /* maps a pair of variables to the list of constraints they appear in */
     tvpi_list_node_t ***map;
   } tvpi_theory_t;
