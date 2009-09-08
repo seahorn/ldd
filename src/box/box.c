@@ -37,6 +37,14 @@ box_create_si_cst (int v)
   return r;
 }
 
+box_cst_t 
+box_create_rat_cst (int n, int d)
+{
+  assert (d == 1);
+  return box_create_si_cst (n);
+}
+
+
 
 box_cst_t 
 box_negate_cst (box_cst_t c)
@@ -535,6 +543,7 @@ box_create_theory (size_t vn)
   
   
   t->base.create_int_cst =  (constant_t(*)(int)) box_create_si_cst;
+  t->base.create_rat_cst = (constant_t(*)(int,int)) box_create_rat_cst;
   t->base.dup_cst = (constant_t(*)(constant_t)) box_dup_cst;
   t->base.negate_cst = (constant_t(*)(constant_t)) box_negate_cst;
   t->base.is_pinf_cst = (int(*)(constant_t))alwasy_false_cst;
@@ -583,7 +592,6 @@ box_create_theory (size_t vn)
 
   
   /* unimplemented */
-  t->base.create_rat_cst = NULL;
   t->base.create_double_cst = NULL;
   t->base.theory_debug_dump = NULL;
   t->base.qelim_init = NULL;
