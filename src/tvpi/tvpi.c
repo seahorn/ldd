@@ -187,6 +187,52 @@ tvpi_destroy_cst (tvpi_cst_t k)
   free (k);
 }
 
+/**
+ * Creates a sparse term. More efficient than tvpi_create_term when
+ * the number of variables with non-zero coefficients is small.
+ * New term is coeff[0]*var[0] + ... + coeff[n-1] * var[n-1]
+ *
+ * var   --   array of size n of variables.
+ * coeff --   array of size n of coefficients
+ *
+ * Requires: var is sorted; length of var = length of coeff = n; 1 <= n <= 2;1
+ */
+tvpi_term_t 
+tvpi_create_term_sparse (int* var, int* coeff, size_t n)
+{
+  tvpi_term_t t;
+  /* absolute value of the coefficient of var [0] */
+  int abs;
+  
+  assert (n >=1 && n <= 2 && "TVPI allows only 1 or 2 variables per inequality");
+  assert ((n == 1 || (var [0] < var [1])) && "Variables must be ordered");
+  assert (coeff [0] != 0 && "First coefficient must be non-zero");
+
+  t = new_term ();
+  if (t == NULL) return NULL;
+
+  t->var [0] = var[0];
+  t->var [1] = n == 2 ? var [1] : -1;
+  
+  t->sgn = coeff [0] < 0 ? -1 : 1;
+  abs = t->sgn > 0 ? coeff [0] : -coeff[0];
+  
+  if (coeff[0] == 1)
+    t->fst_coeff = NULL;
+  else
+    t->fst_coeff = tvpi_create_si_cst (abs);
+  
+
+  if (IS_VAR (t->var [1]))
+    t->coeff = tvpi_create_si_cst (coeff [1]);
+  else
+    {
+      t->coeff = new_cst ();
+      mpq_init (*t->coeff);
+    }
+
+  return t;
+}
 
 
 tvpi_term_t 
@@ -1170,6 +1216,9 @@ tvpi_create_theory (size_t vn)
   t->base.sgn_cst = (int(*)(constant_t))tvpi_sgn_cst;
 
   t->base.create_linterm = (linterm_t(*)(int*,size_t))tvpi_create_term;
+  t->base.create_linterm_sparse = 
+    (linterm_t(*)(int*,int*,size_t))tvpi_create_term_sparse;
+  
   t->base.dup_term = (linterm_t(*)(linterm_t))tvpi_dup_term;
   t->base.term_equals = (int(*)(linterm_t,linterm_t))tvpi_term_equlas;
   t->base.term_has_var = (int(*)(linterm_t,int)) tvpi_term_has_var;
