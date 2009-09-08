@@ -81,6 +81,14 @@ struct theory
    */
   linterm_t (*create_linterm)(int* coeffs, size_t n);
 
+  /**
+   * Creates a term coeff[0]*var[0] + ... + coeff[n]*var[n]. An
+   * alternative to create_linterm.
+   *
+   * Requires: var is sorted; length of var = length of coeff = n;   
+   */
+  linterm_t (*create_linterm_sparse)(int* var, int* coeff, size_t n);
+
   /** Duplicate a term */
   linterm_t (*dup_term) (linterm_t t);
 
