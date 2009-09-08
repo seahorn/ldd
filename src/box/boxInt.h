@@ -27,8 +27,8 @@ extern "C" {
   /* represents a constraint  x <= cst */
   struct box_cons
   {
-    /* if true, var is negated */
-    bool negative;
+    /* sign of the constraint, i.e., sign of the variable */
+    int sgn;
     /* the variable */
     int var;
     /* the constant */
@@ -54,7 +54,7 @@ extern "C" {
     /* the base interface */
     theory_t base;
     /* # of variables */
-    size_t var_num;
+    size_t size;
     /* maps each variable to the list of constraints it appears in */
     box_list_node_t **map;
   } box_theory_t;

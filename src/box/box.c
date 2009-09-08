@@ -107,10 +107,33 @@ box_destroy_cst (box_cst_t k)
   free (k);
 }
 
+/** 
+ * New term is coeff[0]*var[0]
+ *
+ * var   --   array of size 1 of variables.
+ * coeff --   array of size 1 of coefficients
+ *
+ * Requires: length of var = length of coeff = 1; n == 1; coeff[0] \in {-1,1}
+ */
+box_term_t
+box_create_term_sparse (int* var, int *coeff, size_t n)
+{
+  box_term_t t;
+  
+  assert (n == 1 && "BOX requires constraints to have size 1");
+  assert ((coeff [0] == 1 || coeff [0] == -1) && "BOX requires unit coefficient");
+  assert (var [0] >= 0 && "Illegal variable");
+
+  t = new_term ();
+  t->var = var [0];
+  t->sgn = coeff [0] < 0 ? -1 : 1;
+
+  return t;
+}
 
 
 box_term_t 
-box_create_linterm (int* coeff, size_t n)
+box_create_term (int* coeff, size_t n)
 {
   box_term_t t;
   size_t i;
@@ -123,7 +146,7 @@ box_create_linterm (int* coeff, size_t n)
 	  coeff [i] == -1)
 	{
 	  t->var = i;
-	  t->negative = (coeff [i] == -1 ? 1 : 0);
+	  t->sgn = (coeff [i] < 0) ? -1 : 1;
 	  break;
 	}
       assert (coeff [i] == 0 && "Legal coefficients are {-1,0,1}");
@@ -135,7 +158,9 @@ box_create_linterm (int* coeff, size_t n)
 bool
 box_term_equlas (box_term_t t1, box_term_t t2)
 {
-  return t1->var == t2->var && t1->negative == t2->negative;
+  return t1->var == t2->var && 
+    ( (t1->sgn < 0 && t2->sgn < 0) ||
+      (t1->sgn > 0 && t2->sgn > 0));
 }
 
 
@@ -161,7 +186,7 @@ box_var_occurrences (box_cons_t c, int *o)
 size_t
 box_num_of_vars (box_theory_t *self)
 {
-  return self->var_num;
+  return self->size;
 }
 
 void
@@ -173,7 +198,7 @@ box_print_cst (FILE *f, box_cst_t k)
 void
 box_print_term (FILE *f, box_term_t t)
 {
-  fprintf (f, "%sx%d", (t->negative ? "-" : ""), t->var);
+  fprintf (f, "%sx%d", (t->sgn < 0 ? "-" : ""), t->var);
 }
 
 void 
@@ -184,7 +209,7 @@ box_print_cons (FILE *f, box_cons_t c)
   
   mpz_init_set (k, *(c->cst));
 
-  if (c->negative) 
+  if (c->sgn < 0) 
     { 
       mpz_neg (k, k);
       op = ">=";
@@ -203,7 +228,7 @@ box_dup_term (box_term_t t)
   box_term_t r;
   
   r = new_term ();
-  r->negative = t->negative;
+  r->sgn = t->sgn;
   r->var = t->var;
 
   return r;
@@ -218,7 +243,7 @@ box_negate_term (box_term_t t)
   box_term_t r;
   
   r = box_dup_term (t);
-  r->negative = t->negative ? 0 : 1;
+  r->sgn = -t->sgn;
   return r;
 }
 
@@ -283,7 +308,7 @@ box_dup_cons (box_cons_t c)
   box_cons_t r;
   
   r = new_cons ();
-  r->negative = c->negative;
+  r->sgn = c->sgn;
   r->var = c->var;
   r->cst = new_cst ();
   mpz_init_set (*(r->cst), *(c->cst));
@@ -305,7 +330,7 @@ box_negate_cons (box_cons_t c)
   r = box_dup_cons (c);
 
   /* negate term */
-  r->negative = c->negative ? 0 : 1;
+  r->sgn = -c->sgn;
 
   /* compute constant */
   mpz_neg (*(r->cst), *(r->cst));
@@ -317,14 +342,13 @@ box_negate_cons (box_cons_t c)
 bool
 box_is_neg_cons (box_cons_t c)
 {
-  return c->negative;
+  return c->sgn < 0;
 }
 
 bool
 box_is_stronger_cons (box_cons_t c1, box_cons_t c2)
 {
-  return c1->negative == c2->negative && c1->var == c2->var && 
-    mpz_cmp (*(c1->cst), *(c2->cst)) <= 0;
+  return box_term_equlas (c1, c2) && mpz_cmp (*(c1->cst), *(c2->cst)) <= 0;
 }
 
 box_cons_t
@@ -341,6 +365,34 @@ box_destroy_cons (box_cons_t c)
 }
 
 /**
+ * Ensures that theory has space for a variable
+ */
+static void 
+box_ensure_capacity (box_theory_t *t, int var)
+{
+  box_list_node_t **new_map;
+  size_t new_size, i;
+  
+  /* all is good */
+  if (var < t->size) return;
+  
+  /* need to re-size */
+  new_size = var + 1;
+  new_map = (box_list_node_t**) malloc (sizeof (box_list_node_t*) * new_size);
+  assert (new_map != NULL && "Unexpected out of memory error");
+  
+  /* initialize new map */
+  for (i = 0; i < new_size; i++)
+    new_map [i] = i < t->size ? t->map [i] : NULL;
+
+  free (t->map);
+
+  t->map = new_map;
+  t->size = new_size;  
+}
+
+
+/**
  * Returns a DD representing a constraint.
  */
 tdd_node*
@@ -349,6 +401,8 @@ box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
   box_list_node_t * ln;
   box_list_node_t *p;
   int i;
+
+  box_ensure_capacity (t, c->var);
 
   /* get the head of the list node for the variable of the constraint */
   ln = t->map [c->var];
@@ -448,14 +502,14 @@ box_to_tdd(tdd_manager *m, box_cons_t c)
 
   theory = (box_theory_t*) (m->theory);
 
-  nc = c->negative ? box_negate_cons (c) : c;
+  nc = c->sgn < 0 ? box_negate_cons (c) : c;
 
   res = box_get_dd (m, theory, nc);
   
-  if (c->negative)
+  if (c->sgn < 0)
     box_destroy_cons (nc);
   
-  return  (c->negative && res != NULL ? tdd_not (res) : res);
+  return  (c->sgn < 0 && res != NULL ? tdd_not (res) : res);
 }
 
 
@@ -469,14 +523,14 @@ box_create_theory (size_t vn)
   if (t == NULL) return NULL;
 
   /* initialize the map */
-  t->var_num = vn;
-  t->map = (box_list_node_t**) malloc (sizeof (box_list_node_t*) * t->var_num);
+  t->size = vn;
+  t->map = (box_list_node_t**) malloc (sizeof (box_list_node_t*) * t->size);
   if (t->map == NULL)
     {
       free (t);
       return NULL;
     }
-  for (i = 0; i < t->var_num; i++)
+  for (i = 0; i < t->size; i++)
     t->map [i] = NULL;
   
   
@@ -491,7 +545,9 @@ box_create_theory (size_t vn)
   t->base.mul_cst = (constant_t(*)(constant_t,constant_t))box_mul_cst;
   t->base.sgn_cst = (int(*)(constant_t))box_sgn_cst;
 
-  t->base.create_linterm = (linterm_t(*)(int*,size_t))box_create_linterm;
+  t->base.create_linterm = (linterm_t(*)(int*,size_t))box_create_term;
+  t->base.create_linterm_sparse = 
+    (linterm_t(*)(int*,int*,size_t))box_create_term_sparse;
   t->base.dup_term = (linterm_t(*)(linterm_t))box_dup_term;
   t->base.term_equals = (int(*)(linterm_t,linterm_t))box_term_equlas;
   t->base.term_has_var = (int(*)(linterm_t,int)) box_term_has_var;
@@ -551,7 +607,7 @@ box_destroy_theory (theory_t *theory)
   t = (box_theory_t*)theory;
 
   /* destroy the map */
-  for (i = 0; i < t->var_num; i++)
+  for (i = 0; i < t->size; i++)
     {
       box_list_node_t* p;
       if (t->map [i] == NULL) continue;
