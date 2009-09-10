@@ -4,6 +4,9 @@
 #include "tdd-octInt.h" /* enable for debugging */
 #endif
 
+static mpq_t *one = NULL;
+static mpq_t *none = NULL;
+
 static tvpi_cst_t 
 new_cst ()
 {
@@ -286,6 +289,40 @@ tvpi_create_term (int* coeff, size_t n)
   return t;
 }
 
+
+int 
+tvpi_term_size (tvpi_term_t t)
+{
+  return IS_VAR (t->var [1]) ? 2 : 1;
+}
+
+int 
+tvpi_term_get_var (tvpi_term_t t, int i)
+{
+  assert (0 <= i && i <= 1);
+  return t->var [i];
+}
+
+
+tvpi_cst_t 
+tvpi_term_get_coeff (tvpi_term_t t, int i)
+{
+  
+  assert (0 <= i && i <= 1);
+
+  /* second coefficient is kept explicitly */
+  if (i == 1) return t->coeff;
+  
+  /* see if this is a term with explicit first coefficient */
+  if (t->fst_coeff != NULL) return t->fst_coeff;
+  
+  /* absolute value of the first coefficient is 1, the sign is in t->sgn */
+  return t->sgn > 0 ? one : none;
+}
+
+
+
+
 bool
 tvpi_term_equlas (tvpi_term_t t1, tvpi_term_t t2)
 {
@@ -498,6 +535,20 @@ tvpi_get_term (tvpi_cons_t c)
 {
   return c;
 }
+
+signed long int
+tvpi_cst_get_si_num (tvpi_cst_t c)
+{
+  return mpz_get_si (mpq_numref (*c));
+}
+
+signed long int
+tvpi_cst_get_si_den (tvpi_cst_t c)
+{
+  return mpz_get_si (mpq_denref (*c));
+}
+
+
 
 tvpi_cst_t 
 tvpi_dup_cst (tvpi_cst_t k)
@@ -1200,6 +1251,20 @@ tvpi_create_theory (size_t vn)
 	t->map [i][j] = NULL;
     }
   
+
+  if (one == NULL)
+    {
+      one = new_cst ();
+      mpq_init (*one);
+      mpq_set_si (*one, 1, 1);
+    }
+  
+  if (none == NULL)
+    {
+      none = new_cst ();
+      mpq_init (*none);
+      mpq_set_si (*none, -1, 1);
+    }
   
   
   t->base.create_int_cst =  (constant_t(*)(int)) tvpi_create_si_cst;
@@ -1219,6 +1284,10 @@ tvpi_create_theory (size_t vn)
   t->base.create_linterm_sparse = 
     (linterm_t(*)(int*,int*,size_t))tvpi_create_term_sparse;
   
+  t->base.term_size = (int(*)(linterm_t))tvpi_term_size;
+  t->base.term_get_var = (int(*)(linterm_t,int))tvpi_term_get_var;
+  t->base.term_get_coeff = (constant_t(*)(linterm_t,int))tvpi_term_get_coeff;
+  
   t->base.dup_term = (linterm_t(*)(linterm_t))tvpi_dup_term;
   t->base.term_equals = (int(*)(linterm_t,linterm_t))tvpi_term_equlas;
   t->base.term_has_var = (int(*)(linterm_t,int)) tvpi_term_has_var;
@@ -1234,6 +1303,9 @@ tvpi_create_theory (size_t vn)
   t->base.create_cons = (lincons_t(*)(linterm_t,int,constant_t))tvpi_create_cons;
   t->base.is_strict = (bool(*)(lincons_t))tvpi_is_strict;
   t->base.get_term = (linterm_t(*)(lincons_t))tvpi_get_term;
+  t->base.cst_get_si_num = (signed long int(*)(constant_t))tvpi_cst_get_si_num;
+  t->base.cst_get_si_den = (signed long int(*)(constant_t))tvpi_cst_get_si_den;
+  
   t->base.get_constant = (constant_t(*)(lincons_t))tvpi_get_cst;
   t->base.negate_cons = (lincons_t(*)(lincons_t))tvpi_negate_cons;
   t->base.is_negative_cons = (int(*)(lincons_t))tvpi_is_neg_cons;
