@@ -50,6 +50,16 @@ struct theory
   /** Create a double constant */
   constant_t (*create_double_cst) (double v);
 
+
+  /**
+   * Returns numerator of a rational constant as a signed long
+   */
+  signed long int (*cst_get_si_num)(constant_t c);
+  /**
+   * Returns denominator of a rational constant as a signed long 
+   */
+  signed long int (*cst_get_si_den)(constant_t c);
+
   /** Duplicate a constant */
   constant_t (*dup_cst) (constant_t c);
 
@@ -80,6 +90,23 @@ struct theory
    * coefficients.
    */
   linterm_t (*create_linterm)(int* coeffs, size_t n);
+
+  /**
+   * Returns the size, number of variables with non-zero coefficients, of a term
+   */
+  int (*term_size)(linterm_t t);
+  
+  /**
+   * Returns ith variable with a non-zero coefficient.
+   * Requires:  0 <= i <= term_size (t)
+   */
+  int (*term_get_var)(linterm_t t, int i);
+  
+  /**
+   * Returns the coefficient of the ith variable with a non-zero
+   * coefficient.  Requires: 0 <= i <= term_size (t)
+   */  
+  constant_t (*term_get_coeff)(linterm_t, int i);
 
   /**
    * Creates a term coeff[0]*var[0] + ... + coeff[n]*var[n]. An
