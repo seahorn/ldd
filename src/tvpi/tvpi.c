@@ -1030,7 +1030,7 @@ tvpi_ensure_capacity (tvpi_theory_t *t, int var)
   if (var < t->size) return;
 
   /* need to re-allocate */
-  new_size = var + 1;
+  new_size = var + 10;
   new_map = (tvpi_list_node_t***) 
     malloc (sizeof (tvpi_list_node_t**) * new_size);
   assert (new_map != NULL && "Unexpected out of memory");
