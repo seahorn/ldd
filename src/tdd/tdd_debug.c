@@ -160,22 +160,24 @@ tdd_support_var_occurrences (tdd_manager *tdd,
   linterm_t vTerm, uTerm;
 
   int reorderEnabled;
-  
-  /* reorderEnabled = Cudd_ReorderingStatus (CUDD, &type); */
-  /* if (reorderEnabled) */
-  /*   Cudd_AutodynDisable (CUDD); */
+
+  /* no variables in the constant node */
+  if (Cudd_IsConstant (n)) return;
   
   reorderEnabled = tdd->cudd->autoDyn;
   tdd->cudd->autoDyn = 0;
 
-  /* no variables in the constant node */
-  if (Cudd_IsConstant (n)) return;
 
   /* compute the support. 
    * XXX This calls malloc. May be inefficient */
   S = Cudd_Support (CUDD, n);
 
-  if (S == NULL) return;  
+  if (S == NULL) 
+    { 
+      tdd->cudd->autoDyn = reorderEnabled;
+      return;
+    }
+  
   cuddRef (S);
 
 
@@ -215,8 +217,6 @@ tdd_support_var_occurrences (tdd_manager *tdd,
 
   tdd->cudd->autoDyn = reorderEnabled;
 
-  /* if (reorderEnabled) */
-  /*   Cudd_AutodynEnable (CUDD, type); */
 }
 
 
