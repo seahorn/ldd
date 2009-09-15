@@ -17,6 +17,16 @@ tdd_get_cudd (tdd_manager *tdd)
   return tdd->cudd;
 }
 
+/**
+ * Returns a linear constraint at the root of a given node.
+ */
+lincons_t 
+tdd_get_cons (tdd_manager *tdd, tdd_node *node)
+{
+  return tddC(tdd,Cudd_Regular(node)->index);
+}
+
+
 
 /**
  * Returns TDD for TRUE
