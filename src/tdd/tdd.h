@@ -278,6 +278,9 @@ struct theory
 #define tdd_nodeset_deref(X) Cudd_Deref(X)
 #define tdd_nodeset_recursiveDeref(T,X) Cudd_IterDerefBbd(T->cudd,X)
 
+#define tdd_T(X) Cudd_T(X)
+#define tdd_E(X) Cudd_E(X)
+#define tdd_regular(X) Cudd_Regular(X)
 tdd_manager* tdd_init (DdManager *cudd, theory_t * t);
 void tdd_quit (tdd_manager* tdd);
 
@@ -333,6 +336,7 @@ tdd_nodeset* tdd_nodeset_add (tdd_manager*, tdd_nodeset*, tdd_node*);
 int tdd_print_minterm(tdd_manager*, tdd_node*);
 
 DdManager * tdd_get_cudd (tdd_manager *);
+  lincons_t tdd_get_cons (tdd_manager*, tdd_node*);
 /* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
 
 #ifdef __cplusplus
