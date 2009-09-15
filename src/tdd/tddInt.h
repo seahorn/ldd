@@ -35,6 +35,11 @@ struct tdd_manager
   theory_t* theory;
 };
 
+/**
+ * Extracts a constraint corresponding to a given index
+ */
+#define tddC(tdd,index) ((index)>=tdd->varsSize?NULL:(tdd)->ddVars[(index)])
+
 
 tdd_node* tdd_unique_inter (tdd_manager *m, unsigned int idx, 
 			    tdd_node *n1, tdd_node* n2);
