@@ -153,7 +153,7 @@ tvpi_terms_have_resolvent (tvpi_term_t t1, tvpi_term_t t2, int x)
 
   /* compute sign of x in t1 */
   if (t1->var[0] == x) sgn_x_in_t1 = t1->sgn;
-  else if (IS_VAR(t1->var[1]) &&t1->var [1] == x) 
+  else if (IS_VAR(t1->var[1]) && t1->var [1] == x) 
     sgn_x_in_t1 = mpq_sgn (*t1->coeff);
   
   /* no x in t1, can't resolve */
@@ -162,13 +162,13 @@ tvpi_terms_have_resolvent (tvpi_term_t t1, tvpi_term_t t2, int x)
   /* compute sign of x in t2 */
   if (t2->var[0] == x) sgn_x_in_t2 = t2->sgn;
   else if (IS_VAR(t2->var[1]) && t2->var [1] == x) 
-    sgn_x_in_t2 = mpq_sgn (*t1->coeff);
+    sgn_x_in_t2 = mpq_sgn (*t2->coeff);
   
   /* no x in t2, can't resolve */
   if (sgn_x_in_t2 == 0) return 0;
 
   /* sign of x differs in t1 and t2, so can resolve */
-  if (sgn_x_in_t1 != sgn_x_in_t2) return 1;
+  if (sgn_x_in_t1 * sgn_x_in_t2 < 0) return 1;
 
   /* x has the same sign in both t1 and t2. Can resolve t1 and -t2, but only if 
    * t1 != t2 
@@ -780,8 +780,8 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
       mpq_t v;
       mpq_init (v);
       mpq_abs (v, *c2->coeff);
-      mpq_mul (*c1->fst_coeff, *c1->fst_coeff, v);
-      mpq_mul (*c1->cst, *c1->cst, v);
+      mpq_mul (*c->fst_coeff, *c->fst_coeff, v);
+      mpq_mul (*c->cst, *c->cst, v);
       mpq_clear (v);
     }
   
@@ -798,7 +798,7 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
       mpq_init (u);
 
       mpq_abs (v, *c1->coeff);
-      mpq_mul (*c1->coeff, *c1->coeff, v);
+      mpq_mul (*c->coeff, *c->coeff, v);
 
       mpq_mul (u, v, *c2->cst);
       mpq_add (*c->cst, *c->cst, u);
@@ -860,7 +860,7 @@ tvpi_convert_q_to_z (tvpi_cons_t c)
 {
   /* new constant */
   mpq_t k;
-  
+
   /* input constraint is of the form 
    * +-x + (n/d)*y op z, where op is < or <=
    * 
@@ -958,6 +958,12 @@ tvpi_z_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 tvpi_cons_t
 tvpi_convert_uq_to_uz (tvpi_cons_t r)
 {
+
+  assert (!IS_VAR (r->var[1]) || 
+	  (mpz_cmp_si (mpq_denref (*r->coeff), 1) == 0 &&
+	   mpz_cmpabs_ui (mpq_numref (*r->coeff), 1) == 0));
+  assert (mpz_cmp_si (mpq_denref (*r->cst), 1) == 0);
+
   if (r->op == LT)
     {
       /* using (n/d)-1 == (n-d)/d 
@@ -990,8 +996,10 @@ tvpi_uz_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
 {
   tvpi_cons_t c;
   /* check that the coefficient in t and constant k are integers */
-  assert (!IS_VAR (t->var[1]) || mpz_cmp_si (mpq_denref (*t->coeff), 1) == 0);
-  assert (mpz_cmp_si (mpq_denref (*k), 1) == 0);
+  /* assert (!IS_VAR (t->var[1]) ||  */
+  /* 	  (mpz_cmp_si (mpq_denref (*t->coeff), 1) == 0 && */
+  /* 	   mpz_cmpabs_ui (mpq_numref (*t->coeff), 1) == 0)); */
+  /* assert (mpz_cmp_si (mpq_denref (*k), 1) == 0); */
 
   c = tvpi_create_cons (t, s, k);
   if (c == NULL) return NULL;
@@ -1396,7 +1404,8 @@ tvpi_create_utvpiz_theory (size_t vn)
    * The unique feature of UTVPI(Z) is that t < k is equivalent to t <= (k-1).
    * These following functions ensure that no strict inequalities are created.
    */
-  t->base.create_cons = (lincons_t(*)(linterm_t,int,constant_t))tvpi_uz_create_cons;
+  t->base.create_cons = 
+    (lincons_t(*)(linterm_t,int,constant_t))tvpi_uz_create_cons;
   t->base.negate_cons = (lincons_t(*)(lincons_t))tvpi_uz_negate_cons;  
   t->base.resolve_cons = (lincons_t(*)(lincons_t,lincons_t,int))tvpi_uz_resolve_cons;
 
