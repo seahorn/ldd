@@ -643,7 +643,13 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 
   /* set to >0 if the magnitude of the coefficient of x is the same in c1 and c2 */
   int same_coeff;
-  
+
+  /* fprintf (stderr, "Resolving on %d c1: ", x); */
+  /* tvpi_print_cons (stderr, c1); */
+  /* fprintf (stderr, " with c2: "); */
+  /* tvpi_print_cons (stderr, c2); */
+  /* fprintf (stderr, "\n"); */
+
   assert (c1->var[0] == x || (IS_VAR(c1->var[1]) && c1->var[1] == x));
   assert (c2->var[0] == x || (IS_VAR(c2->var[1]) && c2->var[1] == x));
 
@@ -700,13 +706,13 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 	}
       else
 	{ 
+	  /* let c1: -x <= k, c2: x + n*y <= m
+	   * resolvent is:  sgn(n) * y <= (m+k)/|n|
+	   */
 	  mpq_t tmp;
 	  c->sgn = mpq_sgn (*c2->coeff);
 	  
-	  /* let c1: -x = k, c2: x +n*y <= m
-	   * resolvent is:  sgn(n) * y <= (m+k)/|n|
-	   */
-	  mpq_abs (*c->cst, *c->coeff);
+	  mpq_abs (*c->cst, *c2->coeff);
 	  mpq_inv (*c->cst, *c->cst);
 
 	  mpq_init (tmp);
@@ -823,6 +829,7 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 
   if (mpq_cmp_si (*c->fst_coeff, 1, 1) != 0)
     {
+      fprintf (stderr, "Got here\n");
       /* divide everything by first coefficient */
       if (IS_VAR (c->var [1]))
 	mpq_div (*c->coeff, *c->coeff, *c->fst_coeff);
