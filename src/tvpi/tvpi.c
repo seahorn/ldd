@@ -518,7 +518,6 @@ tvpi_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
       tvpi_destroy_cst (t->fst_coeff);
       t->fst_coeff = NULL;
     }
-
   return (tvpi_cons_t)t;
 }
 
@@ -1145,12 +1144,14 @@ tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
    */
   
   /* p->cons equals c */
-  if (i == 0 && j == 0)
+  if (i == 0 && j == 0 && p->cons->op == c->op)
     {
       return p->dd;
     }
   /* c precedes p->cons, insert before p->cons */
-  else if (i > 0 || (i == 0 && j > 0))
+  else if (i > 0 || // c->coeff < p->cons->coeff
+	   (i == 0 && j > 0) ||  // c->cst < p->cons->cst
+	   (i == 0 && j == 0 && c->op == LT)) // c->op < p->cons->op
     {
       tvpi_list_node_t *n;
       
@@ -1183,7 +1184,9 @@ tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
       return n->dd;	  
     }
   /* p->cons precedes c */
-  else if (i < 0 || (i == 0 && j < 0))
+  else if (i < 0 || 
+	   (i == 0 && j < 0) || 
+	   (i == 0 && j == 0 && p->cons->op == LT))
     {
       tvpi_list_node_t *n;
       
@@ -1454,7 +1457,7 @@ tvpi_to_oct (tvpi_cons_t c1)
   
   oct = (oct_cons_t*) malloc (sizeof (oct_cons_t));
 
-  oct->strict = (c1-> == LT);
+  oct->strict = (c1->op == LT);
   
   oct->term.var1 = c1->var[0];
   oct->term.var2 = c1->var[1];
