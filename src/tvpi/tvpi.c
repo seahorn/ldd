@@ -1089,6 +1089,9 @@ tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
   int var0, var1;
   int i,j;
   
+  /* initialize j */
+  j = -1;
+  
   var0 = c->var[0];
   /* if there is no second variable, use var0 */
   var1 = IS_VAR (c->var [1]) ? c->var[1] : var0;

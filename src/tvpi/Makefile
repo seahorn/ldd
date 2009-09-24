@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -I../../cudd-2.4.1/include -I../include -g -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
+CFLAGS = -Wall -I../../cudd-2.4.1/include -I../include -O6 -g -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
 AR = ar -rcs 
 OBJS = tvpi.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
