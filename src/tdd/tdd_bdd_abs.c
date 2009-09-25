@@ -74,12 +74,16 @@ tdd_terms_with_vars (tdd_manager *tdd,
       if (THEORY->term_has_vars (THEORY->get_term (tdd->ddVars [i]), vars))
 	{
 	  tdd_nodeset *tmp;
-
-	  tmp = tdd_nodeset_add (tdd, res, CUDD->vars [i]);
+	  
+	  //assert (is_valid_nodeset (tdd, res) && "Before ADD");
+	  //tmp = tdd_nodeset_add (tdd, res, CUDD->vars [i]);
+	  tmp = tdd_nodeset_union (tdd, tdd_to_nodeset (CUDD->vars [i]), res);
+	  //assert (is_valid_nodeset (tdd, tmp) && "After ADD");
 	  if (tmp != NULL) cuddRef (tmp);
 	  Cudd_IterDerefBdd (CUDD, res);
 	  if (tmp == NULL) return NULL;
 	  res = tmp;
+	  //assert (is_valid_nodeset (tdd, res) && "END OF LOOP");
 	}
     }
 

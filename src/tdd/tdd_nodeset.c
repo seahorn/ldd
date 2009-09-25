@@ -17,13 +17,33 @@ tdd_nodeset *
 tdd_nodeset_union (tdd_manager* tdd, tdd_nodeset *f, tdd_nodeset* g)
 {
   DdNode *res;
+  int rs = CUDD->autoDyn;
+  CUDD->autoDyn = 0;
   
   do 
     {
       CUDD->reordered = 0;
       res = tdd_nodeset_union_recur (tdd, f, g);
     } while (CUDD->reordered == 1);
+  
+  CUDD->autoDyn = rs;
   return res;
+}
+
+int
+tdd_is_valid_nodeset (tdd_manager *tdd, tdd_nodeset *f)
+{
+  tdd_node *r;
+
+  r = f;
+  while (r != DD_ONE(CUDD))
+    {
+      assert (Cudd_Regular (r) == r && "NODESETs are positive ");
+      assert (cuddT(r) == DD_ONE(CUDD) && "NON 1 THEN CHILD");
+      assert (Cudd_Regular (cuddE(r)) != cuddE(r) && "ELSE must be negated");
+      r = Cudd_Regular (cuddE (r));
+    }
+  return 1;
 }
 
 
@@ -56,7 +76,8 @@ tdd_nodeset_union_recur (tdd_manager* tdd, tdd_nodeset *f, tdd_nodeset *g)
   if (f->ref != 1 || g->ref != 1)
     {
       res = cuddCacheLookup2 (CUDD, (DD_CTFP)tdd_nodeset_union, f, g);
-      if (res !=  NULL) return res;
+      if (res !=  NULL) 
+	return res;
     }
   
 

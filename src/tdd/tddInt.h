@@ -83,4 +83,6 @@ tdd_node* tdd_term_constrain_recur (tdd_manager*, tdd_node*,
 				    DdHashTable*);
 tdd_nodeset* tdd_nodeset_union_recur(tdd_manager*, tdd_nodeset*, tdd_nodeset*);
 
+int tdd_is_valid_nodeset (tdd_manager*, tdd_nodeset*);
+
 #endif
