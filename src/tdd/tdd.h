@@ -46,7 +46,7 @@ struct theory
   /* Create an integer constant. */
   constant_t (*create_int_cst) (int v);
   /** Create a rational constant */
-  constant_t (*create_rat_cst) (int n, int d);
+  constant_t (*create_rat_cst) (long n, long d);
   /** Create a double constant */
   constant_t (*create_double_cst) (double v);
 
@@ -114,7 +114,9 @@ struct theory
    *
    * Requires: var is sorted; length of var = length of coeff = n;   
    */
-  linterm_t (*create_linterm_sparse)(int* var, int* coeff, size_t n);
+  linterm_t (*create_linterm_sparse_si)(int* var, int* coeff, size_t n);
+  linterm_t (*create_linterm_sparse)(int* var, constant_t* coeff, size_t n);
+
 
   /** Duplicate a term */
   linterm_t (*dup_term) (linterm_t t);
