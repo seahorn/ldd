@@ -46,7 +46,7 @@ tvpi_create_si_cst (int v)
 }
 
 tvpi_cst_t 
-tvpi_create_si_rat_cst (int num, int den)
+tvpi_create_si_rat_cst (long num, long den)
 {
   mpq_t *r;
   r = new_cst ();
@@ -201,7 +201,7 @@ tvpi_destroy_cst (tvpi_cst_t k)
  * Requires: var is sorted; length of var = length of coeff = n; 1 <= n <= 2;1
  */
 tvpi_term_t 
-tvpi_create_term_sparse (int* var, int* coeff, size_t n)
+tvpi_create_term_sparse_si (int* var, int* coeff, size_t n)
 {
   tvpi_term_t t;
   /* absolute value of the coefficient of var [0] */
@@ -228,6 +228,48 @@ tvpi_create_term_sparse (int* var, int* coeff, size_t n)
 
   if (IS_VAR (t->var [1]))
     t->coeff = tvpi_create_si_cst (coeff [1]);
+  else
+    {
+      t->coeff = new_cst ();
+      mpq_init (*t->coeff);
+    }
+
+  return t;
+}
+
+/** same as tvpi_create_term_sparse, but takes array of constants as
+    coefficients instead of array of ints*/
+tvpi_term_t tvpi_create_term_sparse (int* var, tvpi_cst_t* coeff, size_t n) 
+{ 
+
+  tvpi_term_t t;
+  assert (n >=1 && n <= 2 && 
+	  "More than 2 variables in inequality");
+  assert ((n == 1 || (var [0] < var [1])) && "Variables must be ordered");
+  assert (coeff [0] != NULL && "First coefficient cannot be NULL");
+  assert (mpz_cmpabs_ui (mpq_numref (*coeff[0]), 0) != 0 && 
+	  "First coefficient must be non-zero");
+
+  t = new_term ();
+  if (t == NULL) return NULL;
+
+  t->var [0] = var[0];
+  t->var [1] = n == 2 ? var [1] : -1;
+  
+  t->sgn = coeff [0] < 0 ? -1 : 1;
+  t->sgn = mpq_sgn (*coeff [0]);
+
+  mpq_abs (*coeff [0], *coeff [0]);
+  if (mpq_cmp_ui (*coeff [0], 1, 1) == 0)
+    {
+      t->fst_coeff = NULL;
+      tvpi_destroy_cst (coeff [0]);
+    }
+  else
+    t->fst_coeff = coeff [0];
+
+  if (IS_VAR (t->var [1]))
+    t->coeff = coeff [1];
   else
     {
       t->coeff = new_cst ();
@@ -828,7 +870,6 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 
   if (mpq_cmp_si (*c->fst_coeff, 1, 1) != 0)
     {
-      fprintf (stderr, "Got here\n");
       /* divide everything by first coefficient */
       if (IS_VAR (c->var [1]))
 	mpq_div (*c->coeff, *c->coeff, *c->fst_coeff);
@@ -1289,7 +1330,7 @@ tvpi_create_theory (size_t vn)
   
   
   t->base.create_int_cst =  (constant_t(*)(int)) tvpi_create_si_cst;
-  t->base.create_rat_cst = (constant_t(*)(int,int)) tvpi_create_si_rat_cst;
+  t->base.create_rat_cst = (constant_t(*)(long,long)) tvpi_create_si_rat_cst;
   t->base.create_double_cst = (constant_t(*)(double)) tvpi_create_d_cst;
   t->base.dup_cst = (constant_t(*)(constant_t)) tvpi_dup_cst;
   t->base.negate_cst = (constant_t(*)(constant_t)) tvpi_negate_cst;
@@ -1303,7 +1344,10 @@ tvpi_create_theory (size_t vn)
 
   t->base.create_linterm = (linterm_t(*)(int*,size_t))tvpi_create_term;
   t->base.create_linterm_sparse = 
-    (linterm_t(*)(int*,int*,size_t))tvpi_create_term_sparse;
+    (linterm_t(*)(int*,constant_t*,size_t))tvpi_create_term_sparse;
+  t->base.create_linterm_sparse_si = 
+    (linterm_t(*)(int*,int*,size_t))tvpi_create_term_sparse_si;
+
   
   t->base.term_size = (int(*)(linterm_t))tvpi_term_size;
   t->base.term_get_var = (int(*)(linterm_t,int))tvpi_term_get_var;
