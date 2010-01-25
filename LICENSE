@@ -1,0 +1,54 @@
+Copyright (c) 2009 Carnegie Mellon University.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+     notice, this list of conditions and the following disclaimer.
+
+   * Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in
+     the documentation and/or other materials provided with the
+     distribution.
+
+   * Neither the name of Carnegie Mellon University nor the Software
+     Engineering Institute and its employees may be used to endorse or
+     promote products derived from this software without specific
+     prior written permission from permission@sei.cmu.edu.
+
+NO WARRANTY
+ANY SOFTWARE, INFORMATION, MATERIALS, SERVICES, INTELLECTUAL PROPERTY
+OR OTHER PROPERTY OR RIGHTS GRANTED OR PROVIDED BY CARNEGIE MELLON
+PURSUANT TO THIS AGREEMENT (HEREINAFTER THE "DELIVERABLES") ARE ON AN
+"AS-IS" BASIS. CARNEGIE MELLON MAKES NO WARRANTIES OF ANY KIND, EITHER
+EXPRESS OR IMPLIED AS TO ANY MATTER INCLUDING, BUT NOT LIMITED TO,
+WARRANTY OF FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY,
+INFORMATIONAL CONTENT, NONINFRINGEMENT, OR ERROR-FREE
+OPERATION. CARNEGIE MELLON SHALL NOT BE LIABLE FOR ANY DAMAGES
+WHATSOEVER, REGARDLESS OF WHETHER CARNEGIE MELLON WAS AWARE OF THE
+POSSIBILITY OF SUCH DAMAGES.  YOU AGREE THAT YOU WILL NOT MAKE ANY
+WARRANTY ON BEHALF OF CARNEGIE MELLON, EXPRESS OR IMPLIED, TO ANY
+PERSON CONCERNING THE APPLICATION OF OR THE RESULTS TO BE OBTAINED
+WITH THE DELIVERABLES UNDER THIS AGREEMENT.
+
+By using this software, you hereby agree to defend, indemnify, and
+hold harmless Carnegie Mellon, its trustees, officers, employees, and
+agents from all claims or demands made against them (and any related
+losses, expenses, or attorney's fees) arising out of, or relating to
+Licensee's and/or its sub licensees' negligent use or willful misuse
+of or negligent conduct or willful misconduct regarding the Software,
+facilities, or other rights or assistance granted by Carnegie Mellon
+under this Agreement, including, but not limited to, any claims of
+product liability, personal injury, death, damage to property, or
+violation of any laws or regulations.
+
+Carnegie Mellon University Software Engineering Institute authored
+materials are sponsored by the U.S. Department of Defense under
+Contract F19628-00-C-0003. Carnegie Mellon University retains
+copyrights in all material produced under this contract. The
+U.S. Government retains a non-exclusive, royalty-free license to
+publish or reproduce these materials, or allow others to do so, for
+U.S. Government purposes only pursuant to the copyright license under
+the contract clause at 252.227.7013.
