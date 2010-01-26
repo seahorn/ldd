@@ -1,7 +1,6 @@
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
-#include "tdd-ddd.h"
 #include "tvpi.h"
 
 #include <stdio.h>
@@ -44,8 +43,6 @@ int main(int argc, char** argv)
     t = tvpi_create_theory (3);
   else if (t_type == 5)
     t = tvpi_create_utvpiz_theory (3);
-  else
-    t = ddd_create_int_theory (3);
 
   tdd = tdd_init (cudd, t);
 
@@ -130,8 +127,6 @@ int main(int argc, char** argv)
   tdd_quit (tdd);
   if (t_type == 2 || t_type == 5)
     tvpi_destroy_theory (t);
-  else
-    ddd_destroy_theory (t);
   Cudd_Quit (cudd);
   
   return 0;

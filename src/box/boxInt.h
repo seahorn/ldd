@@ -14,7 +14,6 @@
 #include <string.h>
 #include <assert.h>
 #include <gmp.h>
-#include "tdd-tvpi.h"
 #include "tddInt.h"
 
 #ifdef __cplusplus

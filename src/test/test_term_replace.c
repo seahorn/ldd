@@ -1,7 +1,6 @@
 #include "util.h"
 #include "cudd.h"
 #include "tdd.h"
-#include "tdd-ddd.h"
 #include "tvpi.h"
 
 #include <stdio.h>
@@ -126,8 +125,6 @@ int main(int argc, char** argv)
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
   if (t_type == 2)
     t = tvpi_create_theory (3);
-  else
-    t = ddd_create_int_theory (3);
   tdd = tdd_init (cudd, t);
   test0 ();  
 

@@ -26,5 +26,5 @@ $(BINS) : $(TESTLIBS)
 
 -include $(DEPS)
 
-clean :
+clean:
 	rm -f  $(OBJS) $(DEPS) $(BINS)
