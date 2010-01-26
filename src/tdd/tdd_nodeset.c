@@ -1,20 +1,20 @@
 #include "util.h"
 #include "tddInt.h"
 
-tdd_nodeset *
-tdd_emtpy_nodeset (tdd_manager* tdd)
+LddNodeset *
+Ldd_emtpy_nodeset (LddManager* tdd)
 {
-  return (tdd_nodeset*) tdd_get_true (tdd);
+  return (LddNodeset*) Ldd_GetTrue (tdd);
 }
 
-tdd_nodeset * 
-tdd_nodeset_add (tdd_manager* tdd, tdd_nodeset* s, tdd_node *f)
+LddNodeset * 
+LddNodeset_add (LddManager* tdd, LddNodeset* s, LddNode *f)
 {
-  return tdd_nodeset_union (tdd, tdd_to_nodeset (f), s);
+  return LddNodeset_union (tdd, Ldd_NodeToNodeset (f), s);
 }
 
-tdd_nodeset *
-tdd_nodeset_union (tdd_manager* tdd, tdd_nodeset *f, tdd_nodeset* g)
+LddNodeset *
+LddNodeset_union (LddManager* tdd, LddNodeset *f, LddNodeset* g)
 {
   DdNode *res;
   int rs = CUDD->autoDyn;
@@ -23,7 +23,7 @@ tdd_nodeset_union (tdd_manager* tdd, tdd_nodeset *f, tdd_nodeset* g)
   do 
     {
       CUDD->reordered = 0;
-      res = tdd_nodeset_union_recur (tdd, f, g);
+      res = LddNodeset_union_recur (tdd, f, g);
     } while (CUDD->reordered == 1);
   
   CUDD->autoDyn = rs;
@@ -31,9 +31,9 @@ tdd_nodeset_union (tdd_manager* tdd, tdd_nodeset *f, tdd_nodeset* g)
 }
 
 int
-tdd_is_valid_nodeset (tdd_manager *tdd, tdd_nodeset *f)
+Ldd_is_valid_nodeset (LddManager *tdd, LddNodeset *f)
 {
-  tdd_node *r;
+  LddNode *r;
 
   r = f;
   while (r != DD_ONE(CUDD))
@@ -47,11 +47,11 @@ tdd_is_valid_nodeset (tdd_manager *tdd, tdd_nodeset *f)
 }
 
 
-tdd_nodeset * 
-tdd_nodeset_union_recur (tdd_manager* tdd, tdd_nodeset *f, tdd_nodeset *g)
+LddNodeset * 
+LddNodeset_union_recur (LddManager* tdd, LddNodeset *f, LddNodeset *g)
 {
-  tdd_node *fnv, *gnv;
-  tdd_node *res, *e;
+  LddNode *fnv, *gnv;
+  LddNode *res, *e;
   unsigned topf, topg, index;
 
   assert (Cudd_Regular (f) == f);
@@ -75,7 +75,7 @@ tdd_nodeset_union_recur (tdd_manager* tdd, tdd_nodeset *f, tdd_nodeset *g)
 
   if (f->ref != 1 || g->ref != 1)
     {
-      res = cuddCacheLookup2 (CUDD, (DD_CTFP)tdd_nodeset_union, f, g);
+      res = cuddCacheLookup2 (CUDD, (DD_CTFP)LddNodeset_union, f, g);
       if (res !=  NULL) 
 	return res;
     }
@@ -105,18 +105,18 @@ tdd_nodeset_union_recur (tdd_manager* tdd, tdd_nodeset *f, tdd_nodeset *g)
     gnv = g;
   
 
-  e = tdd_nodeset_union_recur (tdd, fnv, gnv);
+  e = LddNodeset_union_recur (tdd, fnv, gnv);
   if (e == NULL)
     return NULL;
   cuddRef (e);
 
-  res = tdd_unique_inter (tdd, index, DD_ONE(CUDD), Cudd_Not (e));
+  res = Ldd_unique_inter (tdd, index, DD_ONE(CUDD), Cudd_Not (e));
   if (res != NULL) cuddRef (res);
   Cudd_IterDerefBdd (CUDD, e);
   if (res == NULL) return NULL;
   
   if (f->ref != 1 || g->ref != 1)
-    cuddCacheInsert2 (CUDD, (DD_CTFP)tdd_nodeset_union, f, g, res);
+    cuddCacheInsert2 (CUDD, (DD_CTFP)LddNodeset_union, f, g, res);
   
   cuddDeref (res);
   return res;

@@ -3,13 +3,13 @@
 
 static int bin_false (lincons_t, lincons_t);
 
-tdd_manager * 
-tdd_init (DdManager *cudd, theory_t * t)
+LddManager * 
+Ldd_Init (DdManager *cudd, theory_t * t)
 {
-  tdd_manager* tdd;
+  LddManager* tdd;
   int i;
   
-  tdd = ALLOC(tdd_manager, 1);
+  tdd = ALLOC(LddManager, 1);
   if (tdd == NULL) return 0;
   
 
@@ -31,13 +31,13 @@ tdd_init (DdManager *cudd, theory_t * t)
     tdd->ddVars [i] = NULL;
 
   /* add a hook to fix MTR tree after variable reordering */
-  Cudd_AddHook (CUDD, &tdd_fix_mtr_tree, CUDD_POST_REORDERING_HOOK);
+  Cudd_AddHook (CUDD, &Ldd_fix_mtr_tree, CUDD_POST_REORDERING_HOOK);
   
   return tdd;
 }
 
 void 
-tdd_quit (tdd_manager * tdd)
+Ldd_Quit (LddManager * tdd)
 {
   if (tdd->ddVars != NULL)
     {
@@ -56,8 +56,8 @@ tdd_quit (tdd_manager * tdd)
 }
 
 
-tdd_node* 
-to_tdd (tdd_manager *tdd, lincons_t l)
+LddNode* 
+to_tdd (LddManager *tdd, lincons_t l)
 {
   return THEORY->to_tdd(tdd, l);
 }
@@ -68,14 +68,14 @@ to_tdd (tdd_manager *tdd, lincons_t l)
  * are syntactic.
  */
 theory_t *
-tdd_syntactic_implication_theory (theory_t *t)
+Ldd_SyntacticImplicationTheory (theory_t *t)
 {
   t->is_stronger_cons = bin_false;
   return t;
 }
 
-tdd_manager *
-tdd_bddlike_manager (tdd_manager *tdd)
+LddManager *
+Ldd_BddlikeManager (LddManager *tdd)
 {
   tdd->be_bddlike = 1;
   return tdd;

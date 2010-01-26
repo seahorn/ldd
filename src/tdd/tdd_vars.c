@@ -1,18 +1,18 @@
 #include "util.h"
 #include "tddInt.h"
 
-static tdd_node * tdd_assoc_node (tdd_manager *, tdd_node *, lincons_t);
-static void tdd_update_cudd_mtr_tree (DdManager *, tdd_node *, tdd_node * );
+static LddNode * Ldd_assoc_node (LddManager *, LddNode *, lincons_t);
+static void Ldd_update_cudd_mtr_tree (DdManager *, LddNode *, LddNode * );
 
-/* static void tdd_debug_print_mtr (MtrNode* tree);*/
+/* static void Ldd_debug_print_mtr (MtrNode* tree);*/
 
 
 /**
- * Returns DdManager corresponding to a tdd_manager.
+ * Returns DdManager corresponding to a LddManager.
  * Can be used to call CUDD functions directly.
  */
 DdManager * 
-tdd_get_cudd (tdd_manager *tdd)
+Ldd_get_cudd (LddManager *tdd)
 {
   return tdd->cudd;
 }
@@ -21,7 +21,7 @@ tdd_get_cudd (tdd_manager *tdd)
  * Returns a linear constraint at the root of a given node.
  */
 lincons_t 
-tdd_get_cons (tdd_manager *tdd, tdd_node *node)
+Ldd_get_cons (LddManager *tdd, LddNode *node)
 {
   return tddC(tdd,Cudd_Regular(node)->index);
 }
@@ -31,8 +31,8 @@ tdd_get_cons (tdd_manager *tdd, tdd_node *node)
 /**
  * Returns TDD for TRUE
  */
-tdd_node *
-tdd_get_true (tdd_manager *tdd)
+LddNode *
+Ldd_GetTrue (LddManager *tdd)
 {
   return DD_ONE (CUDD);
 }
@@ -40,9 +40,9 @@ tdd_get_true (tdd_manager *tdd)
 /**
  * Returns TDD for FALSE
  */
-tdd_node *tdd_get_false (tdd_manager *tdd)
+LddNode *Ldd_GetFalse (LddManager *tdd)
 {
-  return tdd_not (DD_ONE (CUDD));
+  return Ldd_Not (DD_ONE (CUDD));
 }
 
 
@@ -55,10 +55,10 @@ tdd_node *tdd_get_false (tdd_manager *tdd)
  * Side-effect: 
  *  A copy of l is stored
  */
-tdd_node* 
-tdd_new_var (tdd_manager * tdd, lincons_t l)
+LddNode* 
+Ldd_NewVar (LddManager * tdd, lincons_t l)
 {
-  tdd_node * n;
+  LddNode * n;
   int reorderSave;
 
   reorderSave = CUDD->autoDyn;
@@ -69,7 +69,7 @@ tdd_new_var (tdd_manager * tdd, lincons_t l)
   if (n == NULL)
     return NULL;
   
-  n = tdd_assoc_node (tdd, n, l);
+  n = Ldd_assoc_node (tdd, n, l);
 
 #ifdef MTR_DEBUG_FINE
   fprintf (stderr, "Create a new mtr with index %d and level %d\n", n->index, 
@@ -85,20 +85,20 @@ tdd_new_var (tdd_manager * tdd, lincons_t l)
 
 #ifdef MTR_DEBUG_FINE
   assert (Cudd_MtrDebugCheck (CUDD) == 0);
-  tdd_debug_print_mtr (CUDD->tree);
+  Ldd_debug_print_mtr (CUDD->tree);
 #endif
 
   return n;
 }
 
 /**
- * Same as tdd_new_var, but the new variable is at the top of variable
+ * Same as Ldd_NewVar, but the new variable is at the top of variable
  * ordering.
  */
-tdd_node*
-tdd_new_var_at_top (tdd_manager* tdd, lincons_t l)
+LddNode*
+Ldd_NewVarAtTop (LddManager* tdd, lincons_t l)
 {
-  tdd_node *n;
+  LddNode *n;
   int rs;
   
   rs = CUDD->autoDyn;
@@ -109,7 +109,7 @@ tdd_new_var_at_top (tdd_manager* tdd, lincons_t l)
 
   if (n == NULL) return NULL;
   
-  n = tdd_assoc_node (tdd, n, l);
+  n = Ldd_assoc_node (tdd, n, l);
   Cudd_MakeTreeNode (CUDD, n->index, 1, MTR_FIXED);
   
   return n;
@@ -121,17 +121,17 @@ tdd_new_var_at_top (tdd_manager* tdd, lincons_t l)
  * immediately before node v in the DD ordering.
  * 
  */
-tdd_node * 
-tdd_new_var_before (tdd_manager * tdd, tdd_node * v, lincons_t l)
+LddNode * 
+Ldd_NewVarBefore (LddManager * tdd, LddNode * v, lincons_t l)
 {
 
-  tdd_node * n;
+  LddNode * n;
   unsigned int vLevel;
   int reorderSave;
 
 
   if (tdd->be_bddlike)
-    return tdd_new_var (tdd, l);
+    return Ldd_NewVar (tdd, l);
   
   vLevel = cuddI (CUDD, v->index);
 
@@ -144,29 +144,29 @@ tdd_new_var_before (tdd_manager * tdd, tdd_node * v, lincons_t l)
   if (n == NULL) return NULL;
 
 
-  n = tdd_assoc_node (tdd, n, l);
+  n = Ldd_assoc_node (tdd, n, l);
 
 
 #ifdef MTR_DEBUG_FINE
-  fprintf (stderr, "new_var_before: update with level %d\n", vLevel);
+  fprintf (stderr, "new_varBefore: update with level %d\n", vLevel);
 #endif
 
-  tdd_update_cudd_mtr_tree (CUDD, v, n);
+  Ldd_update_cudd_mtr_tree (CUDD, v, n);
 
   return n;
   
 }
 
-tdd_node * 
-tdd_new_var_after (tdd_manager * tdd, tdd_node *v, lincons_t l)
+LddNode * 
+Ldd_NewVarAfter (LddManager * tdd, LddNode *v, lincons_t l)
 {
   
-  tdd_node * n;
+  LddNode * n;
   unsigned int vLevel;
   int reorderSave;
 
   if (tdd->be_bddlike)
-    return tdd_new_var (tdd, l);
+    return Ldd_NewVar (tdd, l);
 
   
   vLevel = cuddI (CUDD, v->index);
@@ -178,22 +178,22 @@ tdd_new_var_after (tdd_manager * tdd, tdd_node *v, lincons_t l)
   
   if (n == NULL) return NULL;
   
-  n = tdd_assoc_node (tdd, n, l);
+  n = Ldd_assoc_node (tdd, n, l);
 
 #ifdef MTR_DEBUG_FINE
-  fprintf (stderr, "new_var_after: update with level %d from index %d\n", 
+  fprintf (stderr, "new_varAfter: update with level %d from index %d\n", 
 	   vLevel, v->index);
 #endif
 
-  tdd_update_cudd_mtr_tree (CUDD, v, n);
+  Ldd_update_cudd_mtr_tree (CUDD, v, n);
   
   return n;
   
 }
 
 
-tdd_node * 
-tdd_assoc_node (tdd_manager * tdd, tdd_node *n, lincons_t l)
+LddNode * 
+Ldd_assoc_node (LddManager * tdd, LddNode *n, lincons_t l)
 {
   int idx;
   int i;
@@ -226,7 +226,7 @@ tdd_assoc_node (tdd_manager * tdd, tdd_node *n, lincons_t l)
  * same group as v
  */
 void 
-tdd_update_cudd_mtr_tree (DdManager *cudd, tdd_node *v, tdd_node *n)
+Ldd_update_cudd_mtr_tree (DdManager *cudd, LddNode *v, LddNode *n)
 {
   MtrNode *tree;
   MtrNode *group;
@@ -253,7 +253,7 @@ tdd_update_cudd_mtr_tree (DdManager *cudd, tdd_node *v, tdd_node *n)
 
   assert (Cudd_MtrDebugCheck (cudd) == 0);
   fprintf (stderr, "BEFORE update_mtr\n");
-  tdd_debug_print_mtr (tree);
+  Ldd_debug_print_mtr (tree);
   fprintf (stderr, "BEFORE update_mtr\n\n");
 #endif
 
@@ -292,7 +292,7 @@ tdd_update_cudd_mtr_tree (DdManager *cudd, tdd_node *v, tdd_node *n)
   
 #ifdef MTR_DEBUG_FINE
   fprintf (stderr, "AFTER update_mtr\n");
-  tdd_debug_print_mtr (tree);
+  Ldd_debug_print_mtr (tree);
   fprintf (stderr, "END update_mtr\n\n");
 #endif
 
@@ -301,7 +301,7 @@ tdd_update_cudd_mtr_tree (DdManager *cudd, tdd_node *v, tdd_node *n)
 
 
 void 
-tdd_debug_print_mtr (MtrNode * tree)
+Ldd_debug_print_mtr (MtrNode * tree)
 {
   MtrNode *group;
   
@@ -314,7 +314,7 @@ tdd_debug_print_mtr (MtrNode * tree)
 }
 
 int
-tdd_fix_mtr_tree (DdManager *table,
+Ldd_fix_mtr_tree (DdManager *table,
 		  const char * str,
 		  void * data)
 {

@@ -6,8 +6,8 @@
 /** multiple-variable eliminations strategy */
 
 
-static tdd_node *drop_single_use_constraints (tdd_manager *,
-					      tdd_node *, 
+static LddNode *drop_single_use_constraints (LddManager *,
+					      LddNode *, 
 					      int * , size_t, 
 					      int *, int *);
 static int choose_var_idx (int *, size_t , int *);
@@ -23,10 +23,10 @@ static int choose_var_idx (int *, size_t , int *);
  * qvars    list of quantified variables
  * qsize    the size of qvars
  */
-tdd_node *
-tdd_mv_exist_abstract (tdd_manager* tdd, tdd_node *n, int * qvars, size_t qsize)
+LddNode *
+Ldd_MvExistAbstract (LddManager* tdd, LddNode *n, int * qvars, size_t qsize)
 {
-  tdd_node * res;
+  LddNode * res;
 
   size_t t_vsize;
   int *occurlist;
@@ -50,7 +50,7 @@ tdd_mv_exist_abstract (tdd_manager* tdd, tdd_node *n, int * qvars, size_t qsize)
   while (1)
     {
       /* itermediate result */
-      tdd_node * tmp;
+      LddNode * tmp;
       /* variable to be eliminated next */
       int v;
 
@@ -58,7 +58,7 @@ tdd_mv_exist_abstract (tdd_manager* tdd, tdd_node *n, int * qvars, size_t qsize)
       if (Cudd_IsConstant (res)) break;
 
       memset (occurlist, 0, sizeof (int) * t_vsize);
-      tdd_support_var_occurrences (tdd, res, occurlist);
+      Ldd_SupportVarOccurrences (tdd, res, occurlist);
       
       memset (varlist, 0, sizeof (int) * t_vsize);
       tmp = drop_single_use_constraints (tdd, res, qvars, qsize, 
@@ -93,7 +93,7 @@ tdd_mv_exist_abstract (tdd_manager* tdd, tdd_node *n, int * qvars, size_t qsize)
       /* no more variables to eliminate, break out */
       if (v < 0) break;
 
-      tmp = tdd_exist_abstract (tdd, res, qvars [v]);
+      tmp = Ldd_ExistAbstract (tdd, res, qvars [v]);
       if (tmp == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, res);
@@ -113,8 +113,8 @@ tdd_mv_exist_abstract (tdd_manager* tdd, tdd_node *n, int * qvars, size_t qsize)
   return res;
 }
 
-static  tdd_node *
-drop_single_use_constraints (tdd_manager *tdd, tdd_node *n, int * qvars, 
+static  LddNode *
+drop_single_use_constraints (LddManager *tdd, LddNode *n, int * qvars, 
 			     size_t qsize, int *occurlist, int *varlist)
 {
   size_t i;
@@ -131,7 +131,7 @@ drop_single_use_constraints (tdd_manager *tdd, tdd_node *n, int * qvars,
       if (occurlist [v] == 1) varlist [v] = 1;
     }
 
-  return tdd_over_abstract (tdd, n, varlist);
+  return Ldd_OverAbstract (tdd, n, varlist);
 }
 
 static int 

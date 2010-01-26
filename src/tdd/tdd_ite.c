@@ -6,56 +6,56 @@ static int bddVarToCanonicalSimple (DdManager *dd, DdNode **fp, DdNode **gp, DdN
 
 
 
-tdd_node * tdd_ite (tdd_manager *tdd, tdd_node *f, tdd_node *g, tdd_node *h)
+LddNode * Ldd_Ite (LddManager *tdd, LddNode *f, LddNode *g, LddNode *h)
 {
-  tdd_node *res;
+  LddNode *res;
   
   do {
     CUDD->reordered = 0;
-    res = tdd_ite_recur (tdd, f, g, h);
+    res = Ldd_ite_recur (tdd, f, g, h);
   } while (CUDD->reordered == 1);
   
   return (res);
 }
 
 
-tdd_node * tdd_and (tdd_manager *tdd, tdd_node * f, tdd_node *g)
+LddNode * Ldd_And (LddManager *tdd, LddNode * f, LddNode *g)
 {
-  tdd_node *res;
+  LddNode *res;
   
   do {
     CUDD->reordered = 0;
-    res = tdd_and_recur (tdd, f, g);
+    res = Ldd_and_recur (tdd, f, g);
   } while (CUDD->reordered == 1);
   return (res);
 }
 
 
 
-tdd_node * tdd_or (tdd_manager* tdd,
-		   tdd_node * f,
-		   tdd_node * g)
+LddNode * Ldd_Or (LddManager* tdd,
+		   LddNode * f,
+		   LddNode * g)
 {
-  tdd_node * res;
+  LddNode * res;
   
   do {
     CUDD->reordered = 0;
-    res = tdd_and_recur (tdd, Cudd_Not (f), Cudd_Not (g));
+    res = Ldd_and_recur (tdd, Cudd_Not (f), Cudd_Not (g));
   } while (CUDD->reordered == 1);
   
   res = Cudd_NotCond (res, res != NULL);
   return (res);
 }
 
-tdd_node * tdd_xor (tdd_manager * tdd,
-		    tdd_node * f,
-		    tdd_node *g)
+LddNode * Ldd_Xor (LddManager * tdd,
+		    LddNode * f,
+		    LddNode *g)
 {
-  tdd_node *res;
+  LddNode *res;
   
   do {
     CUDD->reordered = 0;
-    res = tdd_xor_recur (tdd, f, g);
+    res = Ldd_xor_recur (tdd, f, g);
   } while (CUDD->reordered == 1);
   return (res);
 }
@@ -68,10 +68,10 @@ tdd_node * tdd_xor (tdd_manager * tdd,
  *    f != g 
  *    f == Cudd_Regular (f)
  */
-tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index, 
-			    tdd_node *f, tdd_node *g)
+LddNode* Ldd_unique_inter (LddManager *tdd, unsigned int index, 
+			    LddNode *f, LddNode *g)
 {
-  tdd_node *res, *v, *G;
+  LddNode *res, *v, *G;
 
   assert (f != g);
   assert (f == Cudd_Regular (f));
@@ -96,15 +96,15 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
    ***/
 
   /* XXX It is not clear that this simplification belongs to
-     tdd_unique_inter. We might require the callers to perform the
+     Ldd_unique_inter. We might require the callers to perform the
      check. 
 
-     The reasoning is that the efficiency of tdd_unique_inter is very
+     The reasoning is that the efficiency of Ldd_unique_inter is very
      important. The check is only needed for some methods. Many TDD
-     functions that traverse the TDD, like tdd_and_recur, already
+     functions that traverse the TDD, like Ldd_and_recur, already
      apply the check internally, as part of the traversal algorithm.
 
-     However, currently tdd_ite requires the check. For now, this is
+     However, currently Ldd_Ite requires the check. For now, this is
      safer.
    */
 
@@ -187,10 +187,10 @@ tdd_node* tdd_unique_inter (tdd_manager *tdd, unsigned int index,
 
 
 
-tdd_node * tdd_ite_recur (tdd_manager * tdd,
-			  tdd_node *f,
-			  tdd_node *g,
-			  tdd_node *h)
+LddNode * Ldd_ite_recur (LddManager * tdd,
+			  LddNode *f,
+			  LddNode *g,
+			  LddNode *h)
 {
   DdNode	 *one, *zero, *res;
   DdNode	 *r, *Fv, *Fnv, *Gv, *Gnv, *H, *Hv, *Hnv, *t, *e;
@@ -215,7 +215,7 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
     if (h == zero) {	/* ITE(F,1,0) = F */
       return(f);
     } else {
-      res = tdd_and_recur(tdd,Cudd_Not(f),Cudd_Not(h));
+      res = Ldd_and_recur(tdd,Cudd_Not(f),Cudd_Not(h));
       return(Cudd_NotCond(res,res != NULL));
     }
   } else if (g == zero || f == Cudd_Not(g)) { 
@@ -223,16 +223,16 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
     if (h == one) {		/* ITE(F,0,1) = !F */
       return(Cudd_Not(f));
     } else {
-      res = tdd_and_recur(tdd,Cudd_Not(f),h);
+      res = Ldd_and_recur(tdd,Cudd_Not(f),h);
       return(res);
     }
   }
   if (h == zero || f == h) {    /* ITE(F,G,F) = ITE(F,G,0) = F * G */
-    res = tdd_and_recur(tdd,f,g);
+    res = Ldd_and_recur(tdd,f,g);
     return(res);
   } else if (h == one || f == Cudd_Not(h)) { 
     /* ITE(F,G,!F) = ITE(F,G,1) = !F + G */
-    res = tdd_and_recur(tdd,f,Cudd_Not(g));
+    res = Ldd_and_recur(tdd,f,Cudd_Not(g));
     return(Cudd_NotCond(res,res != NULL));
   }
 
@@ -240,7 +240,7 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
   if (g == h) { 		/* ITE(F,G,G) = G */
     return(g);
   } else if (g == Cudd_Not(h)) { /* ITE(F,G,!G) = F <-> G */
-    res = tdd_xor_recur(tdd,f,h);
+    res = Ldd_xor_recur(tdd,f,h);
     return(res);
   }
 
@@ -254,12 +254,12 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
 
   /* A shortcut: ITE(F,G,H) = (v,G,H) if F = (v,1,0), v < top(G,H). */
   if (topf < v && cuddT(f) == one && cuddE(f) == zero) {
-    r = tdd_unique_inter (tdd, f->index, g, h);
+    r = Ldd_unique_inter (tdd, f->index, g, h);
     return(Cudd_NotCond(r,comple && r != NULL));
   }
 
   /* Check cache. */
-  r = cuddCacheLookup(CUDD, DD_TDD_ITE_TAG, f, g, h);
+  r = cuddCacheLookup(CUDD, DD_LDD_ITE_TAG, f, g, h);
   if (r != NULL) {
     return(Cudd_NotCond(r,comple));
   }
@@ -322,18 +322,18 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
   
 
   /* Recursive step. */
-  t = tdd_ite_recur(tdd,Fv,Gv,Hv);
+  t = Ldd_ite_recur(tdd,Fv,Gv,Hv);
   if (t == NULL) return(NULL);
   cuddRef(t);
 
-  e = tdd_ite_recur(tdd,Fnv,Gnv,Hnv);
+  e = Ldd_ite_recur(tdd,Fnv,Gnv,Hnv);
   if (e == NULL) {
     Cudd_IterDerefBdd(CUDD,t);
     return(NULL);
   }
   cuddRef(e);
 
-  r = (t == e) ? t : tdd_unique_inter(tdd, index, t, e);
+  r = (t == e) ? t : Ldd_unique_inter(tdd, index, t, e);
   if (r == NULL) {
     Cudd_IterDerefBdd(CUDD,t);
     Cudd_IterDerefBdd(CUDD,e);
@@ -347,7 +347,7 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
   Cudd_IterDerefBdd (CUDD, t);
   Cudd_IterDerefBdd (CUDD, e);
 
-  cuddCacheInsert(CUDD, DD_TDD_ITE_TAG, f, g, h, r);
+  cuddCacheInsert(CUDD, DD_LDD_ITE_TAG, f, g, h, r);
 
   cuddDeref (r);
   return(Cudd_NotCond(r,comple));
@@ -356,10 +356,10 @@ tdd_node * tdd_ite_recur (tdd_manager * tdd,
 
 
 
-tdd_node * 
-tdd_and_recur (tdd_manager * tdd,
-	       tdd_node *f,
-	       tdd_node *g)
+LddNode * 
+Ldd_and_recur (LddManager * tdd,
+	       LddNode *f,
+	       LddNode *g)
 {
   DdManager * manager;
   DdNode *F, *fv, *fnv, *G, *gv, *gnv;
@@ -400,7 +400,7 @@ tdd_and_recur (tdd_manager * tdd,
 
   /* Check cache. */
   if (F->ref != 1 || G->ref != 1) {
-    r = cuddCacheLookup2(manager, (DD_CTFP)tdd_and, f, g);
+    r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_and, f, g);
     if (r != NULL) return(r);
   }
 
@@ -485,11 +485,11 @@ tdd_and_recur (tdd_manager * tdd,
 	   index is the index of the new root variable 
   */
 
-  t = tdd_and_recur (tdd, fv, gv);
+  t = Ldd_and_recur (tdd, fv, gv);
   if (t == NULL) return(NULL);
   cuddRef(t);
   
-  e = tdd_and_recur(tdd, fnv, gnv);
+  e = Ldd_and_recur(tdd, fnv, gnv);
   if (e == NULL) {
     Cudd_IterDerefBdd(manager, t);
     return(NULL);
@@ -501,7 +501,7 @@ tdd_and_recur (tdd_manager * tdd,
   } else {
     if (Cudd_IsComplement(t)) {
       /* push the negation up from t to r */
-      r = tdd_unique_inter(tdd, index,
+      r = Ldd_unique_inter(tdd, index,
 			   Cudd_Not(t),Cudd_Not(e));
       if (r == NULL) {
 	Cudd_IterDerefBdd(manager, t);
@@ -510,7 +510,7 @@ tdd_and_recur (tdd_manager * tdd,
       }
       r = Cudd_Not (r);
     } else {
-      r = tdd_unique_inter(tdd,index, t, e);
+      r = Ldd_unique_inter(tdd,index, t, e);
       if (r == NULL) {
 	Cudd_IterDerefBdd(manager, t);
 	Cudd_IterDerefBdd(manager, e);
@@ -526,16 +526,16 @@ tdd_and_recur (tdd_manager * tdd,
   Cudd_IterDerefBdd (CUDD, e);
 
   if (F->ref != 1 || G->ref != 1)
-    cuddCacheInsert2(manager, (DD_CTFP)tdd_and, f, g, r);
+    cuddCacheInsert2(manager, (DD_CTFP)Ldd_and, f, g, r);
 
   cuddDeref (r);
   return r;
 }
 
 
-tdd_node * tdd_xor_recur (tdd_manager * tdd,
-			  tdd_node *f,
-			  tdd_node *g)
+LddNode * Ldd_xor_recur (LddManager * tdd,
+			  LddNode *f,
+			  LddNode *g)
 {
   DdManager * manager;
   DdNode *fv, *fnv, *G, *gv, *gnv;
@@ -569,7 +569,7 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
   /* At this point f and g are not constant. */
   
   /* Check cache. */
-  r = cuddCacheLookup2(manager, (DD_CTFP)tdd_xor, f, g);
+  r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_xor, f, g);
   if (r != NULL) return(r);
 
 
@@ -652,11 +652,11 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
 	   index is the index of the new root variable 
   */
 
-  t = tdd_xor_recur(tdd, fv, gv);
+  t = Ldd_xor_recur(tdd, fv, gv);
   if (t == NULL) return(NULL);
   cuddRef(t);
   
-  e = tdd_xor_recur(tdd, fnv, gnv);
+  e = Ldd_xor_recur(tdd, fnv, gnv);
   if (e == NULL) {
     Cudd_IterDerefBdd(manager, t);
 	return(NULL);
@@ -668,7 +668,7 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
   } else {
     if (Cudd_IsComplement(t)) {
       /* push the negation up from t to r */
-      r = tdd_unique_inter(tdd, index,
+      r = Ldd_unique_inter(tdd, index,
 			   Cudd_Not(t),Cudd_Not(e));
       if (r == NULL) {
 	Cudd_IterDerefBdd(manager, t);
@@ -677,7 +677,7 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
       }
       r = Cudd_Not (r);
     } else {
-      r = tdd_unique_inter(tdd,index, t, e);
+      r = Ldd_unique_inter(tdd,index, t, e);
       if (r == NULL) {
 	Cudd_IterDerefBdd(manager, t);
 	Cudd_IterDerefBdd(manager, e);
@@ -692,7 +692,7 @@ tdd_node * tdd_xor_recur (tdd_manager * tdd,
   Cudd_IterDerefBdd (CUDD, e);
 
   if (f->ref != 1 || G->ref != 1)
-    cuddCacheInsert2(manager, (DD_CTFP)tdd_xor, f, g, r);
+    cuddCacheInsert2(manager, (DD_CTFP)Ldd_xor, f, g, r);
 
   cuddDeref (r);
   return r;

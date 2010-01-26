@@ -1,5 +1,5 @@
-#ifndef _TDD_H_
-#define _TDD_H_
+#ifndef _LDD_H_
+#define _LDD_H_
 
 #include <stdio.h>
 #include "cudd.h"
@@ -24,14 +24,14 @@ typedef void* lincons_t;
 
 typedef void* qelim_context_t;
 
-typedef DdNode tdd_node;
-typedef DdNode tdd_nodeset;
+typedef DdNode LddNode;
+typedef DdNode LddNodeset;
 
-/* forward declaration so that we can define tdd_manager without
+/* forward declaration so that we can define LddManager without
    defining theory */
 typedef struct theory theory_t;
 
-typedef struct tdd_manager tdd_manager;
+typedef struct LddManager LddManager;
 
 
 
@@ -242,7 +242,7 @@ struct theory
 
    also, see ddd-notes-ver2.txt somewhere in the same repository
   */
-  tdd_node* (*to_tdd)(tdd_manager* m, lincons_t l);
+  LddNode* (*to_tdd)(LddManager* m, lincons_t l);
 
   
   void (*print_lincons) (FILE* f, lincons_t l);
@@ -250,13 +250,13 @@ struct theory
   /**
    * Prints debug information from the theory embedded in the manager.
    */
-  void (*theory_debug_dump) (tdd_manager * tdd);
+  void (*theory_debug_dump) (LddManager * tdd);
 
   /** Incremental Quantifier elimination */
-  qelim_context_t* (*qelim_init)(tdd_manager *m, int* vars);
+  qelim_context_t* (*qelim_init)(LddManager *m, int* vars);
   void (*qelim_push)(qelim_context_t* ctx, lincons_t l);
   lincons_t (*qelim_pop)(qelim_context_t* ctx);
-  tdd_node* (*qelim_solve)(qelim_context_t* ctx);
+  LddNode* (*qelim_solve)(qelim_context_t* ctx);
   void (*qelim_destroy_context)(qelim_context_t* ctx);
 
 
@@ -269,77 +269,77 @@ struct theory
 /***********************************************************************/
 
 
-#define tdd_not(X) Cudd_Not(X)
-#define tdd_to_nodeset(X) ((tdd_nodeset*)X)
+#define Ldd_Not(X) Cudd_Not(X)
+#define Ldd_NodeToNodeset(X) ((LddNodeset*)X)
 
-#define tdd_ref(X) Cudd_Ref(X)
-#define tdd_deref(X) Cudd_Deref(X)
-#define tdd_recursiveDeref(T,X) Cudd_IterDerefBdd(tdd_get_cudd(T),X)
+#define Ldd_Ref(X) Cudd_Ref(X)
+#define Ldd_Deref(X) Cudd_Deref(X)
+#define Ldd_RecursiveDeref(T,X) Cudd_IterDerefBdd(Ldd_get_cudd(T),X)
 
-#define tdd_nodeset_ref(X) Cudd_Ref(X)
-#define tdd_nodeset_deref(X) Cudd_Deref(X)
-#define tdd_nodeset_recursiveDeref(T,X) Cudd_IterDerefBbd(T->cudd,X)
+#define Ldd_NodesetRef(X) Cudd_Ref(X)
+#define Ldd_NodesetDeref(X) Cudd_Deref(X)
+#define Ldd_NodesetRecursiveDeref(T,X) Cudd_IterDerefBbd(T->cudd,X)
 
-#define tdd_T(X) Cudd_T(X)
-#define tdd_E(X) Cudd_E(X)
-#define tdd_regular(X) Cudd_Regular(X)
-tdd_manager* tdd_init (DdManager *cudd, theory_t * t);
-void tdd_quit (tdd_manager* tdd);
+#define Ldd_T(X) Cudd_T(X)
+#define Ldd_E(X) Cudd_E(X)
+#define Ldd_Regular(X) Cudd_Regular(X)
+LddManager* Ldd_Init (DdManager *cudd, theory_t * t);
+void Ldd_Quit (LddManager* tdd);
 
-tdd_node* to_tdd(tdd_manager* m, lincons_t l);
+LddNode* to_tdd(LddManager* m, lincons_t l);
 
-tdd_node* tdd_new_var(tdd_manager* m, lincons_t l);
-tdd_node* tdd_new_var_at_top (tdd_manager* m, lincons_t l);
-tdd_node* tdd_new_var_before (tdd_manager* m, tdd_node* v, lincons_t l);
-tdd_node* tdd_new_var_after (tdd_manager* m, tdd_node* v, lincons_t l);
+LddNode* Ldd_NewVar(LddManager* m, lincons_t l);
+LddNode* Ldd_NewVarAtTop (LddManager* m, lincons_t l);
+LddNode* Ldd_NewVarBefore (LddManager* m, LddNode* v, lincons_t l);
+LddNode* Ldd_NewVarAfter (LddManager* m, LddNode* v, lincons_t l);
 
-tdd_node *tdd_get_true (tdd_manager *m);
-tdd_node *tdd_get_false (tdd_manager *m);
+LddNode *Ldd_GetTrue (LddManager *m);
+LddNode *Ldd_GetFalse (LddManager *m);
 
-tdd_node* tdd_and (tdd_manager* m, tdd_node* n1, tdd_node* n2);
-tdd_node* tdd_or (tdd_manager* m, tdd_node* n1, tdd_node* n2);
-tdd_node* tdd_xor (tdd_manager* m, tdd_node* n1, tdd_node* n2);
-tdd_node* tdd_ite (tdd_manager* m, tdd_node* n1, tdd_node* n2, tdd_node* n3);
+LddNode* Ldd_And (LddManager* m, LddNode* n1, LddNode* n2);
+LddNode* Ldd_Or (LddManager* m, LddNode* n1, LddNode* n2);
+LddNode* Ldd_Xor (LddManager* m, LddNode* n1, LddNode* n2);
+LddNode* Ldd_Ite (LddManager* m, LddNode* n1, LddNode* n2, LddNode* n3);
 
-tdd_node* tdd_exist_abstract (tdd_manager*, tdd_node*, int);
-tdd_node* tdd_univ_abstract (tdd_manager*, tdd_node*, int);
-tdd_node* tdd_resolve_elim (tdd_manager*, tdd_node*, linterm_t, 
+LddNode* Ldd_ExistAbstract (LddManager*, LddNode*, int);
+LddNode* Ldd_UnivAbstract (LddManager*, LddNode*, int);
+LddNode* Ldd_ResolveElim (LddManager*, LddNode*, linterm_t, 
 			    lincons_t, int);
-tdd_node* tdd_resolve (tdd_manager*, tdd_node*, 
+LddNode* Ldd_Resolve (LddManager*, LddNode*, 
 		       linterm_t, lincons_t, lincons_t, int);
-tdd_node* tdd_exist_abstract_v2 (tdd_manager*, tdd_node*, int*);
+LddNode* Ldd_ExistAbstractV2 (LddManager*, LddNode*, int*);
 
-void tdd_manager_debug_dump (tdd_manager*);
-int tdd_path_size (tdd_manager*, tdd_node*);
+void Ldd_ManagerDebugDump (LddManager*);
+int Ldd_PathSize (LddManager*, LddNode*);
   
-void tdd_sanity_check (tdd_manager*);
-void tdd_node_sanity_check (tdd_manager*, tdd_node*);
+void Ldd_SanityCheck (LddManager*);
+void Ldd_NodeSanityCheck (LddManager*, LddNode*);
 
-tdd_node *tdd_sat_reduce (tdd_manager *, tdd_node*, int);
-bool tdd_is_sat (tdd_manager *, tdd_node*);
-int tdd_unsat_size (tdd_manager *, tdd_node*);
-theory_t *tdd_syntactic_implication_theory (theory_t *t);
-void tdd_var_occurrences (tdd_manager *, tdd_node *, int*);
-tdd_node *tdd_bdd_exist_abstract (tdd_manager*,tdd_node*,tdd_node*);
-tdd_node *tdd_terms_with_vars (tdd_manager*, int*);
-tdd_node *tdd_over_abstract (tdd_manager *,tdd_node*,int*);
-void tdd_support_var_occurrences(tdd_manager*,tdd_node*,int*);
-tdd_manager * tdd_bddlike_manager (tdd_manager *);
-tdd_node* tdd_exist_abstract_v3 (tdd_manager*, tdd_node*, int);
-tdd_node * tdd_mv_exist_abstract (tdd_manager*, tdd_node *, int * , size_t );
-tdd_node * tdd_box_extrapolate (tdd_manager*, tdd_node*, tdd_node*);
-tdd_node* tdd_term_replace (tdd_manager*, tdd_node*, linterm_t, linterm_t, constant_t, constant_t, constant_t);
-tdd_node* tdd_term_minmax_approx(tdd_manager*, tdd_node*);
-tdd_node* tdd_term_constrain (tdd_manager*, tdd_node*, 
+LddNode *Ldd_SatReduce (LddManager *, LddNode*, int);
+bool Ldd_IsSat (LddManager *, LddNode*);
+int Ldd_UnsatSize (LddManager *, LddNode*);
+theory_t *Ldd_SyntacticImplicationTheory (theory_t *t);
+void Ldd_VarOccurrences (LddManager *, LddNode *, int*);
+LddNode *Ldd_BddExistAbstract (LddManager*,LddNode*,LddNode*);
+LddNode *Ldd_TermsWithVars (LddManager*, int*);
+LddNode *Ldd_OverAbstract (LddManager *,LddNode*,int*);
+void Ldd_SupportVarOccurrences (LddManager*,LddNode*,int*);
+LddManager * Ldd_BddlikeManager (LddManager *);
+LddNode * Ldd_ExistAbstractV3 (LddManager*, LddNode*, int);
+LddNode * Ldd_MvExistAbstract (LddManager*, LddNode *, int * , size_t );
+LddNode * Ldd_BoxExtrapolate (LddManager*, LddNode*, LddNode*);
+LddNode* Ldd_TermReplace (LddManager*, LddNode*, linterm_t, linterm_t, constant_t, constant_t, constant_t);
+LddNode* Ldd_TermMinmaxApprox (LddManager*, LddNode*);
+LddNode* Ldd_TermConstrain (LddManager*, LddNode*, 
 				linterm_t, linterm_t, constant_t);
-/* tdd_nodeset* tdd_empty_nodeset (tdd_manager*); */
-tdd_nodeset* tdd_nodeset_union (tdd_manager*, tdd_nodeset*, tdd_nodeset*);
-tdd_nodeset* tdd_nodeset_add (tdd_manager*, tdd_nodeset*, tdd_node*);
-int tdd_print_minterm(tdd_manager*, tdd_node*);
+/* LddNodeset* Ldd_empty_nodeset (LddManager*); */
+LddNodeset* LddNodeset_union (LddManager*, LddNodeset*, LddNodeset*);
+LddNodeset* LddNodeset_add (LddManager*, LddNodeset*, LddNode*);
+int Ldd_print_minterm(LddManager*, LddNode*);
 
-DdManager * tdd_get_cudd (tdd_manager *);
-  lincons_t tdd_get_cons (tdd_manager*, tdd_node*);
-/* tdd_node* tdd_and_resolve (tdd_manager *m, tdd_node *n1, int x);*/
+DdManager * Ldd_get_cudd (LddManager *);
+  lincons_t Ldd_get_cons (LddManager*, LddNode*);
+/* LddNode* Ldd_and_resolve (LddManager *m, LddNode *n1, int x);*/
 
 #ifdef __cplusplus
 }

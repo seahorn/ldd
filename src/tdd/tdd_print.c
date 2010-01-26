@@ -1,7 +1,7 @@
 #include "util.h"
 #include "tddInt.h"
 
-static void tdd_print_minterm_aux (tdd_manager *tdd, tdd_node *node, int* list);
+static void Ldd_print_minterm_aux (LddManager *tdd, LddNode *node, int* list);
 
 
 /**
@@ -9,7 +9,7 @@ static void tdd_print_minterm_aux (tdd_manager *tdd, tdd_node *node, int* list);
  * Cudd_PrintMinterm
  */
 int
-tdd_print_minterm (tdd_manager *tdd, tdd_node* node)
+Ldd_print_minterm (LddManager *tdd, LddNode* node)
 {
   int i, *list;
   DdNode *zero;
@@ -24,7 +24,7 @@ tdd_print_minterm (tdd_manager *tdd, tdd_node* node)
     }
   
   for (i = 0; i < CUDD->size; i++) list[i] = 2;
-  tdd_print_minterm_aux (tdd, node, list);
+  Ldd_print_minterm_aux (tdd, node, list);
   FREE(list);
   return (1);
   
@@ -32,7 +32,7 @@ tdd_print_minterm (tdd_manager *tdd, tdd_node* node)
 
 
 static void 
-tdd_print_minterm_aux (tdd_manager *tdd, tdd_node *n, int* list)
+Ldd_print_minterm_aux (LddManager *tdd, LddNode *n, int* list)
 {
   DdNode *N, *Nv, *Nnv;
   int i, v, index, p;
@@ -124,9 +124,9 @@ tdd_print_minterm_aux (tdd_manager *tdd, tdd_node *n, int* list)
       Nnv = Cudd_NotCond (cuddE(N), N != n);
       index = N->index;
       list[index] = 0;
-      tdd_print_minterm_aux (tdd, Nnv, list);
+      Ldd_print_minterm_aux (tdd, Nnv, list);
       list[index] = 1;
-      tdd_print_minterm_aux (tdd, Nv, list);
+      Ldd_print_minterm_aux (tdd, Nv, list);
       list[index] = 2;
     }
   return;

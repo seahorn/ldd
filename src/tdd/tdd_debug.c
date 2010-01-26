@@ -3,16 +3,16 @@
 #include "util.h"
 #include "tddInt.h"
 
-static void ddClearFlag(tdd_node * n);
-static void ddOccurCount (tdd_manager *tdd, tdd_node *N, int *occurrences);
+static void ddClearFlag(LddNode * n);
+static void ddOccurCount (LddManager *tdd, LddNode *N, int *occurrences);
 
 
 void 
-tdd_manager_debug_dump (tdd_manager* tdd)
+Ldd_ManagerDebugDump (LddManager* tdd)
 {
   int i;
   
-  fprintf (stderr, "tdd_manager @%p\n", tdd);
+  fprintf (stderr, "LddManager @%p\n", tdd);
   fprintf (stderr, "\tcudd @%p, theory @%p\n", tdd->cudd, tdd->theory);
   fprintf (stderr, "\tvarsSize=%d\n", tdd->varsSize);
 
@@ -37,16 +37,16 @@ tdd_manager_debug_dump (tdd_manager* tdd)
  * tdd argument is deprecated. 
  */
 int 
-tdd_path_size (tdd_manager * tdd, tdd_node * n)
+Ldd_PathSize (LddManager * tdd, LddNode * n)
 {
-  tdd_node * N, *t, *e;
+  LddNode * N, *t, *e;
   
-  /* tdd_node *one, *zero; */
+  /* LddNode *one, *zero; */
   
   if (n == NULL) return 0;
 
-  /* one = tdd_get_true (tdd); */
-  /* zero = tdd_not (one); */
+  /* one = Ldd_GetTrue (tdd); */
+  /* zero = Ldd_Not (one); */
   
   /* if (n == one) return 1; */
   /* if (n == zero) return 0; */
@@ -61,13 +61,13 @@ tdd_path_size (tdd_manager * tdd, tdd_node * n)
   t = Cudd_NotCond (cuddT (N), n != N);
   e = Cudd_NotCond (cuddE (N), n != N);
 
-  return tdd_path_size (tdd, t) + tdd_path_size (tdd, e);  
+  return Ldd_PathSize (tdd, t) + Ldd_PathSize (tdd, e);  
 }
 
 
 /** Checks sanity of the datastructures. Aborts execution on error */
 void 
-tdd_sanity_check (tdd_manager * tdd)
+Ldd_SanityCheck (LddManager * tdd)
 {
   unsigned int i, j;
   DdSubtable *subtable;
@@ -85,12 +85,12 @@ tdd_sanity_check (tdd_manager * tdd)
       
       for (j = 0; j < subtable->slots; j++)
 	for (node = nodelist [j]; node != sentinel; node = node->next)
-	    tdd_node_sanity_check (tdd, (tdd_node*)node);
+	    Ldd_NodeSanityCheck (tdd, (LddNode*)node);
     }
 }
 
 void
-tdd_node_sanity_check (tdd_manager *tdd, tdd_node *n)
+Ldd_NodeSanityCheck (LddManager *tdd, LddNode *n)
 {
   DdNode *f, *g, *G;
   
@@ -149,8 +149,8 @@ tdd_node_sanity_check (tdd_manager *tdd, tdd_node *n)
  * variables in n.
  */
 void
-tdd_support_var_occurrences (tdd_manager *tdd, 
-			     tdd_node *n, 
+Ldd_SupportVarOccurrences (LddManager *tdd, 
+			     LddNode *n, 
 			     int* occurrences)
 {
   DdNode *S, *N, *T;
@@ -227,7 +227,7 @@ tdd_support_var_occurrences (tdd_manager *tdd,
  * it appears in THEN and ELSE sub-trees of n. 
  */
 void 
-tdd_var_occurrences (tdd_manager *tdd, tdd_node *n, int* occurrences)
+Ldd_VarOccurrences (LddManager *tdd, LddNode *n, int* occurrences)
 {
   ddOccurCount (tdd, Cudd_Regular (n), occurrences);
   ddClearFlag (Cudd_Regular (n));
@@ -235,13 +235,13 @@ tdd_var_occurrences (tdd_manager *tdd, tdd_node *n, int* occurrences)
 
 
 /**
- * Recursive part of tdd_var_occurrences
+ * Recursive part of Ldd_var_occurrences
  */
 static void 
-ddOccurCount (tdd_manager *tdd, tdd_node *N, int *occurrences)
+ddOccurCount (LddManager *tdd, LddNode *N, int *occurrences)
 {
 
-  tdd_node *E;
+  LddNode *E;
 
   /* already been here, get out*/
   if (Cudd_IsComplement (N->next)) return;
@@ -293,7 +293,7 @@ ddOccurCount (tdd_manager *tdd, tdd_node *N, int *occurrences)
  * Adapted from cuddUtil.c
  */
 static void
-ddClearFlag(tdd_node * n)
+ddClearFlag(LddNode * n)
 {
     if (!Cudd_IsComplement(n->next)) {
 	return;
