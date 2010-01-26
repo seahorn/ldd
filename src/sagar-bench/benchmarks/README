@@ -1,5 +1,0 @@
-To run the benchmarks, run the script "run_tests". You will need
-"/bin/tcsh" installed. Also, the tools "diamond" and "smt_qelim_solve"
-are assumed to be available in the parent directory. Change the
-"run_tests" script if your installation is different.
-

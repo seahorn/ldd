@@ -198,7 +198,7 @@ DDWDIR	= .
 IDIR	= $(DDWDIR)/include
 INCLUDE = -I$(IDIR)
 
-DIRS	= tvpi box ddd tdd test sagar-bench bench-runner
+DIRS	= tvpi box ddd tdd test bench-runner
 
 #------------------------------------------------------------------------
 
