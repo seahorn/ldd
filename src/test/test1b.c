@@ -9,7 +9,7 @@ int main(int argc, char** argv)
 {
   
   DdManager *cudd;
-  tdd_manager* tdd;
+  LddManager* tdd;
   theory_t * t;
   
 
@@ -21,7 +21,7 @@ int main(int argc, char** argv)
   linterm_t t1, t2;
   lincons_t l1, l2;
 
-  tdd_node *d1, *d2, *d3;
+  LddNode *d1, *d2, *d3;
 
 
   /* 1 is DDD, 2 is TVPI */
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     t = tvpi_create_theory (3);
   else if (t_type == 5)
     t = tvpi_create_utvpiz_theory (3);
-  tdd = tdd_init (cudd, t);
+  tdd = Ldd_Init (cudd, t);
 
 
   /* variable ordering:
@@ -64,7 +64,7 @@ int main(int argc, char** argv)
   Cudd_Ref (d1);
 
   printf ("d1 is:\n");
-  tdd_print_minterm (tdd, d1);
+  Ldd_PrintMinterm (tdd, d1);
   
   /* 
      y - x <= -5
@@ -74,16 +74,16 @@ int main(int argc, char** argv)
   d2 = to_tdd (tdd, l2);
   Cudd_Ref (d2);
   printf ("d2 is:\n");
-  tdd_print_minterm (tdd, d2);
+  Ldd_PrintMinterm (tdd, d2);
 
 
-  d3 = tdd_or (tdd, d1, d2);
+  d3 = Ldd_Or (tdd, d1, d2);
   printf ("d3: d1 || d2 is:\n");
-  tdd_print_minterm (tdd, d3);
+  Ldd_PrintMinterm (tdd, d3);
       
 
   printf ("Destroying the world...\n");
-  tdd_quit (tdd);
+  Ldd_Quit (tdd);
   if (t_type == 2 || t_type == 5)
     tvpi_destroy_theory (t);
   Cudd_Quit (cudd);

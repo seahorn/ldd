@@ -38,7 +38,7 @@ box_create_si_cst (int v)
 }
 
 box_cst_t 
-box_create_rat_cst (int n, int d)
+box_create_rat_cst (long n, long d)
 {
   assert (d == 1);
   return box_create_si_cst (n);
@@ -403,8 +403,8 @@ box_ensure_capacity (box_theory_t *t, int var)
 /**
  * Returns a DD representing a constraint.
  */
-tdd_node*
-box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
+LddNode*
+box_get_dd (LddManager *m, box_theory_t* t, box_cons_t c)
 {
   box_list_node_t * ln;
   box_list_node_t *p;
@@ -423,9 +423,9 @@ box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
       ln->prev = NULL;
       ln->next = NULL;
       ln->cons = box_dup_cons (c);
-      ln->dd = tdd_new_var (m, (lincons_t)ln->cons);
+      ln->dd = Ldd_NewVar (m, (lincons_t)ln->cons);
       assert (ln->dd != NULL);
-      tdd_ref (ln->dd);
+      Ldd_Ref (ln->dd);
 
       /* wire ln into the map */
       t->map [c->var] = ln;
@@ -468,9 +468,9 @@ box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
         t->map [c->var] = n;
 	      
       n->cons = box_dup_cons (c);
-      n->dd = tdd_new_var_before (m, p->dd, (lincons_t)n->cons);
+      n->dd = Ldd_NewVarBefore (m, p->dd, (lincons_t)n->cons);
       assert (n->dd != NULL);
-      tdd_ref (n->dd);
+      Ldd_Ref (n->dd);
 
 
       return n->dd;      
@@ -487,9 +487,9 @@ box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
       p->next = n;
 
       n->cons = box_dup_cons (c);
-      n->dd = tdd_new_var_after (m, p->dd, (lincons_t)n->cons);
+      n->dd = Ldd_NewVarAfter (m, p->dd, (lincons_t)n->cons);
       assert (n->dd != NULL);
-      tdd_ref (n->dd);
+      Ldd_Ref (n->dd);
       return n->dd;
     }
   
@@ -497,8 +497,8 @@ box_get_dd (tdd_manager *m, box_theory_t* t, box_cons_t c)
 }
 
 
-tdd_node*
-box_to_tdd(tdd_manager *m, box_cons_t c)
+LddNode*
+box_to_tdd(LddManager *m, box_cons_t c)
 {
   /* the theory */
   box_theory_t *theory;
@@ -506,7 +506,7 @@ box_to_tdd(tdd_manager *m, box_cons_t c)
   /* the new constraint */
   box_cons_t nc;
   
-  tdd_node *res;
+  LddNode *res;
 
   theory = (box_theory_t*) (m->theory);
 
@@ -517,7 +517,7 @@ box_to_tdd(tdd_manager *m, box_cons_t c)
   if (c->sgn < 0)
     box_destroy_cons (nc);
   
-  return  (c->sgn < 0 && res != NULL ? tdd_not (res) : res);
+  return  (c->sgn < 0 && res != NULL ? Ldd_Not (res) : res);
 }
 
 
@@ -543,7 +543,7 @@ box_create_theory (size_t vn)
   
   
   t->base.create_int_cst =  (constant_t(*)(int)) box_create_si_cst;
-  t->base.create_rat_cst = (constant_t(*)(int,int)) box_create_rat_cst;
+  t->base.create_rat_cst = (constant_t(*)(long,long)) box_create_rat_cst;
   t->base.dup_cst = (constant_t(*)(constant_t)) box_dup_cst;
   t->base.negate_cst = (constant_t(*)(constant_t)) box_negate_cst;
   t->base.is_pinf_cst = (int(*)(constant_t))alwasy_false_cst;
@@ -556,7 +556,7 @@ box_create_theory (size_t vn)
 
   t->base.create_linterm = (linterm_t(*)(int*,size_t))box_create_term;
   t->base.create_linterm_sparse = 
-    (linterm_t(*)(int*,int*,size_t))box_create_term_sparse;
+    (linterm_t(*)(int*,constant_t*,size_t))NULL;
   t->base.dup_term = (linterm_t(*)(linterm_t))box_dup_term;
   t->base.term_equals = (int(*)(linterm_t,linterm_t))box_term_equlas;
   t->base.term_has_var = (int(*)(linterm_t,int)) box_term_has_var;
@@ -583,7 +583,7 @@ box_create_theory (size_t vn)
   t->base.destroy_lincons = (void(*)(lincons_t)) box_destroy_cons;
   
 
-  t->base.to_tdd = (tdd_node*(*)(tdd_manager*,lincons_t))box_to_tdd;
+  t->base.to_tdd = (LddNode*(*)(LddManager*,lincons_t))box_to_tdd;
   t->base.print_lincons = (void(*)(FILE*,lincons_t))box_print_cons;
 
   t->base.num_of_vars = (size_t(*)(theory_t*))box_num_of_vars;

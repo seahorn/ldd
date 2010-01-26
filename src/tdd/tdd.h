@@ -274,7 +274,7 @@ struct theory
 
 #define Ldd_Ref(X) Cudd_Ref(X)
 #define Ldd_Deref(X) Cudd_Deref(X)
-#define Ldd_RecursiveDeref(T,X) Cudd_IterDerefBdd(Ldd_get_cudd(T),X)
+#define Ldd_RecursiveDeref(T,X) Cudd_IterDerefBdd(Ldd_GetCudd(T),X)
 
 #define Ldd_NodesetRef(X) Cudd_Ref(X)
 #define Ldd_NodesetDeref(X) Cudd_Deref(X)

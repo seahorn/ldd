@@ -1120,8 +1120,8 @@ tvpi_ensure_capacity (tvpi_theory_t *t, int var)
 /**
  * Returns a DD representing a constraint.
  */
-tdd_node*
-tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
+LddNode*
+tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
 {
   tvpi_list_node_t *ln;
   tvpi_list_node_t *p;
@@ -1151,9 +1151,9 @@ tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
       
       ln->prev = ln->next = NULL;
       ln->cons = tvpi_dup_cons (c);
-      ln->dd = tdd_new_var (m, (lincons_t)(ln->cons));
+      ln->dd = Ldd_NewVar (m, (lincons_t)(ln->cons));
       assert (ln->dd != NULL);
-      tdd_ref (ln->dd);
+      Ldd_Ref (ln->dd);
       
       /* wire into the map */
       t->map [var0][var1] = ln;
@@ -1218,12 +1218,12 @@ tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
        * otherwise, get a new variable that follows p->dd in dd order.
        */
       if (i == 0)
-	n->dd = tdd_new_var_before (m, p->dd, (lincons_t)n->cons);
+	n->dd = Ldd_NewVarBefore (m, p->dd, (lincons_t)n->cons);
       else
-	n->dd = tdd_new_var (m, (lincons_t) n->cons);
+	n->dd = Ldd_NewVar (m, (lincons_t) n->cons);
 
       assert (n->dd != NULL);
-      tdd_ref (n->dd);
+      Ldd_Ref (n->dd);
 
       return n->dd;	  
     }
@@ -1247,12 +1247,12 @@ tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
        * otherwise, get a new variable that follows p->dd in dd order.
        */
       if (i == 0)
-	n->dd = tdd_new_var_after (m, p->dd, (lincons_t)n->cons);
+	n->dd = Ldd_NewVarAfter (m, p->dd, (lincons_t)n->cons);
       else
-	n->dd = tdd_new_var (m, (lincons_t) n->cons);
+	n->dd = Ldd_NewVar (m, (lincons_t) n->cons);
       
       assert (n->dd != NULL);
-      tdd_ref (n->dd);
+      Ldd_Ref (n->dd);
       return n->dd;
     }
   
@@ -1260,8 +1260,8 @@ tvpi_get_dd (tdd_manager *m, tvpi_theory_t* t, tvpi_cons_t c)
   assert (0 && "UNREACHABLE");
 }
 
-tdd_node*
-tvpi_to_tdd(tdd_manager *m, tvpi_cons_t c)
+LddNode*
+tvpi_to_tdd(LddManager *m, tvpi_cons_t c)
 {
   /* the theory */
   tvpi_theory_t *theory;
@@ -1269,7 +1269,7 @@ tvpi_to_tdd(tdd_manager *m, tvpi_cons_t c)
   /* the new constraint */
   tvpi_cons_t nc;
   
-  tdd_node *res;
+  LddNode *res;
 
   theory = (tvpi_theory_t*) (m->theory);
 
@@ -1280,7 +1280,7 @@ tvpi_to_tdd(tdd_manager *m, tvpi_cons_t c)
   if (c->sgn < 0)
     tvpi_destroy_cons (nc);
   
-  return  (c->sgn < 0 && res != NULL ? tdd_not (res) : res);
+  return  (c->sgn < 0 && res != NULL ? Ldd_Not (res) : res);
 }
 
 
@@ -1382,7 +1382,7 @@ tvpi_create_theory (size_t vn)
   t->base.destroy_lincons = (void(*)(lincons_t)) tvpi_destroy_cons;
   
 
-  t->base.to_tdd = (tdd_node*(*)(tdd_manager*,lincons_t))tvpi_to_tdd;
+  t->base.to_tdd = (LddNode*(*)(LddManager*,lincons_t))tvpi_to_tdd;
   t->base.print_lincons = (void(*)(FILE*,lincons_t))tvpi_print_cons;
 
   t->base.num_of_vars = (size_t(*)(theory_t*))tvpi_num_of_vars;

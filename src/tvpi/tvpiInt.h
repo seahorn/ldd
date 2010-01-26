@@ -62,7 +62,7 @@ extern "C" {
   typedef struct tvpi_list_node
   {
     tvpi_cons_t cons;
-    tdd_node * dd;
+    LddNode * dd;
     struct tvpi_list_node *next;
     struct tvpi_list_node *prev;
   } tvpi_list_node_t;

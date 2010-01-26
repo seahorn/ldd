@@ -9,7 +9,7 @@ int main(int argc, char** argv)
 {
   
   DdManager *cudd;
-  tdd_manager* tdd;
+  LddManager* tdd;
   theory_t * t;
   
 
@@ -23,7 +23,7 @@ int main(int argc, char** argv)
   linterm_t t1, t2, t3;
   lincons_t l1, l2, l3;
 
-  tdd_node *d1, *d2, *d3, *d4, *d5, *d6, *d7;
+  LddNode *d1, *d2, *d3, *d4, *d5, *d6, *d7;
 
 
   /* 1 is DDD, 2 is TVPI , 5 is UTVPI(Z)*/
@@ -44,7 +44,7 @@ int main(int argc, char** argv)
   else if (t_type == 5)
     t = tvpi_create_utvpiz_theory (3);
 
-  tdd = tdd_init (cudd, t);
+  tdd = Ldd_Init (cudd, t);
 
 
   /* variable ordering:
@@ -66,7 +66,7 @@ int main(int argc, char** argv)
   Cudd_Ref (d1);
 
   printf ("d1 is:\n");
-  tdd_print_minterm (tdd, d1);
+  Ldd_PrintMinterm (tdd, d1);
   
   /* 
      y-z <= 10
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
   d2 = to_tdd (tdd, l2);
   Cudd_Ref (d2);
   printf ("d2 is:\n");
-  tdd_print_minterm (tdd, d2);
+  Ldd_PrintMinterm (tdd, d2);
 
   /* 
      x-z <= 15
@@ -86,45 +86,45 @@ int main(int argc, char** argv)
   d3 = to_tdd (tdd, l3);
   Cudd_Ref (d3);
   printf ("d3 is:\n");
-  tdd_print_minterm (tdd, d3);
+  Ldd_PrintMinterm (tdd, d3);
   
   
-  d4 = tdd_and (tdd, d1, d2);
+  d4 = Ldd_And (tdd, d1, d2);
   Cudd_Ref (d4);
   printf ("d4 is:\n");
-  tdd_print_minterm (tdd, d4);
+  Ldd_PrintMinterm (tdd, d4);
 
-  d5 = tdd_or (tdd, d1, d2);
+  d5 = Ldd_Or (tdd, d1, d2);
   Cudd_Ref (d5);
   printf ("d5 is:\n");
-  tdd_print_minterm (tdd, d5);
+  Ldd_PrintMinterm (tdd, d5);
   
   /*
     x -y <=5 && y - z <= 10 => x-z <= 15
    */
 
-  d6 = tdd_or (tdd, tdd_not (d4), d3);
+  d6 = Ldd_Or (tdd, Ldd_Not (d4), d3);
   Cudd_Ref (d6);
   printf ("d6 is:\n");
-  tdd_print_minterm (tdd, d6);
+  Ldd_PrintMinterm (tdd, d6);
   
   {
-    d7 = tdd_univ_abstract (tdd, d6, 0);
-    d7 = tdd_univ_abstract (tdd, d7, 1);
-    d7 = tdd_univ_abstract (tdd, d7, 2);
+    d7 = Ldd_UnivAbstract (tdd, d6, 0);
+    d7 = Ldd_UnivAbstract (tdd, d7, 1);
+    d7 = Ldd_UnivAbstract (tdd, d7, 2);
     printf ("univ d7 is:\n");
-    tdd_print_minterm (tdd, d7);
+    Ldd_PrintMinterm (tdd, d7);
 
-    d7 = tdd_exist_abstract (tdd, d6, 0);
-    d7 = tdd_exist_abstract (tdd, d7, 1);
-    d7 = tdd_exist_abstract (tdd, d7, 2);
+    d7 = Ldd_ExistAbstract (tdd, d6, 0);
+    d7 = Ldd_ExistAbstract (tdd, d7, 1);
+    d7 = Ldd_ExistAbstract (tdd, d7, 2);
     printf ("exist d7 is:\n");
-    tdd_print_minterm (tdd, d7);
+    Ldd_PrintMinterm (tdd, d7);
   }
       
 
   printf ("Destroying the world...\n");
-  tdd_quit (tdd);
+  Ldd_Quit (tdd);
   if (t_type == 2 || t_type == 5)
     tvpi_destroy_theory (t);
   Cudd_Quit (cudd);

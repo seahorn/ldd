@@ -43,7 +43,7 @@ extern "C" {
   typedef struct box_list_node
   {
     box_cons_t cons;
-    tdd_node * dd;
+    LddNode * dd;
     struct box_list_node *next;
     struct box_list_node *prev;
   } box_list_node_t;

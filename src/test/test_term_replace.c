@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 DdManager *cudd;
-tdd_manager *tdd;
+LddManager *tdd;
 theory_t *t;
 
 
@@ -39,9 +39,9 @@ void test0 ()
   
   
   lincons_t l1, l2, l3, l4, l5;
-  tdd_node *d1, *d2, *d3, *d4, *d5;
+  LddNode *d1, *d2, *d3, *d4, *d5;
 
-  tdd_node *box1, *box2, *box3, *box4, *box5, *box6;
+  LddNode *box1, *box2, *box3, *box4, *box5, *box6;
 
   /* x <= 3 */
   l1 = CONS(xMz, 3, 3);
@@ -70,21 +70,21 @@ void test0 ()
 
 
   /* 1 <= x < = 3 */
-  box1 = tdd_and (tdd, d1, d2);
+  box1 = Ldd_And (tdd, d1, d2);
   Cudd_Ref (box1);
   
   /* 2 <= y <= 3 */
-  box2 = tdd_and (tdd, d4, d5);
+  box2 = Ldd_And (tdd, d4, d5);
   Cudd_Ref (box2);
   
   /* 1 <= x <= 3 && 2 <= y <= 5 */
-  box3 = tdd_and (tdd, box1, box2);
+  box3 = Ldd_And (tdd, box1, box2);
   Cudd_Ref (box3);
 
   k1 = C(1);
   k2 = C(0);
 
-  box4 = tdd_term_replace (tdd, box3, 
+  box4 = Ldd_TermReplace (tdd, box3, 
 			   t->get_term (l2), t->get_term (l5),
 			   k1, k2, k2);
   Cudd_Ref (box4);
@@ -93,19 +93,19 @@ void test0 ()
   t->destroy_cst (k2); k2 = NULL;
 
   /* 2 <= x <= 3 */
-  box5 = tdd_and (tdd, d1, d3);
+  box5 = Ldd_And (tdd, d1, d3);
   Cudd_Ref (box5);
   
-  box6 = tdd_and (tdd, box5, box2);
+  box6 = Ldd_And (tdd, box5, box2);
   Cudd_Ref (box6);
 
   
-  tdd_print_minterm (tdd, box3);
+  Ldd_PrintMinterm (tdd, box3);
   printf ("\n");
   
-  tdd_print_minterm (tdd, box4);
+  Ldd_PrintMinterm (tdd, box4);
   printf ("\n");
-  tdd_print_minterm (tdd, box6);
+  Ldd_PrintMinterm (tdd, box6);
   
   assert (box6 == box4);
   printf ("SUCCESS\n");
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
   if (t_type == 2)
     t = tvpi_create_theory (3);
-  tdd = tdd_init (cudd, t);
+  tdd = Ldd_Init (cudd, t);
   test0 ();  
 
   return 0;
