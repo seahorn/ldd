@@ -400,7 +400,7 @@ Ldd_and_recur (LddManager * tdd,
 
   /* Check cache. */
   if (F->ref != 1 || G->ref != 1) {
-    r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_and, f, g);
+    r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_And, f, g);
     if (r != NULL) return(r);
   }
 
@@ -526,7 +526,7 @@ Ldd_and_recur (LddManager * tdd,
   Cudd_IterDerefBdd (CUDD, e);
 
   if (F->ref != 1 || G->ref != 1)
-    cuddCacheInsert2(manager, (DD_CTFP)Ldd_and, f, g, r);
+    cuddCacheInsert2(manager, (DD_CTFP)Ldd_And, f, g, r);
 
   cuddDeref (r);
   return r;
@@ -569,7 +569,7 @@ LddNode * Ldd_xor_recur (LddManager * tdd,
   /* At this point f and g are not constant. */
   
   /* Check cache. */
-  r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_xor, f, g);
+  r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_Xor, f, g);
   if (r != NULL) return(r);
 
 
@@ -692,7 +692,7 @@ LddNode * Ldd_xor_recur (LddManager * tdd,
   Cudd_IterDerefBdd (CUDD, e);
 
   if (f->ref != 1 || G->ref != 1)
-    cuddCacheInsert2(manager, (DD_CTFP)Ldd_xor, f, g, r);
+    cuddCacheInsert2(manager, (DD_CTFP)Ldd_Xor, f, g, r);
 
   cuddDeref (r);
   return r;

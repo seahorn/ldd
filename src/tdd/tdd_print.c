@@ -9,7 +9,7 @@ static void Ldd_print_minterm_aux (LddManager *tdd, LddNode *node, int* list);
  * Cudd_PrintMinterm
  */
 int
-Ldd_print_minterm (LddManager *tdd, LddNode* node)
+Ldd_PrintMinterm (LddManager *tdd, LddNode* node)
 {
   int i, *list;
   DdNode *zero;

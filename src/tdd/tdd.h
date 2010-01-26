@@ -333,12 +333,12 @@ LddNode* Ldd_TermMinmaxApprox (LddManager*, LddNode*);
 LddNode* Ldd_TermConstrain (LddManager*, LddNode*, 
 				linterm_t, linterm_t, constant_t);
 /* LddNodeset* Ldd_empty_nodeset (LddManager*); */
-LddNodeset* LddNodeset_union (LddManager*, LddNodeset*, LddNodeset*);
-LddNodeset* LddNodeset_add (LddManager*, LddNodeset*, LddNode*);
-int Ldd_print_minterm(LddManager*, LddNode*);
+LddNodeset* Ldd_NodesetUnion (LddManager*, LddNodeset*, LddNodeset*);
+LddNodeset* Ldd_NodesetAdd (LddManager*, LddNodeset*, LddNode*);
+int Ldd_PrintMinterm(LddManager*, LddNode*);
 
-DdManager * Ldd_get_cudd (LddManager *);
-  lincons_t Ldd_get_cons (LddManager*, LddNode*);
+DdManager * Ldd_GetCudd (LddManager *);
+  lincons_t Ldd_GetCons (LddManager*, LddNode*);
 /* LddNode* Ldd_and_resolve (LddManager *m, LddNode *n1, int x);*/
 
 #ifdef __cplusplus

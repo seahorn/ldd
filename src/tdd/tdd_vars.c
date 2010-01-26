@@ -12,7 +12,7 @@ static void Ldd_update_cudd_mtr_tree (DdManager *, LddNode *, LddNode * );
  * Can be used to call CUDD functions directly.
  */
 DdManager * 
-Ldd_get_cudd (LddManager *tdd)
+Ldd_GetCudd (LddManager *tdd)
 {
   return tdd->cudd;
 }
@@ -21,7 +21,7 @@ Ldd_get_cudd (LddManager *tdd)
  * Returns a linear constraint at the root of a given node.
  */
 lincons_t 
-Ldd_get_cons (LddManager *tdd, LddNode *node)
+Ldd_GetCons (LddManager *tdd, LddNode *node)
 {
   return tddC(tdd,Cudd_Regular(node)->index);
 }

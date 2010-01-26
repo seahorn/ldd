@@ -76,8 +76,8 @@ Ldd_TermsWithVars (LddManager *tdd,
 	  LddNodeset *tmp;
 	  
 	  //assert (is_valid_nodeset (tdd, res) && "Before ADD");
-	  //tmp = LddNodeset_add (tdd, res, CUDD->vars [i]);
-	  tmp = LddNodeset_union (tdd, Ldd_NodeToNodeset (CUDD->vars [i]), res);
+	  //tmp = Ldd_NodesetAdd (tdd, res, CUDD->vars [i]);
+	  tmp = Ldd_NodesetUnion (tdd, Ldd_NodeToNodeset (CUDD->vars [i]), res);
 	  //assert (is_valid_nodeset (tdd, tmp) && "After ADD");
 	  if (tmp != NULL) cuddRef (tmp);
 	  Cudd_IterDerefBdd (CUDD, res);
@@ -120,7 +120,7 @@ Ldd_bdd_exist_abstract_recur (LddManager *tdd,
     /* Check the cache. */
     if (F->ref != 1 && 
 	(res = cuddCacheLookup2(manager, 
-				(DD_CTFP)Ldd_bdd_exist_abstract, 
+				(DD_CTFP)Ldd_BddExistAbstract, 
 				f, varset)) != NULL) {
 	return(res);
     }
@@ -142,7 +142,7 @@ Ldd_bdd_exist_abstract_recur (LddManager *tdd,
 	if (res1 == one) {
 	    if (F->ref != 1)
 	      cuddCacheInsert2(manager, 
-			       (DD_CTFP)Ldd_bdd_exist_abstract, f, varset, one);
+			       (DD_CTFP)Ldd_BddExistAbstract, f, varset, one);
 	    return(one);
 	}
         cuddRef(res1);
@@ -165,7 +165,7 @@ Ldd_bdd_exist_abstract_recur (LddManager *tdd,
 	Cudd_IterDerefBdd(manager, res2);
 	if (F->ref != 1)
 	  cuddCacheInsert2(manager, 
-			   (DD_CTFP)Ldd_bdd_exist_abstract, f, varset, res);
+			   (DD_CTFP)Ldd_BddExistAbstract, f, varset, res);
 	cuddDeref(res);
         return(res);
     } else { /* if (cuddI(manager,F->index) < cuddI(manager,cube->index)) */
@@ -191,7 +191,7 @@ Ldd_bdd_exist_abstract_recur (LddManager *tdd,
 	Cudd_IterDerefBdd (manager, res2);
 	if (F->ref != 1)
 	  cuddCacheInsert2(manager, 
-			   (DD_CTFP)Ldd_bdd_exist_abstract, f, varset, res);
+			   (DD_CTFP)Ldd_BddExistAbstract, f, varset, res);
 	cuddDeref (res);
         return(res);
     }	    

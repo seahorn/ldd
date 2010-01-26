@@ -152,7 +152,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
 
   /* Check cache. */
   if (F->ref != 1 || G->ref != 1) {
-    r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_box_extrapolate, f, g);
+    r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_BoxExtrapolate, f, g);
     if (r != NULL) return(r);
   }
   
@@ -379,7 +379,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
   Cudd_IterDerefBdd (CUDD, e);
 
   if (F->ref != 1 || G->ref != 1)
-    cuddCacheInsert2(manager, (DD_CTFP)Ldd_box_extrapolate, f, g, r);
+    cuddCacheInsert2(manager, (DD_CTFP)Ldd_BoxExtrapolate, f, g, r);
 
   cuddDeref (r);
   return r;
@@ -765,7 +765,7 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
 
   /* Check cache. */
   if (F->ref != 1) {
-    r = cuddCacheLookup1(manager, (DD_CTFP1)Ldd_term_minmax_approx, f);
+    r = cuddCacheLookup1(manager, (DD_CTFP1)Ldd_TermMinmaxApprox, f);
     if (r != NULL) return(r);
   }
   
@@ -879,7 +879,7 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
     }
   
   if (F->ref != 1)
-    cuddCacheInsert1(CUDD, (DD_CTFP1)Ldd_term_minmax_approx, f, r);
+    cuddCacheInsert1(CUDD, (DD_CTFP1)Ldd_TermMinmaxApprox, f, r);
   
   cuddDeref (r);
   return r;

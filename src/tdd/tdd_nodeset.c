@@ -8,13 +8,13 @@ Ldd_emtpy_nodeset (LddManager* tdd)
 }
 
 LddNodeset * 
-LddNodeset_add (LddManager* tdd, LddNodeset* s, LddNode *f)
+Ldd_NodesetAdd (LddManager* tdd, LddNodeset* s, LddNode *f)
 {
-  return LddNodeset_union (tdd, Ldd_NodeToNodeset (f), s);
+  return Ldd_NodesetUnion (tdd, Ldd_NodeToNodeset (f), s);
 }
 
 LddNodeset *
-LddNodeset_union (LddManager* tdd, LddNodeset *f, LddNodeset* g)
+Ldd_NodesetUnion (LddManager* tdd, LddNodeset *f, LddNodeset* g)
 {
   DdNode *res;
   int rs = CUDD->autoDyn;
@@ -75,7 +75,7 @@ LddNodeset_union_recur (LddManager* tdd, LddNodeset *f, LddNodeset *g)
 
   if (f->ref != 1 || g->ref != 1)
     {
-      res = cuddCacheLookup2 (CUDD, (DD_CTFP)LddNodeset_union, f, g);
+      res = cuddCacheLookup2 (CUDD, (DD_CTFP)Ldd_NodesetUnion, f, g);
       if (res !=  NULL) 
 	return res;
     }
@@ -116,7 +116,7 @@ LddNodeset_union_recur (LddManager* tdd, LddNodeset *f, LddNodeset *g)
   if (res == NULL) return NULL;
   
   if (f->ref != 1 || g->ref != 1)
-    cuddCacheInsert2 (CUDD, (DD_CTFP)LddNodeset_union, f, g, res);
+    cuddCacheInsert2 (CUDD, (DD_CTFP)Ldd_NodesetUnion, f, g, res);
   
   cuddDeref (res);
   return res;
