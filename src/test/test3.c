@@ -25,7 +25,7 @@ LddNode *create_cons(testcase_t *tc,int *arg)
   constant_t c = theory->create_int_cst(arg[tc->varnum]);
   linterm_t t = theory->create_linterm (arg,tc->varnum);
   lincons_t l = theory->create_cons (t, 0, c);
-  LddNode *d = to_tdd (tdd, l);
+  LddNode *d = Ldd_FromCons (tdd, l);
   Cudd_Ref (d);
   return d;
 }

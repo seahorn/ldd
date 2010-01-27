@@ -57,7 +57,7 @@ Ldd_Quit (LddManager * tdd)
 
 
 LddNode* 
-to_tdd (LddManager *tdd, lincons_t l)
+Ldd_FromCons (LddManager *tdd, lincons_t l)
 {
   return THEORY->to_tdd(tdd, l);
 }

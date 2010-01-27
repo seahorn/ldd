@@ -422,7 +422,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
               if (maxCons == NULL) 
                   return NULL;
           
-              res = to_tdd (tdd, maxCons);
+              res = Ldd_FromCons (tdd, maxCons);
               THEORY->destroy_lincons (maxCons);
               if (res == NULL) return NULL;
               cuddRef (res); 
@@ -446,7 +446,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
                   Cudd_IterDerefBdd (CUDD, res);
                   return NULL;
                 }
-              tmp1 = to_tdd (tdd, minCons);
+              tmp1 = Ldd_FromCons (tdd, minCons);
               if (tmp1 == NULL)
                 {
                   Cudd_IterDerefBdd (CUDD, res);
@@ -555,7 +555,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
 					 nCst);
 	  /* nCst is now managed by createCons */
 
-	  d = to_tdd (tdd, newCons);
+	  d = Ldd_FromCons (tdd, newCons);
 	  THEORY->destroy_lincons (newCons);
 	  newCons = NULL;
 	  if (d == NULL)
@@ -616,7 +616,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
 					     nCst);
 	      /* nCst is now managed by createCons */
 
-	      d = to_tdd (tdd, newCons);
+	      d = Ldd_FromCons (tdd, newCons);
 	      THEORY->destroy_lincons (newCons);
 	      newCons = NULL;
 	      if (d == NULL)
@@ -923,7 +923,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
       nCons = THEORY->create_cons (THEORY->dup_term (t1),
 				   THEORY->is_strict (fCons),
 				   nCst);
-      d = to_tdd (tdd, nCons);
+      d = Ldd_FromCons (tdd, nCons);
       THEORY->destroy_lincons (nCons);
       nCons = NULL;
       if (d == NULL)
@@ -967,7 +967,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
       
       nCons = THEORY->create_cons 
 	(THEORY->dup_term (t2), THEORY->is_strict (fCons), nCst);
-      d = to_tdd (tdd, nCons);
+      d = Ldd_FromCons (tdd, nCons);
       THEORY->destroy_lincons (nCons);
       nCons = NULL;
       if (d == NULL)

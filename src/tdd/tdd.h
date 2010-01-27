@@ -286,7 +286,7 @@ struct theory
 LddManager* Ldd_Init (DdManager *cudd, theory_t * t);
 void Ldd_Quit (LddManager* tdd);
 
-LddNode* to_tdd(LddManager* m, lincons_t l);
+LddNode* Ldd_FromCons(LddManager* m, lincons_t l);
 
 LddNode* Ldd_NewVar(LddManager* m, lincons_t l);
 LddNode* Ldd_NewVarAtTop (LddManager* m, lincons_t l);

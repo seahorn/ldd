@@ -47,23 +47,23 @@ void test1 ()
   fprintf (stdout, "\n\nTEST 1\n");
   
   /* 0: x2 <= -1 */
-  d[i] = to_tdd (tdd, CONS (x2,4,-1));
+  d[i] = Ldd_FromCons (tdd, CONS (x2,4,-1));
   Ldd_Ref (d[i++]);
 
   /* 1: x2 <= 1 */
-  d[i] = to_tdd (tdd, CONS (x2,4,1));
+  d[i] = Ldd_FromCons (tdd, CONS (x2,4,1));
   Ldd_Ref (d[i++]);
 
   /* 2: x3 <= 0 */
-  d[i] = to_tdd (tdd, CONS (x3,4,0));
+  d[i] = Ldd_FromCons (tdd, CONS (x3,4,0));
   Ldd_Ref (d[i++]);
 
   /* 3: x7 <= 0 */
-  d[i] = to_tdd (tdd, CONS (x7,4,0));
+  d[i] = Ldd_FromCons (tdd, CONS (x7,4,0));
   Ldd_Ref (d[i++]);
 
   /* 4: x2 <= 4 */
-  d[i] = to_tdd (tdd, CONS (x2,4,4));
+  d[i] = Ldd_FromCons (tdd, CONS (x2,4,4));
   Ldd_Ref (d[i++]);
 
 
@@ -137,24 +137,24 @@ void test0 ()
 
 
   l1 = CONS(x, 3, 3);
-  d1 = to_tdd (tdd, l1);
+  d1 = Ldd_FromCons (tdd, l1);
   Cudd_Ref (d1);  
   /* Cudd_PrintMinterm (cudd, d1);*/
   Ldd_PrintMinterm (tdd, d1);
   
   l2 = CONS(nx, 3, -1);
-  d2 = to_tdd(tdd, l2);
+  d2 = Ldd_FromCons(tdd, l2);
   Cudd_Ref (d2);
   Ldd_PrintMinterm (tdd, d2);
 
   l3 = CONS (x, 3, 5);
-  d3 = to_tdd(tdd, l3);
+  d3 = Ldd_FromCons(tdd, l3);
   Cudd_Ref (d3);  
   Ldd_PrintMinterm (tdd, d3);
 
 
   l4 = CONS (nx, 3, 0);
-  d4 = to_tdd(tdd, l4);
+  d4 = Ldd_FromCons(tdd, l4);
   Cudd_Ref (d4);
   Ldd_PrintMinterm (tdd, d4);
 
@@ -216,15 +216,15 @@ void test2()
 
 
   l1 = CONS(x, 3, 3);
-  d1 = to_tdd (tdd, l1);
+  d1 = Ldd_FromCons (tdd, l1);
   Cudd_Ref (d1);  
 
-  d2 = to_tdd (tdd, l1);
+  d2 = Ldd_FromCons (tdd, l1);
   Cudd_Ref (d2);
   
   assert (d1 == d2);
 
-  d3 = to_tdd (tdd, l1);
+  d3 = Ldd_FromCons (tdd, l1);
   assert (d2 == d3);
 
   Ldd_ManagerDebugDump (tdd);

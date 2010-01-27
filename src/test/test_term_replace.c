@@ -45,27 +45,27 @@ void test0 ()
 
   /* x <= 3 */
   l1 = CONS(xMz, 3, 3);
-  d1 = to_tdd (tdd, l1);
+  d1 = Ldd_FromCons (tdd, l1);
   Cudd_Ref (d1);  
   
   /* 1 <= x */
   l2 = CONS(zMx, 3, -1);
-  d2 = to_tdd(tdd, l2);
+  d2 = Ldd_FromCons(tdd, l2);
   Cudd_Ref (d2);
 
   /* 2 <= x */
   l3 = CONS(zMx, 3, -2);
-  d3 = to_tdd(tdd, l3);
+  d3 = Ldd_FromCons(tdd, l3);
   Cudd_Ref (d3);
 
   /* y <= 5 */
   l4 = CONS(yMz, 3, 3);
-  d4 = to_tdd (tdd, l4);
+  d4 = Ldd_FromCons (tdd, l4);
   Cudd_Ref (d4);  
 
   /* 2 <= y */
   l5 = CONS(zMy, 3, -2);
-  d5 = to_tdd(tdd, l5);
+  d5 = Ldd_FromCons(tdd, l5);
   Cudd_Ref (d5);
 
 

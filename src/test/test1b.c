@@ -60,7 +60,7 @@ int main(int argc, char** argv)
    */
   t1 = t->create_linterm (cf1, 3);
   l1 = t->create_cons (t1, 0, ni10);
-  d1 = to_tdd (tdd, l1);
+  d1 = Ldd_FromCons (tdd, l1);
   Cudd_Ref (d1);
 
   printf ("d1 is:\n");
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
    */
   t2 = t->create_linterm (cf2, 3);
   l2 = t->create_cons (t2, 0, ni5);
-  d2 = to_tdd (tdd, l2);
+  d2 = Ldd_FromCons (tdd, l2);
   Cudd_Ref (d2);
   printf ("d2 is:\n");
   Ldd_PrintMinterm (tdd, d2);
