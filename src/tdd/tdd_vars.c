@@ -29,7 +29,12 @@ Ldd_GetCons (LddManager *ldd, LddNode *node)
 
 
 /**
- * Returns LDD for TRUE
+   \brief Returns the one constant of the manager.
+
+   \return pointer to the one constant
+   \remark The one constant is common to LDDs, BDDs, and ADDs.
+
+   \sa Ldd_GetFalse()
  */
 LddNode *
 Ldd_GetTrue (LddManager *ldd)
@@ -37,8 +42,16 @@ Ldd_GetTrue (LddManager *ldd)
   return DD_ONE (CUDD);
 }
 
+
 /**
- * Returns LDD for FALSE
+   \brief Returns the logic zero constant of the manager.
+
+   \return pointer to the one constant
+
+   \remark The zero constant is common to LDDs and BDDs. It is the
+   complement of the one constant.
+
+   \sa Ldd_GetTrue()
  */
 LddNode *Ldd_GetFalse (LddManager *ldd)
 {
