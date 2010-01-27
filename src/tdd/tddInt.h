@@ -12,8 +12,8 @@
 
 #define DD_LDD_ITE_TAG 0x8a
 
-#define CUDD tdd->cudd
-#define THEORY tdd->theory
+#define CUDD ldd->cudd
+#define THEORY ldd->theory
 
 /**
  * tdd manager 

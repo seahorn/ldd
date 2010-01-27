@@ -1,8 +1,8 @@
 #include "util.h"
 #include "tddInt.h"
 
-static LddNode * Ldd_assoc_node (LddManager *, LddNode *, lincons_t);
-static void Ldd_update_cudd_mtr_tree (DdManager *, LddNode *, LddNode * );
+static LddNode * lddAssocNode (LddManager *, LddNode *, lincons_t);
+static void lddUpdateCuddMtrTree (DdManager *, LddNode *, LddNode * );
 
 /* static void Ldd_debug_print_mtr (MtrNode* tree);*/
 
@@ -12,51 +12,61 @@ static void Ldd_update_cudd_mtr_tree (DdManager *, LddNode *, LddNode * );
  * Can be used to call CUDD functions directly.
  */
 DdManager * 
-Ldd_GetCudd (LddManager *tdd)
+Ldd_GetCudd (LddManager *ldd)
 {
-  return tdd->cudd;
+  return ldd->cudd;
 }
 
 /**
  * Returns a linear constraint at the root of a given node.
  */
 lincons_t 
-Ldd_GetCons (LddManager *tdd, LddNode *node)
+Ldd_GetCons (LddManager *ldd, LddNode *node)
 {
-  return tddC(tdd,Cudd_Regular(node)->index);
+  return tddC(ldd,Cudd_Regular(node)->index);
 }
 
 
 
 /**
- * Returns TDD for TRUE
+ * Returns LDD for TRUE
  */
 LddNode *
-Ldd_GetTrue (LddManager *tdd)
+Ldd_GetTrue (LddManager *ldd)
 {
   return DD_ONE (CUDD);
 }
 
 /**
- * Returns TDD for FALSE
+ * Returns LDD for FALSE
  */
-LddNode *Ldd_GetFalse (LddManager *tdd)
+LddNode *Ldd_GetFalse (LddManager *ldd)
 {
   return Ldd_Not (DD_ONE (CUDD));
 }
 
 
 /**
- * Returns a new TDD for a linear constraint. The new node is at the
- * bottom of DD node ordering.
- * Requires: 
- *  1. l is in a canonical form
- *  2. tdd has no node for l
- * Side-effect: 
- *  A copy of l is stored
+ * \brief Returns a new LDD node.
+
+ Creates a new LDD node. The new node has an index equal to the
+ largest previous index plus 1 and is labeled by the given
+ constraint. 
+
+ \param ldd diagram manager
+ \param l   the constraint
+
+ \return a pointer to the new node if successful; NULL otherwise.
+
+ \pre the constraint is canonical. No other nodes are labeled by the
+ constraint.
+
+ \remark a copy of the constraint is stored in the manager.
+ 
+ \sa Ldd_NewVarAtTop(), Ldd_NewVarAfter(), and Ldd_NewVarBefore()
  */
 LddNode* 
-Ldd_NewVar (LddManager * tdd, lincons_t l)
+Ldd_NewVar (LddManager * ldd, lincons_t l)
 {
   LddNode * n;
   int reorderSave;
@@ -69,7 +79,7 @@ Ldd_NewVar (LddManager * tdd, lincons_t l)
   if (n == NULL)
     return NULL;
   
-  n = Ldd_assoc_node (tdd, n, l);
+  n = lddAssocNode (ldd, n, l);
 
 #ifdef MTR_DEBUG_FINE
   fprintf (stderr, "Create a new mtr with index %d and level %d\n", n->index, 
@@ -92,11 +102,26 @@ Ldd_NewVar (LddManager * tdd, lincons_t l)
 }
 
 /**
- * Same as Ldd_NewVar, but the new variable is at the top of variable
- * ordering.
+ * \brief Returns a new LDD node at the lowest level.
+
+ Creates a new LDD node. The new node has an index equal to the
+ largest previous index plus 1, level 0, and is labeled by the given
+ constraint.
+
+ \param ldd diagram manager
+ \param l   the constraint
+
+ \return a pointer to the new node if successful; NULL otherwise.
+
+ \pre the constraint is canonical. No other nodes are labeled by the
+ constraint.
+
+ \remark a copy of the constraint is stored in the manager.
+ 
+ \sa Ldd_NewVar(), Ldd_NewVarAfter(), and Ldd_NewVarBefore()
  */
 LddNode*
-Ldd_NewVarAtTop (LddManager* tdd, lincons_t l)
+Ldd_NewVarAtTop (LddManager* ldd, lincons_t l)
 {
   LddNode *n;
   int rs;
@@ -109,7 +134,7 @@ Ldd_NewVarAtTop (LddManager* tdd, lincons_t l)
 
   if (n == NULL) return NULL;
   
-  n = Ldd_assoc_node (tdd, n, l);
+  n = lddAssocNode (ldd, n, l);
   Cudd_MakeTreeNode (CUDD, n->index, 1, MTR_FIXED);
   
   return n;
@@ -117,12 +142,27 @@ Ldd_NewVarAtTop (LddManager* tdd, lincons_t l)
 
 
 /**
- * Returns a new TDD for a linear constraint. The new node appears
- * immediately before node v in the DD ordering.
- * 
+ * \brief Returns a new LDD node with a level before a given node.
+
+ Creates a new LDD node. The new node has an index equal to the
+ largest previous index plus 1, level of a given node, and is labeled
+ by the given constraint.
+
+ \param ldd diagram manager
+ \param v   an LDD node
+ \param l   the constraint
+
+ \return a pointer to the new node if successful; NULL otherwise.
+
+ \pre the constraint is canonical. No other nodes are labeled by the
+ constraint.
+
+ \remark a copy of the constraint is stored in the manager.
+ 
+ \sa Ldd_NewVar(), Ldd_NewVarAfter(), and Ldd_NewVarAtTop()
  */
 LddNode * 
-Ldd_NewVarBefore (LddManager * tdd, LddNode * v, lincons_t l)
+Ldd_NewVarBefore (LddManager * ldd, LddNode * v, lincons_t l)
 {
 
   LddNode * n;
@@ -130,8 +170,8 @@ Ldd_NewVarBefore (LddManager * tdd, LddNode * v, lincons_t l)
   int reorderSave;
 
 
-  if (tdd->be_bddlike)
-    return Ldd_NewVar (tdd, l);
+  if (ldd->be_bddlike)
+    return Ldd_NewVar (ldd, l);
   
   vLevel = cuddI (CUDD, v->index);
 
@@ -144,29 +184,49 @@ Ldd_NewVarBefore (LddManager * tdd, LddNode * v, lincons_t l)
   if (n == NULL) return NULL;
 
 
-  n = Ldd_assoc_node (tdd, n, l);
+  n = lddAssocNode (ldd, n, l);
 
 
 #ifdef MTR_DEBUG_FINE
   fprintf (stderr, "new_varBefore: update with level %d\n", vLevel);
 #endif
 
-  Ldd_update_cudd_mtr_tree (CUDD, v, n);
+  lddUpdateCuddMtrTree (CUDD, v, n);
 
   return n;
   
 }
 
+/**
+ * \brief Returns a new LDD node with a level after a given node.
+
+ Creates a new LDD node. The new node has an index equal to the
+ largest previous index plus 1, level of a given node plus 1, and is
+ labeled by the given constraint.
+
+ \param ldd diagram manager
+ \param v   an LDD node
+ \param l   the constraint
+
+ \return a pointer to the new node if successful; NULL otherwise.
+
+ \pre the constraint is canonical. No other nodes are labeled by the
+ constraint.
+
+ \remark a copy of the constraint is stored in the manager.
+ 
+ \sa Ldd_NewVar(), Ldd_NewVarBefore(), and Ldd_NewVarAtTop()
+ */
 LddNode * 
-Ldd_NewVarAfter (LddManager * tdd, LddNode *v, lincons_t l)
+Ldd_NewVarAfter (LddManager * ldd, LddNode *v, lincons_t l)
 {
   
   LddNode * n;
   unsigned int vLevel;
   int reorderSave;
 
-  if (tdd->be_bddlike)
-    return Ldd_NewVar (tdd, l);
+  if (ldd->be_bddlike)
+    return Ldd_NewVar (ldd, l);
 
   
   vLevel = cuddI (CUDD, v->index);
@@ -178,14 +238,14 @@ Ldd_NewVarAfter (LddManager * tdd, LddNode *v, lincons_t l)
   
   if (n == NULL) return NULL;
   
-  n = Ldd_assoc_node (tdd, n, l);
+  n = lddAssocNode (ldd, n, l);
 
 #ifdef MTR_DEBUG_FINE
   fprintf (stderr, "new_varAfter: update with level %d from index %d\n", 
 	   vLevel, v->index);
 #endif
 
-  Ldd_update_cudd_mtr_tree (CUDD, v, n);
+  lddUpdateCuddMtrTree (CUDD, v, n);
   
   return n;
   
@@ -193,29 +253,29 @@ Ldd_NewVarAfter (LddManager * tdd, LddNode *v, lincons_t l)
 
 
 LddNode * 
-Ldd_assoc_node (LddManager * tdd, LddNode *n, lincons_t l)
+lddAssocNode (LddManager * ldd, LddNode *n, lincons_t l)
 {
   int idx;
   int i;
   
   idx = n->index;
   
-  if (idx >= tdd->varsSize)
+  if (idx >= ldd->varsSize)
     {
       lincons_t* newDdVars = ALLOC (lincons_t, CUDD->maxSize);
       if (newDdVars == NULL) return NULL;
       
-      for (i = 0; i < tdd->varsSize; i++)
-	newDdVars [i] = tdd->ddVars [i];
-      for (i = tdd->varsSize; i < CUDD->maxSize; i++)
+      for (i = 0; i < ldd->varsSize; i++)
+	newDdVars [i] = ldd->ddVars [i];
+      for (i = ldd->varsSize; i < CUDD->maxSize; i++)
 	newDdVars [i] = NULL;
       
-      FREE (tdd->ddVars);
-      tdd->varsSize = CUDD->maxSize;
-      tdd->ddVars = newDdVars;
+      FREE (ldd->ddVars);
+      ldd->varsSize = CUDD->maxSize;
+      ldd->ddVars = newDdVars;
     }
   
-  tdd->ddVars [idx] = THEORY->dup_lincons (l);
+  ldd->ddVars [idx] = THEORY->dup_lincons (l);
 
   return n;
 }
@@ -226,7 +286,7 @@ Ldd_assoc_node (LddManager * tdd, LddNode *n, lincons_t l)
  * same group as v
  */
 void 
-Ldd_update_cudd_mtr_tree (DdManager *cudd, LddNode *v, LddNode *n)
+lddUpdateCuddMtrTree (DdManager *cudd, LddNode *v, LddNode *n)
 {
   MtrNode *tree;
   MtrNode *group;

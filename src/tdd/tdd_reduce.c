@@ -2,17 +2,17 @@
 #include "tddInt.h"
 
 
-static int Ldd_unsat_size_recur (LddManager *tdd, LddNode *f);
-static void tddClearFlag (LddNode *f);
+static int Ldd_unsat_size_recur (LddManager *ldd, LddNode *f);
+static void lddClearFlag (LddNode *f);
 
 
 /**
- * Reduces a TDD by removing all unsatisfiable paths of length less
+ * Reduces a LDD by removing all unsatisfiable paths of length less
  * than or equal to 'depth'. When depth is less than 0, removes paths
  * of arbitrary length.
  */
 LddNode *
-Ldd_SatReduce (LddManager *tdd, 
+Ldd_SatReduce (LddManager *ldd, 
 		LddNode *f,
 		int depth)
 {
@@ -30,7 +30,7 @@ Ldd_SatReduce (LddManager *tdd,
     vars [i] = 1;
   
   
-  ctx = THEORY->qelim_init (tdd, vars);
+  ctx = THEORY->qelim_init (ldd, vars);
 
   if (ctx == NULL)
     {
@@ -40,7 +40,7 @@ Ldd_SatReduce (LddManager *tdd,
 
   do {
     CUDD->reordered = 0;
-    res = Ldd_sat_reduce_recur (tdd, f, ctx, depth);
+    res = Ldd_sat_reduce_recur (ldd, f, ctx, depth);
     if (res != NULL)
       cuddRef (res);
   } while (CUDD->reordered == 1);
@@ -61,7 +61,7 @@ Ldd_SatReduce (LddManager *tdd,
 /**
    returns true if f is satisfiable, false if it isn't */
 bool
-Ldd_IsSat (LddManager *tdd,
+Ldd_IsSat (LddManager *ldd,
 	    LddNode *f)
 {
   bool res;
@@ -78,7 +78,7 @@ Ldd_IsSat (LddManager *tdd,
     vars [i] = 1;
   
   
-  ctx = THEORY->qelim_init (tdd, vars);
+  ctx = THEORY->qelim_init (ldd, vars);
 
   if (ctx == NULL)
     {
@@ -86,7 +86,7 @@ Ldd_IsSat (LddManager *tdd,
       return 0;
     }
 
-  res = Ldd_is_sat_recur (tdd, f, ctx);
+  res = Ldd_is_sat_recur (ldd, f, ctx);
   
   THEORY->qelim_destroy_context (ctx);
   ctx = NULL;
@@ -99,7 +99,7 @@ Ldd_IsSat (LddManager *tdd,
 
 
 LddNode *
-Ldd_sat_reduce_recur (LddManager *tdd, 
+Ldd_sat_reduce_recur (LddManager *ldd, 
 		      LddNode *f,
 		      qelim_context_t * ctx,
 		      int depth)
@@ -129,7 +129,7 @@ Ldd_sat_reduce_recur (LddManager *tdd,
 
   zero = Cudd_Not (DD_ONE (CUDD));
   v = F->index;
-  vCons = tdd->ddVars [v];
+  vCons = ldd->ddVars [v];
 
   fv = Cudd_NotCond (cuddT (F), f != F);
   fnv = Cudd_NotCond (cuddE (F), f != F);
@@ -147,7 +147,7 @@ Ldd_sat_reduce_recur (LddManager *tdd,
       cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, tmp);
 
-      t = Ldd_sat_reduce_recur (tdd, fv, ctx, depth - 1);
+      t = Ldd_sat_reduce_recur (ldd, fv, ctx, depth - 1);
       
       if (t == NULL)
 	return NULL;
@@ -177,7 +177,7 @@ Ldd_sat_reduce_recur (LddManager *tdd,
       cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, tmp);
       
-      e = Ldd_sat_reduce_recur (tdd, fnv, ctx, depth - 1);
+      e = Ldd_sat_reduce_recur (ldd, fnv, ctx, depth - 1);
       
       if (e == NULL)
 	{
@@ -215,7 +215,7 @@ Ldd_sat_reduce_recur (LddManager *tdd,
 	}
       cuddRef (root);
 
-      res = Ldd_ite_recur (tdd, root, t, e);
+      res = Ldd_ite_recur (ldd, root, t, e);
 
       if (res != NULL)
 	cuddRef (res);
@@ -235,7 +235,7 @@ Ldd_sat_reduce_recur (LddManager *tdd,
 }
 
 bool
-Ldd_is_sat_recur (LddManager *tdd, 
+Ldd_is_sat_recur (LddManager *ldd, 
 		  LddNode *f, 
 		  qelim_context_t * ctx)
 {
@@ -257,7 +257,7 @@ Ldd_is_sat_recur (LddManager *tdd,
 
   F = Cudd_Regular (f);
   v = F->index;
-  vCons = tdd->ddVars [v];
+  vCons = ldd->ddVars [v];
   
 
   fv = Cudd_NotCond (cuddT (F), f != F);
@@ -273,12 +273,12 @@ Ldd_is_sat_recur (LddManager *tdd,
   if (tmp == zero)
     {
       THEORY->qelim_pop (ctx);
-      return Ldd_is_sat_recur (tdd, fnv, ctx);
+      return Ldd_is_sat_recur (ldd, fnv, ctx);
     }
 
   assert (tmp == DD_ONE (CUDD));
 
-  res = Ldd_is_sat_recur (tdd, fv, ctx);
+  res = Ldd_is_sat_recur (ldd, fv, ctx);
   THEORY->qelim_pop (ctx);
   
   /* THEN branch is SAT, we are done */
@@ -299,7 +299,7 @@ Ldd_is_sat_recur (LddManager *tdd,
   
   assert (tmp == DD_ONE(CUDD));
   
-  res = Ldd_is_sat_recur (tdd, fnv, ctx);
+  res = Ldd_is_sat_recur (ldd, fnv, ctx);
   THEORY->qelim_pop (ctx);
   THEORY->destroy_lincons (nvCons);
 
@@ -307,19 +307,19 @@ Ldd_is_sat_recur (LddManager *tdd,
 }
 
 int
-Ldd_UnsatSize(LddManager *tdd, 
+Ldd_UnsatSize(LddManager *ldd, 
 		LddNode *f)
 {
   int i;
   
-  i = Ldd_unsat_size_recur (tdd, f);
-  tddClearFlag (Cudd_Regular (f));
+  i = Ldd_unsat_size_recur (ldd, f);
+  lddClearFlag (Cudd_Regular (f));
   return i;
 }
 
 
 static int
-Ldd_unsat_size_recur (LddManager *tdd, 
+Ldd_unsat_size_recur (LddManager *ldd, 
 		      LddNode *f)
 {
   LddNode *F;
@@ -334,10 +334,10 @@ Ldd_unsat_size_recur (LddManager *tdd,
   
   if (cuddIsConstant (F)) return 0;
   
-  tval = Ldd_unsat_size_recur (tdd, Cudd_NotCond (cuddT (F), f != F));
-  eval = Ldd_unsat_size_recur (tdd, Cudd_NotCond (cuddE (F), f != F));
+  tval = Ldd_unsat_size_recur (ldd, Cudd_NotCond (cuddT (F), f != F));
+  eval = Ldd_unsat_size_recur (ldd, Cudd_NotCond (cuddE (F), f != F));
   
-  r = Ldd_IsSat (tdd, f) ? 0 : 1;
+  r = Ldd_IsSat (ldd, f) ? 0 : 1;
 
   if (r == 1) 
     {
@@ -356,7 +356,7 @@ Ldd_unsat_size_recur (LddManager *tdd,
 
 
 static void 
-tddClearFlag (LddNode *f)
+lddClearFlag (LddNode *f)
 {
   if (!Cudd_IsComplement (f->next)) return;
   
@@ -364,6 +364,6 @@ tddClearFlag (LddNode *f)
   
   if (cuddIsConstant (f)) return;
 
-  tddClearFlag (cuddT(f));
-  tddClearFlag (Cudd_Regular (cuddE (f)));
+  lddClearFlag (cuddT(f));
+  lddClearFlag (Cudd_Regular (cuddE (f)));
 }

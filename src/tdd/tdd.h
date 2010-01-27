@@ -242,7 +242,7 @@ struct theory
 
    also, see ddd-notes-ver2.txt somewhere in the same repository
   */
-  LddNode* (*to_tdd)(LddManager* m, lincons_t l);
+  LddNode* (*to_ldd)(LddManager* m, lincons_t l);
 
   
   void (*print_lincons) (FILE* f, lincons_t l);

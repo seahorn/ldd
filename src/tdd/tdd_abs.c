@@ -3,7 +3,7 @@
 
 
 LddNode *
-Ldd_ExistAbstract (LddManager * tdd,
+Ldd_ExistAbstract (LddManager * ldd,
 		    LddNode * f,
 		    int var)
 {
@@ -16,7 +16,7 @@ Ldd_ExistAbstract (LddManager * tdd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = Ldd_exist_abstract_recur (tdd, f, var, table);
+      res = Ldd_exist_abstract_recur (ldd, f, var, table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -32,7 +32,7 @@ Ldd_ExistAbstract (LddManager * tdd,
  * of Ldd_exist_abstract.
  */
 LddNode *
-Ldd_ExistAbstractV3(LddManager * tdd,
+Ldd_ExistAbstractV3(LddManager * ldd,
 		       LddNode * f,
 		       int var)
 {
@@ -45,7 +45,7 @@ Ldd_ExistAbstractV3(LddManager * tdd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = Ldd_exist_abstract_v3_recur (tdd, f, var, table);
+      res = Ldd_exist_abstract_v3_recur (ldd, f, var, table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -56,7 +56,7 @@ Ldd_ExistAbstractV3(LddManager * tdd,
 }
 
 
-LddNode * Ldd_UnivAbstract (LddManager * tdd,
+LddNode * Ldd_UnivAbstract (LddManager * ldd,
 			      LddNode * f,
 			      int var)
 {
@@ -68,7 +68,7 @@ LddNode * Ldd_UnivAbstract (LddManager * tdd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = Ldd_exist_abstract_recur (tdd, Cudd_Not (f), var, table);
+      res = Ldd_exist_abstract_recur (ldd, Cudd_Not (f), var, table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -80,14 +80,14 @@ LddNode * Ldd_UnivAbstract (LddManager * tdd,
   return Cudd_NotCond (res, res != NULL);
 }
 
-LddNode * Ldd_ResolveElim (LddManager * tdd, LddNode * f, 
+LddNode * Ldd_ResolveElim (LddManager * ldd, LddNode * f, 
 			     linterm_t t, lincons_t cons, int var)
 {
   LddNode *res;
   do
     {
       CUDD->reordered = 0;
-      res = Ldd_resolve_elim_inter (tdd, f, t, cons, var);
+      res = Ldd_resolve_elim_inter (ldd, f, t, cons, var);
     } 
   while (CUDD->reordered == 1);
   
@@ -97,7 +97,7 @@ LddNode * Ldd_ResolveElim (LddManager * tdd, LddNode * f,
 
 
 
-LddNode * Ldd_Resolve (LddManager * tdd, LddNode * f, 
+LddNode * Ldd_Resolve (LddManager * ldd, LddNode * f, 
 			linterm_t t, lincons_t negCons, lincons_t posCons, 
 			int var)
 {
@@ -110,7 +110,7 @@ LddNode * Ldd_Resolve (LddManager * tdd, LddNode * f,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = Ldd_resolve_recur (tdd, f, t, negCons, posCons, var, table);
+      res = Ldd_resolve_recur (ldd, f, t, negCons, posCons, var, table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -122,7 +122,7 @@ LddNode * Ldd_Resolve (LddManager * tdd, LddNode * f,
 
 }
 
-LddNode *Ldd_ExistAbstractV2 (LddManager * tdd,
+LddNode *Ldd_ExistAbstractV2 (LddManager * ldd,
 				 LddNode * f,
 				 bool * vars)
 {
@@ -135,7 +135,7 @@ LddNode *Ldd_ExistAbstractV2 (LddManager * tdd,
     {
       CUDD->reordered = 0;
 
-      qelimCtx = THEORY->qelim_init (tdd, vars);
+      qelimCtx = THEORY->qelim_init (ldd, vars);
       if (qelimCtx == NULL)
 	return NULL;
       
@@ -146,7 +146,7 @@ LddNode *Ldd_ExistAbstractV2 (LddManager * tdd,
 	  return NULL;
 	}
 
-      res = Ldd_exist_abstract_v2_recur (tdd, f, vars, qelimCtx, table);
+      res = Ldd_exist_abstract_v2_recur (ldd, f, vars, qelimCtx, table);
       if (res != NULL)
 	cuddRef (res);
 
@@ -161,10 +161,10 @@ LddNode *Ldd_ExistAbstractV2 (LddManager * tdd,
 
 
 /**
- * Resolve TDD f with constraint 'cons' on variable 'var'. 
+ * Resolve LDD f with constraint 'cons' on variable 'var'. 
  * In the process, eliminates all constraints with the term 't'
  */
-LddNode * Ldd_resolve_elim_inter (LddManager * tdd, LddNode * f, 
+LddNode * Ldd_resolve_elim_inter (LddManager * ldd, LddNode * f, 
 				   linterm_t t, lincons_t cons, int var)
 {
   LddNode *res;
@@ -177,7 +177,7 @@ LddNode * Ldd_resolve_elim_inter (LddManager * tdd, LddNode * f,
    * cons is either t <= c, t < c or -t <= c, -t < c
    */
   
-  res = Ldd_resolve_elim_recur (tdd, f, 
+  res = Ldd_resolve_elim_recur (ldd, f, 
 				t, 
 				isNeg ? cons : NULL, 
 				isNeg ? NULL : cons, 
@@ -191,7 +191,7 @@ LddNode * Ldd_resolve_elim_inter (LddManager * tdd, LddNode * f,
  * table is the hash table to keep computed results of this operation
  */
 LddNode * 
-Ldd_exist_abstract_recur (LddManager * tdd, 
+Ldd_exist_abstract_recur (LddManager * ldd, 
 			  LddNode * f, 
 			  int var, 
 			  DdHashTable * table)
@@ -227,7 +227,7 @@ Ldd_exist_abstract_recur (LddManager * tdd,
 
   /* deconstruct f into the root constraint and cofactors */
   v = F->index;
-  vCons = tdd->ddVars [v];
+  vCons = ldd->ddVars [v];
   vTerm = THEORY->get_term (vCons);
   
   fv = cuddT (F);
@@ -257,7 +257,7 @@ Ldd_exist_abstract_recur (LddManager * tdd,
       fElimRoot = 1;
 
       /* resolve root constraint with THEN branch */
-      tmp = Ldd_resolve_elim_inter (tdd, fv, vTerm, vCons, var);
+      tmp = Ldd_resolve_elim_inter (ldd, fv, vTerm, vCons, var);
       if (tmp == NULL)
 	{
 	  return NULL;
@@ -269,7 +269,7 @@ Ldd_exist_abstract_recur (LddManager * tdd,
       
       /* resolve negation of the root constraint with ELSE branch */
       nvCons = THEORY->negate_cons (vCons);
-      tmp = Ldd_resolve_elim_inter (tdd, fnv, vTerm, nvCons, var);
+      tmp = Ldd_resolve_elim_inter (ldd, fnv, vTerm, nvCons, var);
       THEORY->destroy_lincons (nvCons);
       
       if (tmp == NULL)
@@ -283,7 +283,7 @@ Ldd_exist_abstract_recur (LddManager * tdd,
   
 
   /* recurse to THEN and ELSE branches*/
-  T = Ldd_exist_abstract_recur (tdd, fv, var, table);
+  T = Ldd_exist_abstract_recur (ldd, fv, var, table);
   if (T == NULL)
     {
       Cudd_IterDerefBdd (manager, fv);
@@ -294,7 +294,7 @@ Ldd_exist_abstract_recur (LddManager * tdd,
   Cudd_IterDerefBdd (manager, fv);
   fv = NULL;
   
-  E = Ldd_exist_abstract_recur (tdd, fnv, var, table);
+  E = Ldd_exist_abstract_recur (ldd, fnv, var, table);
   if (E == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -308,7 +308,7 @@ Ldd_exist_abstract_recur (LddManager * tdd,
   if (fElimRoot)
     {
       /* do an OR */
-      res = Ldd_and_recur (tdd, Cudd_Not (T), Cudd_Not (E));
+      res = Ldd_and_recur (ldd, Cudd_Not (T), Cudd_Not (E));
       if (res == NULL)
 	{
 	  Cudd_IterDerefBdd (manager, T);
@@ -329,7 +329,7 @@ Ldd_exist_abstract_recur (LddManager * tdd,
 	}
       cuddRef (root);
 
-      res = Ldd_ite_recur (tdd, root, T, E);
+      res = Ldd_ite_recur (ldd, root, T, E);
       if (res == NULL)
 	{
 	  Cudd_IterDerefBdd (manager, T);
@@ -371,7 +371,7 @@ Ldd_exist_abstract_recur (LddManager * tdd,
  * table is the hash table to keep computed results of this operation
  */
 LddNode * 
-Ldd_exist_abstract_v3_recur (LddManager * tdd, 
+Ldd_exist_abstract_v3_recur (LddManager * ldd, 
 			     LddNode * f, 
 			     int var, 
 			     DdHashTable * table)
@@ -406,7 +406,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
 
   /* deconstruct f into the root constraint and cofactors */
   v = F->index;
-  vCons = tdd->ddVars [v];
+  vCons = ldd->ddVars [v];
   vTerm = THEORY->get_term (vCons);
   
   fv = cuddT (F);
@@ -441,7 +441,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
       fElimRoot = 1;
 
       /* resolve root constraint with THEN branch */
-      tmp = Ldd_resolve_recur (tdd, fv, vTerm, NULL, vCons, var, table);
+      tmp = Ldd_resolve_recur (ldd, fv, vTerm, NULL, vCons, var, table);
       if (tmp == NULL)
 	{
 	  cuddHashTableQuit (table);
@@ -457,7 +457,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
       /* resolve negation of the root constraint with ELSE branch */
       table = cuddHashTableInit (CUDD, 1, 2);
       nvCons = THEORY->negate_cons (vCons);
-      tmp = Ldd_resolve_recur (tdd, fnv, vTerm, nvCons, NULL, var, table);
+      tmp = Ldd_resolve_recur (ldd, fnv, vTerm, nvCons, NULL, var, table);
       THEORY->destroy_lincons (nvCons);
       
       if (tmp == NULL)
@@ -473,7 +473,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
   
 
   /* recurse to THEN and ELSE branches*/
-  T = Ldd_exist_abstract_v3_recur (tdd, fv, var, table);
+  T = Ldd_exist_abstract_v3_recur (ldd, fv, var, table);
   if (T == NULL)
     {
       Cudd_IterDerefBdd (manager, fv);
@@ -484,7 +484,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
   Cudd_IterDerefBdd (manager, fv);
   fv = NULL;
   
-  E = Ldd_exist_abstract_v3_recur (tdd, fnv, var, table);
+  E = Ldd_exist_abstract_v3_recur (ldd, fnv, var, table);
   if (E == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -498,7 +498,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
   if (fElimRoot)
     {
       /* do an OR */
-      res = Ldd_and_recur (tdd, Cudd_Not (T), Cudd_Not (E));
+      res = Ldd_and_recur (ldd, Cudd_Not (T), Cudd_Not (E));
       if (res == NULL)
 	{
 	  Cudd_IterDerefBdd (manager, T);
@@ -519,7 +519,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
 	}
       cuddRef (root);
 
-      res = Ldd_ite_recur (tdd, root, T, E);
+      res = Ldd_ite_recur (ldd, root, T, E);
       if (res == NULL)
 	{
 	  Cudd_IterDerefBdd (manager, T);
@@ -560,7 +560,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
  * Recursive part of Ldd_resolve_elim
  *
  * Parameters:
- *  tdd          TDD manager
+ *  ldd          LDD manager
  *  f            the target of resolution/elimination
  *  t            the (positive) term being eliminted
  *  negCons      negative constraint (lower bound) of the form -t <= lower
@@ -573,7 +573,7 @@ Ldd_exist_abstract_v3_recur (LddManager * tdd,
  *  3. posCons is NULL or of the form   t <= upper or t < upper
  *
  */
-LddNode *Ldd_resolve_elim_recur (LddManager * tdd,
+LddNode *Ldd_resolve_elim_recur (LddManager * ldd,
 				  LddNode * f,
 				  linterm_t t,
 				  lincons_t negCons,
@@ -609,7 +609,7 @@ LddNode *Ldd_resolve_elim_recur (LddManager * tdd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
 
-      r = Ldd_resolve_recur (tdd, f, t, negCons, posCons, var, table);
+      r = Ldd_resolve_recur (ldd, f, t, negCons, posCons, var, table);
 
       if (r != NULL) cuddRef (r);
       cuddHashTableQuit (table);
@@ -625,7 +625,7 @@ LddNode *Ldd_resolve_elim_recur (LddManager * tdd,
 
   /* get index and constraint of the root node */
   v = F->index;
-  vCons = tdd->ddVars [v];
+  vCons = ldd->ddVars [v];
   vTerm = THEORY->get_term (vCons);
 
 
@@ -638,7 +638,7 @@ LddNode *Ldd_resolve_elim_recur (LddManager * tdd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;      
 
-      r = Ldd_resolve_recur (tdd, f, t, negCons, posCons, var, table);
+      r = Ldd_resolve_recur (ldd, f, t, negCons, posCons, var, table);
 
       if (r != NULL) cuddRef (r);
       cuddHashTableQuit (table);
@@ -666,13 +666,13 @@ LddNode *Ldd_resolve_elim_recur (LddManager * tdd,
 
 
   /** recursive call */
-  T = Ldd_resolve_elim_recur (tdd, fv, t, negCons, vCons, var);
+  T = Ldd_resolve_elim_recur (ldd, fv, t, negCons, vCons, var);
   if (T == NULL) return NULL;
   cuddRef (T);
   
   {
     lincons_t nvCons = THEORY->negate_cons (vCons);
-    E = Ldd_resolve_elim_recur (tdd, fnv, t, nvCons, (lincons_t)NULL, var);  
+    E = Ldd_resolve_elim_recur (ldd, fnv, t, nvCons, (lincons_t)NULL, var);  
     THEORY->destroy_lincons (nvCons);
   }
   
@@ -684,7 +684,7 @@ LddNode *Ldd_resolve_elim_recur (LddManager * tdd,
     }
   cuddRef (E);
 
-  res = Ldd_and_recur (tdd, Cudd_Not(T), Cudd_Not(E));
+  res = Ldd_and_recur (ldd, Cudd_Not(T), Cudd_Not(E));
   if (res == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -705,12 +705,12 @@ LddNode *Ldd_resolve_elim_recur (LddManager * tdd,
 
 /**
  * Recursive part of Ldd_resolve. Resolves negCons and posCons with
- * TDD f.  t is the term of posCons and -t is the term of negCons. var
+ * LDD f.  t is the term of posCons and -t is the term of negCons. var
  * is the resolution variable. table is the hashtable to keep computed
  * results.
  */
 LddNode *
-Ldd_resolve_recur (LddManager * tdd,
+Ldd_resolve_recur (LddManager * ldd,
 		   LddNode * f,
 		   linterm_t t,
 		   lincons_t negCons,
@@ -764,7 +764,7 @@ Ldd_resolve_recur (LddManager * tdd,
 
   /* get index and constraint of the root node */
   v = F->index;
-  vCons = tdd->ddVars [v];
+  vCons = ldd->ddVars [v];
   vTerm = THEORY->get_term (vCons);
   
   /* get THEN and ELSE branches */
@@ -776,13 +776,13 @@ Ldd_resolve_recur (LddManager * tdd,
   fnv = Cudd_NotCond (fnv, f != F);
 
   /** recursive call */
-  T = Ldd_resolve_recur (tdd, fv, t, negCons, posCons, var, table);
+  T = Ldd_resolve_recur (ldd, fv, t, negCons, posCons, var, table);
 
   if (T == NULL) return NULL;
   cuddRef (T);
 
   /* recursive call */
-  E = Ldd_resolve_recur (tdd, fnv, t, negCons, posCons, var, table);
+  E = Ldd_resolve_recur (ldd, fnv, t, negCons, posCons, var, table);
 
 
 
@@ -833,7 +833,7 @@ Ldd_resolve_recur (LddManager * tdd,
       DdNode *c;
       DdNode *tmp;
 
-      c = THEORY->to_tdd (tdd, tCons);
+      c = THEORY->to_ldd (ldd, tCons);
 
       THEORY->destroy_lincons (tCons);
       tCons = NULL;
@@ -848,7 +848,7 @@ Ldd_resolve_recur (LddManager * tdd,
 	}
       cuddRef (c);
       
-      tmp = Ldd_and_recur (tdd, c, T);
+      tmp = Ldd_and_recur (ldd, c, T);
   
       if (tmp == NULL)
 	{
@@ -871,7 +871,7 @@ Ldd_resolve_recur (LddManager * tdd,
       DdNode *c;
       DdNode *tmp;
 
-      c = THEORY->to_tdd (tdd, eCons);
+      c = THEORY->to_ldd (ldd, eCons);
       THEORY->destroy_lincons (eCons);
       eCons = NULL;
       
@@ -883,7 +883,7 @@ Ldd_resolve_recur (LddManager * tdd,
 	}
       cuddRef (c);
             
-      tmp = Ldd_and_recur (tdd, c, E);
+      tmp = Ldd_and_recur (ldd, c, E);
 
       if (tmp == NULL)
 	{
@@ -911,7 +911,7 @@ Ldd_resolve_recur (LddManager * tdd,
     }
   cuddRef (root);
 
-  res = Ldd_ite_recur (tdd, root, T, E);
+  res = Ldd_ite_recur (ldd, root, T, E);
   if (res == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -948,7 +948,7 @@ Ldd_resolve_recur (LddManager * tdd,
 }
 
 
-LddNode * Ldd_exist_abstract_v2_recur (LddManager * tdd, 
+LddNode * Ldd_exist_abstract_v2_recur (LddManager * ldd, 
 					LddNode * f, 
 					bool * vars, 
 					qelim_context_t * qelimCtx,
@@ -1009,7 +1009,7 @@ LddNode * Ldd_exist_abstract_v2_recur (LddManager * tdd,
   /* deconstruct f into the root constraint and cofactors */
   F = Cudd_Regular (f);
   v = F->index;
-  vCons = tdd->ddVars [v];
+  vCons = ldd->ddVars [v];
   vTerm = THEORY->get_term (vCons);
   
   fv = cuddT (F);
@@ -1042,7 +1042,7 @@ LddNode * Ldd_exist_abstract_v2_recur (LddManager * tdd,
     }
   
 
-  T = Ldd_exist_abstract_v2_recur (tdd, fv, vars, qelimCtx, table);
+  T = Ldd_exist_abstract_v2_recur (ldd, fv, vars, qelimCtx, table);
 
   if (fElimRoot) 
     THEORY->qelim_pop (qelimCtx);
@@ -1066,7 +1066,7 @@ LddNode * Ldd_exist_abstract_v2_recur (LddManager * tdd,
       THEORY->qelim_push (qelimCtx, nvCons);
     }    
 
-  E = Ldd_exist_abstract_v2_recur (tdd, fnv, vars, qelimCtx, table);
+  E = Ldd_exist_abstract_v2_recur (ldd, fnv, vars, qelimCtx, table);
 
   if (fElimRoot)
     THEORY->destroy_lincons (THEORY->qelim_pop (qelimCtx));
@@ -1092,7 +1092,7 @@ LddNode * Ldd_exist_abstract_v2_recur (LddManager * tdd,
 	}
       cuddRef (root);
 
-      res = Ldd_ite_recur (tdd, root, T, E);
+      res = Ldd_ite_recur (ldd, root, T, E);
       if (res == NULL)
 	{
 	  Cudd_IterDerefBdd (manager, T);
@@ -1106,7 +1106,7 @@ LddNode * Ldd_exist_abstract_v2_recur (LddManager * tdd,
     }
   else
     {
-      res = Ldd_and_recur (tdd, Cudd_Not (T), Cudd_Not (E));
+      res = Ldd_and_recur (ldd, Cudd_Not (T), Cudd_Not (E));
       if (res == NULL)
 	{
 	  Cudd_IterDerefBdd (manager, T);

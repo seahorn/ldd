@@ -6,33 +6,33 @@ static int bddVarToCanonicalSimple (DdManager *dd, DdNode **fp, DdNode **gp, DdN
 
 
 
-LddNode * Ldd_Ite (LddManager *tdd, LddNode *f, LddNode *g, LddNode *h)
+LddNode * Ldd_Ite (LddManager *ldd, LddNode *f, LddNode *g, LddNode *h)
 {
   LddNode *res;
   
   do {
     CUDD->reordered = 0;
-    res = Ldd_ite_recur (tdd, f, g, h);
+    res = Ldd_ite_recur (ldd, f, g, h);
   } while (CUDD->reordered == 1);
   
   return (res);
 }
 
 
-LddNode * Ldd_And (LddManager *tdd, LddNode * f, LddNode *g)
+LddNode * Ldd_And (LddManager *ldd, LddNode * f, LddNode *g)
 {
   LddNode *res;
   
   do {
     CUDD->reordered = 0;
-    res = Ldd_and_recur (tdd, f, g);
+    res = Ldd_and_recur (ldd, f, g);
   } while (CUDD->reordered == 1);
   return (res);
 }
 
 
 
-LddNode * Ldd_Or (LddManager* tdd,
+LddNode * Ldd_Or (LddManager* ldd,
 		   LddNode * f,
 		   LddNode * g)
 {
@@ -40,14 +40,14 @@ LddNode * Ldd_Or (LddManager* tdd,
   
   do {
     CUDD->reordered = 0;
-    res = Ldd_and_recur (tdd, Cudd_Not (f), Cudd_Not (g));
+    res = Ldd_and_recur (ldd, Cudd_Not (f), Cudd_Not (g));
   } while (CUDD->reordered == 1);
   
   res = Cudd_NotCond (res, res != NULL);
   return (res);
 }
 
-LddNode * Ldd_Xor (LddManager * tdd,
+LddNode * Ldd_Xor (LddManager * ldd,
 		    LddNode * f,
 		    LddNode *g)
 {
@@ -55,7 +55,7 @@ LddNode * Ldd_Xor (LddManager * tdd,
   
   do {
     CUDD->reordered = 0;
-    res = Ldd_xor_recur (tdd, f, g);
+    res = Ldd_xor_recur (ldd, f, g);
   } while (CUDD->reordered == 1);
   return (res);
 }
@@ -68,7 +68,7 @@ LddNode * Ldd_Xor (LddManager * tdd,
  *    f != g 
  *    f == Cudd_Regular (f)
  */
-LddNode* Ldd_unique_inter (LddManager *tdd, unsigned int index, 
+LddNode* Ldd_unique_inter (LddManager *ldd, unsigned int index, 
 			    LddNode *f, LddNode *g)
 {
   LddNode *res, *v, *G;
@@ -90,7 +90,7 @@ LddNode* Ldd_unique_inter (LddManager *tdd, unsigned int index,
 
 
   /*** 
-   *** TDD Simplification
+   *** LDD Simplification
    *** (v -> f, g) == (v -> cuddT(f), g)  
    ***              if cons(s) is_stronger_cons than cons(f)
    ***/
@@ -100,8 +100,8 @@ LddNode* Ldd_unique_inter (LddManager *tdd, unsigned int index,
      check. 
 
      The reasoning is that the efficiency of Ldd_unique_inter is very
-     important. The check is only needed for some methods. Many TDD
-     functions that traverse the TDD, like Ldd_and_recur, already
+     important. The check is only needed for some methods. Many LDD
+     functions that traverse the LDD, like Ldd_and_recur, already
      apply the check internally, as part of the traversal algorithm.
 
      However, currently Ldd_Ite requires the check. For now, this is
@@ -110,8 +110,8 @@ LddNode* Ldd_unique_inter (LddManager *tdd, unsigned int index,
 
   if (f != DD_ONE(CUDD))
     {
-      lincons_t vCons = tdd->ddVars [v->index];
-      lincons_t fCons = tdd->ddVars [f->index];
+      lincons_t vCons = ldd->ddVars [v->index];
+      lincons_t fCons = ldd->ddVars [f->index];
       
       /* if vCons implies fCons, then fCons is redundant! */
       if (THEORY->is_stronger_cons (vCons, fCons))
@@ -136,7 +136,7 @@ LddNode* Ldd_unique_inter (LddManager *tdd, unsigned int index,
 
 
   /*** 
-   *** TDD Simplification
+   *** LDD Simplification
    ***  (v -> f, (g->x, y)) == (g->x,y)  if x == f AND 
                                          cons(v) is_stronger_cons cons(g)
    ***                          
@@ -156,8 +156,8 @@ LddNode* Ldd_unique_inter (LddManager *tdd, unsigned int index,
       if (f == cuddT(G))
 	{
 	  /* now need to check the constraints */
-	  lincons_t vCons = tdd->ddVars [v->index];
-	  lincons_t gCons = tdd->ddVars [G->index];
+	  lincons_t vCons = ldd->ddVars [v->index];
+	  lincons_t gCons = ldd->ddVars [G->index];
 	  
 	  if (THEORY->is_stronger_cons (vCons, gCons))
 	    {
@@ -187,7 +187,7 @@ LddNode* Ldd_unique_inter (LddManager *tdd, unsigned int index,
 
 
 
-LddNode * Ldd_ite_recur (LddManager * tdd,
+LddNode * Ldd_ite_recur (LddManager * ldd,
 			  LddNode *f,
 			  LddNode *g,
 			  LddNode *h)
@@ -215,7 +215,7 @@ LddNode * Ldd_ite_recur (LddManager * tdd,
     if (h == zero) {	/* ITE(F,1,0) = F */
       return(f);
     } else {
-      res = Ldd_and_recur(tdd,Cudd_Not(f),Cudd_Not(h));
+      res = Ldd_and_recur(ldd,Cudd_Not(f),Cudd_Not(h));
       return(Cudd_NotCond(res,res != NULL));
     }
   } else if (g == zero || f == Cudd_Not(g)) { 
@@ -223,16 +223,16 @@ LddNode * Ldd_ite_recur (LddManager * tdd,
     if (h == one) {		/* ITE(F,0,1) = !F */
       return(Cudd_Not(f));
     } else {
-      res = Ldd_and_recur(tdd,Cudd_Not(f),h);
+      res = Ldd_and_recur(ldd,Cudd_Not(f),h);
       return(res);
     }
   }
   if (h == zero || f == h) {    /* ITE(F,G,F) = ITE(F,G,0) = F * G */
-    res = Ldd_and_recur(tdd,f,g);
+    res = Ldd_and_recur(ldd,f,g);
     return(res);
   } else if (h == one || f == Cudd_Not(h)) { 
     /* ITE(F,G,!F) = ITE(F,G,1) = !F + G */
-    res = Ldd_and_recur(tdd,f,Cudd_Not(g));
+    res = Ldd_and_recur(ldd,f,Cudd_Not(g));
     return(Cudd_NotCond(res,res != NULL));
   }
 
@@ -240,7 +240,7 @@ LddNode * Ldd_ite_recur (LddManager * tdd,
   if (g == h) { 		/* ITE(F,G,G) = G */
     return(g);
   } else if (g == Cudd_Not(h)) { /* ITE(F,G,!G) = F <-> G */
-    res = Ldd_xor_recur(tdd,f,h);
+    res = Ldd_xor_recur(ldd,f,h);
     return(res);
   }
 
@@ -254,7 +254,7 @@ LddNode * Ldd_ite_recur (LddManager * tdd,
 
   /* A shortcut: ITE(F,G,H) = (v,G,H) if F = (v,1,0), v < top(G,H). */
   if (topf < v && cuddT(f) == one && cuddE(f) == zero) {
-    r = Ldd_unique_inter (tdd, f->index, g, h);
+    r = Ldd_unique_inter (ldd, f->index, g, h);
     return(Cudd_NotCond(r,comple && r != NULL));
   }
 
@@ -291,26 +291,26 @@ LddNode * Ldd_ite_recur (LddManager * tdd,
     Hv = Hnv = h;
   }
 
-  vCons = tdd->ddVars [index];
+  vCons = ldd->ddVars [index];
 
   /** Propagate implication of the top node */
   if (Fv == f)
     {
-      lincons_t fCons = tdd->ddVars [f->index];
+      lincons_t fCons = ldd->ddVars [f->index];
       
       if (THEORY->is_stronger_cons (vCons, fCons))
 	Fv = cuddT (Fv);
     }
   if (Gv == g)
     {
-      lincons_t gCons = tdd->ddVars [g->index];
+      lincons_t gCons = ldd->ddVars [g->index];
       if (THEORY->is_stronger_cons (vCons, gCons))
 	Gv = cuddT (Gv);
     }
   if (Hv == h)
     {
       H = Cudd_Regular (h);
-      lincons_t hCons = tdd->ddVars [H->index];
+      lincons_t hCons = ldd->ddVars [H->index];
       if (THEORY->is_stronger_cons (vCons, hCons))
 	{
 	  Hv = cuddT (H);
@@ -322,18 +322,18 @@ LddNode * Ldd_ite_recur (LddManager * tdd,
   
 
   /* Recursive step. */
-  t = Ldd_ite_recur(tdd,Fv,Gv,Hv);
+  t = Ldd_ite_recur(ldd,Fv,Gv,Hv);
   if (t == NULL) return(NULL);
   cuddRef(t);
 
-  e = Ldd_ite_recur(tdd,Fnv,Gnv,Hnv);
+  e = Ldd_ite_recur(ldd,Fnv,Gnv,Hnv);
   if (e == NULL) {
     Cudd_IterDerefBdd(CUDD,t);
     return(NULL);
   }
   cuddRef(e);
 
-  r = (t == e) ? t : Ldd_unique_inter(tdd, index, t, e);
+  r = (t == e) ? t : Ldd_unique_inter(ldd, index, t, e);
   if (r == NULL) {
     Cudd_IterDerefBdd(CUDD,t);
     Cudd_IterDerefBdd(CUDD,e);
@@ -357,7 +357,7 @@ LddNode * Ldd_ite_recur (LddManager * tdd,
 
 
 LddNode * 
-Ldd_and_recur (LddManager * tdd,
+Ldd_and_recur (LddManager * ldd,
 	       LddNode *f,
 	       LddNode *g)
 {
@@ -441,7 +441,7 @@ Ldd_and_recur (LddManager * tdd,
   /** 
    * Get the constraint of the root node 
    */
-  vCons = tdd->ddVars [index];
+  vCons = ldd->ddVars [index];
 
   /** 
    * If f and g have the same term, simplify the THEN part of the
@@ -457,7 +457,7 @@ Ldd_and_recur (LddManager * tdd,
    */
   if (gv == g)
     {
-      lincons_t gCons = tdd->ddVars [G->index];
+      lincons_t gCons = ldd->ddVars [G->index];
       
       if (THEORY->is_stronger_cons (vCons, gCons))
 	{
@@ -468,7 +468,7 @@ Ldd_and_recur (LddManager * tdd,
     }
   else if (fv == f)
     {
-      lincons_t fCons = tdd->ddVars [F->index];
+      lincons_t fCons = ldd->ddVars [F->index];
       
       if (THEORY->is_stronger_cons (vCons, fCons))
 	{
@@ -485,11 +485,11 @@ Ldd_and_recur (LddManager * tdd,
 	   index is the index of the new root variable 
   */
 
-  t = Ldd_and_recur (tdd, fv, gv);
+  t = Ldd_and_recur (ldd, fv, gv);
   if (t == NULL) return(NULL);
   cuddRef(t);
   
-  e = Ldd_and_recur(tdd, fnv, gnv);
+  e = Ldd_and_recur(ldd, fnv, gnv);
   if (e == NULL) {
     Cudd_IterDerefBdd(manager, t);
     return(NULL);
@@ -501,7 +501,7 @@ Ldd_and_recur (LddManager * tdd,
   } else {
     if (Cudd_IsComplement(t)) {
       /* push the negation up from t to r */
-      r = Ldd_unique_inter(tdd, index,
+      r = Ldd_unique_inter(ldd, index,
 			   Cudd_Not(t),Cudd_Not(e));
       if (r == NULL) {
 	Cudd_IterDerefBdd(manager, t);
@@ -510,7 +510,7 @@ Ldd_and_recur (LddManager * tdd,
       }
       r = Cudd_Not (r);
     } else {
-      r = Ldd_unique_inter(tdd,index, t, e);
+      r = Ldd_unique_inter(ldd,index, t, e);
       if (r == NULL) {
 	Cudd_IterDerefBdd(manager, t);
 	Cudd_IterDerefBdd(manager, e);
@@ -533,7 +533,7 @@ Ldd_and_recur (LddManager * tdd,
 }
 
 
-LddNode * Ldd_xor_recur (LddManager * tdd,
+LddNode * Ldd_xor_recur (LddManager * ldd,
 			  LddNode *f,
 			  LddNode *g)
 {
@@ -611,7 +611,7 @@ LddNode * Ldd_xor_recur (LddManager * tdd,
   /** 
    * Get the constraint of the root node 
    */
-  vCons = tdd->ddVars [index];
+  vCons = ldd->ddVars [index];
 
   /** 
    * If f and g have the same constraint, simplify the THEN part
@@ -625,7 +625,7 @@ LddNode * Ldd_xor_recur (LddManager * tdd,
    */
   if (gv == g)
     {
-      lincons_t gCons = tdd->ddVars [G->index];
+      lincons_t gCons = ldd->ddVars [G->index];
       
       if (THEORY->is_stronger_cons (vCons, gCons))
 	{
@@ -638,7 +638,7 @@ LddNode * Ldd_xor_recur (LddManager * tdd,
     {
       lincons_t fCons;
       
-      fCons = tdd->ddVars[f->index];
+      fCons = ldd->ddVars[f->index];
       if (THEORY->is_stronger_cons (vCons, fCons))
 	{
 	  fv = cuddT (f);
@@ -652,11 +652,11 @@ LddNode * Ldd_xor_recur (LddManager * tdd,
 	   index is the index of the new root variable 
   */
 
-  t = Ldd_xor_recur(tdd, fv, gv);
+  t = Ldd_xor_recur(ldd, fv, gv);
   if (t == NULL) return(NULL);
   cuddRef(t);
   
-  e = Ldd_xor_recur(tdd, fnv, gnv);
+  e = Ldd_xor_recur(ldd, fnv, gnv);
   if (e == NULL) {
     Cudd_IterDerefBdd(manager, t);
 	return(NULL);
@@ -668,7 +668,7 @@ LddNode * Ldd_xor_recur (LddManager * tdd,
   } else {
     if (Cudd_IsComplement(t)) {
       /* push the negation up from t to r */
-      r = Ldd_unique_inter(tdd, index,
+      r = Ldd_unique_inter(ldd, index,
 			   Cudd_Not(t),Cudd_Not(e));
       if (r == NULL) {
 	Cudd_IterDerefBdd(manager, t);
@@ -677,7 +677,7 @@ LddNode * Ldd_xor_recur (LddManager * tdd,
       }
       r = Cudd_Not (r);
     } else {
-      r = Ldd_unique_inter(tdd,index, t, e);
+      r = Ldd_unique_inter(ldd,index, t, e);
       if (r == NULL) {
 	Cudd_IterDerefBdd(manager, t);
 	Cudd_IterDerefBdd(manager, e);

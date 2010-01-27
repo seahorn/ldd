@@ -9,14 +9,14 @@
  * Untested, unproven, use at your own risk 
  */
 LddNode * 
-Ldd_BoxExtrapolate (LddManager *tdd, LddNode *f, LddNode *g)
+Ldd_BoxExtrapolate (LddManager *ldd, LddNode *f, LddNode *g)
 {
   LddNode *res;
   
   do 
     {
       CUDD->reordered = 0;
-      res = Ldd_box_extrapolate_recur (tdd, f, g);
+      res = Ldd_box_extrapolate_recur (ldd, f, g);
     } while (CUDD->reordered == 1);
   return (res);
 }
@@ -31,7 +31,7 @@ Ldd_BoxExtrapolate (LddManager *tdd, LddNode *f, LddNode *g)
  * kmax == NULL means kmax is positive infinity
  */
 LddNode * 
-Ldd_TermReplace (LddManager *tdd, LddNode *f, linterm_t t1, 
+Ldd_TermReplace (LddManager *ldd, LddNode *f, linterm_t t1, 
 		  linterm_t t2, constant_t a, constant_t kmin, constant_t kmax)
 {
   LddNode *res;
@@ -66,7 +66,7 @@ Ldd_TermReplace (LddManager *tdd, LddNode *f, linterm_t t1,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = Ldd_term_replace_recur (tdd, f, t1, lt2, 
+      res = Ldd_term_replace_recur (ldd, f, t1, lt2, 
 				    la, kmin, kmax,table);
       if (res != NULL)
 	cuddRef (res);
@@ -82,7 +82,7 @@ Ldd_TermReplace (LddManager *tdd, LddNode *f, linterm_t t1,
  * f is an LDD, t1 and t2 are terms, k a constant
  */
 LddNode * 
-Ldd_TermConstrain (LddManager *tdd, LddNode *f, linterm_t t1, 
+Ldd_TermConstrain (LddManager *ldd, LddNode *f, linterm_t t1, 
 		    linterm_t t2, constant_t k)
 {
   LddNode *res;
@@ -94,7 +94,7 @@ Ldd_TermConstrain (LddManager *tdd, LddNode *f, linterm_t t1,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = Ldd_term_constrain_recur (tdd, f, t1, t2, k,table);
+      res = Ldd_term_constrain_recur (ldd, f, t1, t2, k,table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -109,14 +109,14 @@ Ldd_TermConstrain (LddManager *tdd, LddNode *f, linterm_t t1,
  * Approximates f by computing the min and max bounds for all terms.
  */
 LddNode * 
-Ldd_TermMinmaxApprox (LddManager *tdd, LddNode *f)
+Ldd_TermMinmaxApprox (LddManager *ldd, LddNode *f)
 {
   LddNode *res;
   
   do 
     {
       CUDD->reordered = 0;
-      res = Ldd_term_minmax_approx_recur (tdd, f);
+      res = Ldd_term_minmax_approx_recur (ldd, f);
     } while (CUDD->reordered == 1);
   return (res);
 }
@@ -124,7 +124,7 @@ Ldd_TermMinmaxApprox (LddManager *tdd, LddNode *f)
 
 
 LddNode *
-Ldd_box_extrapolate_recur (LddManager *tdd,
+Ldd_box_extrapolate_recur (LddManager *ldd,
 			   LddNode *f,
 			   LddNode *g)
 {
@@ -192,7 +192,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
   /** 
    * Get the constraint of the root node 
    */
-  vCons = tdd->ddVars [index];
+  vCons = ldd->ddVars [index];
 
   /** 
    * If f and g have the same term, simplify the THEN part of the
@@ -208,7 +208,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
    */
   if (gv == g)
     {
-      lincons_t gCons = tdd->ddVars [G->index];
+      lincons_t gCons = ldd->ddVars [G->index];
       
       if (THEORY->is_stronger_cons (vCons, gCons))
 	{
@@ -219,7 +219,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
     }
   else if (fv == f)
     {
-      lincons_t fCons = tdd->ddVars [F->index];
+      lincons_t fCons = ldd->ddVars [F->index];
       
       if (THEORY->is_stronger_cons (vCons, fCons))
 	{
@@ -236,11 +236,11 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
 	   index is the index of the  root variable 
   */
 
-  t = Ldd_box_extrapolate_recur (tdd, fv, gv);
+  t = Ldd_box_extrapolate_recur (ldd, fv, gv);
   if (t == NULL) return (NULL);
   cuddRef (t);
   
-  e = Ldd_box_extrapolate_recur (tdd, fnv, gnv);
+  e = Ldd_box_extrapolate_recur (ldd, fnv, gnv);
   if (e == NULL)
     {
       Cudd_IterDerefBdd (manager, t);
@@ -273,7 +273,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
 	      cuddT (Fnv) == ((fnv == Fnv) ? zero : one))))
     {      
       /* r = OR (t, e) */
-      r = Ldd_and_recur (tdd, Cudd_Not (t), Cudd_Not (e));
+      r = Ldd_and_recur (ldd, Cudd_Not (t), Cudd_Not (e));
       r = Cudd_NotCond (r, r != NULL);
 
       if (r == NULL)
@@ -300,16 +300,16 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
       fnv = Cudd_NotCond (fnv, F != f);
       Fnv = Cudd_Regular (fnv);
       
-      fCons = tdd->ddVars [F->index];
+      fCons = ldd->ddVars [F->index];
       
       if (Fnv->index != CUDD_CONST_INDEX && 
-          THEORY->is_stronger_cons (fCons, tdd->ddVars [Fnv->index]))
+          THEORY->is_stronger_cons (fCons, ldd->ddVars [Fnv->index]))
 	h = Cudd_NotCond (cuddT(Fnv), Fnv != fnv);
       else
 	h = fnv;
       
       if (Gnv->index != CUDD_CONST_INDEX && 
-          THEORY->is_stronger_cons (vCons, tdd->ddVars [Gnv->index]))
+          THEORY->is_stronger_cons (vCons, ldd->ddVars [Gnv->index]))
 	k = Cudd_NotCond (cuddT (Gnv), Gnv != gnv);
       else
 	k = gnv;
@@ -320,13 +320,13 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
       Cudd_IterDerefBdd (CUDD, e);
       e = NULL;
       
-      w = Ldd_box_extrapolate_recur (tdd, h, k);
+      w = Ldd_box_extrapolate_recur (ldd, h, k);
       
       if (w == NULL) return NULL;      
       cuddRef (w);
 
       /* t = OR (gv, w) */
-      t = Ldd_and_recur (tdd, Cudd_Not (gv), Cudd_Not (w));
+      t = Ldd_and_recur (ldd, Cudd_Not (gv), Cudd_Not (w));
       t = Cudd_NotCond (t, t != NULL);
 
       if (t == NULL)
@@ -337,7 +337,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
       cuddRef (t);
       Cudd_IterDerefBdd (CUDD, w);
       
-      e = Ldd_box_extrapolate_recur (tdd, fnv, gnv);
+      e = Ldd_box_extrapolate_recur (ldd, fnv, gnv);
       if (e == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, t);
@@ -363,7 +363,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
       cuddRef (root);
 
       /** XXX should use Ldd_unique_inter instead */
-      r = Ldd_ite_recur (tdd, root, t, e);
+      r = Ldd_ite_recur (ldd, root, t, e);
       if (r == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, t);
@@ -387,7 +387,7 @@ Ldd_box_extrapolate_recur (LddManager *tdd,
 }
 
 LddNode * 
-Ldd_term_replace_recur (LddManager * tdd, LddNode *f, 
+Ldd_term_replace_recur (LddManager * ldd, LddNode *f, 
 			linterm_t t1, linterm_t t2, 
 			constant_t a,
 			constant_t kmin, constant_t kmax,
@@ -422,7 +422,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
               if (maxCons == NULL) 
                   return NULL;
           
-              res = Ldd_FromCons (tdd, maxCons);
+              res = Ldd_FromCons (ldd, maxCons);
               THEORY->destroy_lincons (maxCons);
               if (res == NULL) return NULL;
               cuddRef (res); 
@@ -446,7 +446,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
                   Cudd_IterDerefBdd (CUDD, res);
                   return NULL;
                 }
-              tmp1 = Ldd_FromCons (tdd, minCons);
+              tmp1 = Ldd_FromCons (ldd, minCons);
               if (tmp1 == NULL)
                 {
                   Cudd_IterDerefBdd (CUDD, res);
@@ -454,7 +454,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
                 }
               cuddRef (tmp1);
 
-              tmp2 = Ldd_and_recur (tdd, res, tmp1);
+              tmp2 = Ldd_and_recur (ldd, res, tmp1);
               if (tmp2 != NULL) cuddRef (tmp2);
               Cudd_IterDerefBdd (CUDD, res);
               Cudd_IterDerefBdd (CUDD, tmp1);
@@ -485,7 +485,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
   rootT = NULL;
   rootE = NULL;
   
-  fCons = tdd->ddVars [F->index];
+  fCons = ldd->ddVars [F->index];
   fTerm = THEORY->get_term (fCons);
   
   /* remove top term if it is t1 */
@@ -555,7 +555,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
 					 nCst);
 	  /* nCst is now managed by createCons */
 
-	  d = Ldd_FromCons (tdd, newCons);
+	  d = Ldd_FromCons (ldd, newCons);
 	  THEORY->destroy_lincons (newCons);
 	  newCons = NULL;
 	  if (d == NULL)
@@ -570,7 +570,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
 	  d = Cudd_NotCond (d, !pos);
 
 	  /* add d to the THEN branch */
-	  tmp = Ldd_and_recur (tdd, rootT, d);
+	  tmp = Ldd_and_recur (ldd, rootT, d);
 	  if (tmp != NULL) cuddRef (tmp);
 	  Cudd_IterDerefBdd (CUDD, rootT);
 	  if (tmp == NULL)
@@ -616,7 +616,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
 					     nCst);
 	      /* nCst is now managed by createCons */
 
-	      d = Ldd_FromCons (tdd, newCons);
+	      d = Ldd_FromCons (ldd, newCons);
 	      THEORY->destroy_lincons (newCons);
 	      newCons = NULL;
 	      if (d == NULL)
@@ -633,7 +633,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
 	  if (d != NULL)
 	    {
 	      /* add d to the ELSE branch */
-	      tmp = Ldd_and_recur (tdd, rootE, d);
+	      tmp = Ldd_and_recur (ldd, rootE, d);
 	      if (tmp != NULL) cuddRef (tmp);
 	      Cudd_IterDerefBdd (CUDD, rootE);
 	      if (tmp == NULL)
@@ -652,7 +652,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
       
   /* recursive step */
 
-  t = Ldd_term_replace_recur (tdd, fv, t1, t2, a, kmin, kmax, table);
+  t = Ldd_term_replace_recur (ldd, fv, t1, t2, a, kmin, kmax, table);
   if (t == NULL)
     {
       Cudd_IterDerefBdd (CUDD, rootT);
@@ -661,7 +661,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
     }
   cuddRef (t);
   
-  e = Ldd_term_replace_recur (tdd, fnv, t1, t2, a, kmin, kmax, table);
+  e = Ldd_term_replace_recur (ldd, fnv, t1, t2, a, kmin, kmax, table);
   if (e == NULL)
     {
       Cudd_IterDerefBdd (CUDD, rootT);
@@ -675,7 +675,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
   if (rootT != DD_ONE(CUDD))
     {
       DdNode *tmp;
-      tmp = Ldd_and_recur (tdd, rootT, t);
+      tmp = Ldd_and_recur (ldd, rootT, t);
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, rootT);
       Cudd_IterDerefBdd (CUDD, t);
@@ -695,7 +695,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
   if (rootE != DD_ONE(CUDD))
     {
       DdNode *tmp;
-      tmp = Ldd_and_recur (tdd, rootE, e);
+      tmp = Ldd_and_recur (ldd, rootE, e);
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, rootE);
       Cudd_IterDerefBdd (CUDD, e);
@@ -712,7 +712,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
 
 
   /* res = OR (t, e) */
-  res = Ldd_and_recur (tdd, Cudd_Not (t), Cudd_Not (e));
+  res = Ldd_and_recur (ldd, Cudd_Not (t), Cudd_Not (e));
   if (res != NULL)
     {
       res = Cudd_Not (res);
@@ -741,7 +741,7 @@ Ldd_term_replace_recur (LddManager * tdd, LddNode *f,
 
 
 LddNode *
-Ldd_term_minmax_approx_recur (LddManager *tdd,
+Ldd_term_minmax_approx_recur (LddManager *ldd,
 			      LddNode *f)
 {
   DdManager * manager;
@@ -777,7 +777,7 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
   /** 
    * Get the constraint of the root node 
    */
-  minCons = tdd->ddVars [minIndex];
+  minCons = ldd->ddVars [minIndex];
 
   maxCons = minCons;
   maxIndex = minIndex;
@@ -793,7 +793,7 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
       DdNode *H, *tmp, *ht;
       
       H = Cudd_Regular (h);
-      hCons = tdd->ddVars [H->index];
+      hCons = ldd->ddVars [H->index];
       
       if (!THEORY->is_stronger_cons (maxCons, hCons)) break;
       
@@ -804,7 +804,7 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
       ht = Cudd_NotCond (cuddT(H), H != h);
 
       /* k = OR (k, ht) */
-      tmp = Ldd_and_recur (tdd, Cudd_Not (k), Cudd_Not (ht));
+      tmp = Ldd_and_recur (ldd, Cudd_Not (k), Cudd_Not (ht));
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, k);
       if (tmp == NULL) return NULL;
@@ -817,14 +817,14 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
     {
       DdNode *tmp;
       
-      tmp = Ldd_and_recur (tdd, Cudd_Not (k), Cudd_Not (h));
+      tmp = Ldd_and_recur (ldd, Cudd_Not (k), Cudd_Not (h));
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, k);
       if (tmp == NULL) return NULL;
       k = Cudd_Not (tmp);
     }
   
-  t = Ldd_term_minmax_approx_recur (tdd, k);
+  t = Ldd_term_minmax_approx_recur (ldd, k);
   if (t != NULL) cuddRef (t);
   Cudd_IterDerefBdd (CUDD, k);
   if (t == NULL) return NULL;
@@ -848,7 +848,7 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
 	}
       cuddRef (root);
       
-      r = Ldd_ite_recur (tdd, root, k, zero);
+      r = Ldd_ite_recur (ldd, root, k, zero);
       if (r != NULL) cuddRef (r);
       Cudd_IterDerefBdd (CUDD, root);
       Cudd_IterDerefBdd (CUDD, k);
@@ -870,7 +870,7 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
 	}
       cuddRef (root);
       
-      tmp = Ldd_ite_recur (tdd, root, zero, r);
+      tmp = Ldd_ite_recur (ldd, root, zero, r);
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, r);
       Cudd_IterDerefBdd (CUDD, root);
@@ -886,7 +886,7 @@ Ldd_term_minmax_approx_recur (LddManager *tdd,
 }
 
 LddNode * 
-Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1, 
+Ldd_term_constrain_recur (LddManager *ldd, LddNode *f, linterm_t t1, 
 			  linterm_t t2, constant_t k, DdHashTable *table)
 {
   DdNode *F, *t, *e, *r;
@@ -905,7 +905,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
   if (F->ref != 1 && (r = cuddHashTableLookup1 (table, f)) != NULL)
     return r;
 
-  fCons = tdd->ddVars [F->index];
+  fCons = ldd->ddVars [F->index];
   fTerm = THEORY->get_term (fCons);
 
   t = Cudd_NotCond (cuddT(F), f != F);
@@ -923,7 +923,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
       nCons = THEORY->create_cons (THEORY->dup_term (t1),
 				   THEORY->is_strict (fCons),
 				   nCst);
-      d = Ldd_FromCons (tdd, nCons);
+      d = Ldd_FromCons (ldd, nCons);
       THEORY->destroy_lincons (nCons);
       nCons = NULL;
       if (d == NULL)
@@ -934,7 +934,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
       cuddRef (d);
       
       /* add new constraint to t */
-      tmp = Ldd_and_recur (tdd, t, d);
+      tmp = Ldd_and_recur (ldd, t, d);
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, t);
       Cudd_IterDerefBdd (CUDD, d);
@@ -943,7 +943,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
     }
   
   /* recurse on the THEN branch */
-  tmp = Ldd_term_constrain_recur (tdd, t, t1, t2, k, table);
+  tmp = Ldd_term_constrain_recur (ldd, t, t1, t2, k, table);
   if (tmp != NULL) cuddRef (tmp);
   Cudd_IterDerefBdd (CUDD, t);
   if (tmp == NULL) return NULL;
@@ -967,7 +967,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
       
       nCons = THEORY->create_cons 
 	(THEORY->dup_term (t2), THEORY->is_strict (fCons), nCst);
-      d = Ldd_FromCons (tdd, nCons);
+      d = Ldd_FromCons (ldd, nCons);
       THEORY->destroy_lincons (nCons);
       nCons = NULL;
       if (d == NULL)
@@ -980,7 +980,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
       d = Cudd_Not (d);
 
       /* add new constraint to e */
-      tmp = Ldd_and_recur (tdd, e, d);
+      tmp = Ldd_and_recur (ldd, e, d);
       if (tmp != NULL) cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, e);
       Cudd_IterDerefBdd (CUDD, d);
@@ -994,7 +994,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
     }
 
   /* recurse on the ELSE branch */
-  tmp = Ldd_term_constrain_recur (tdd, e, t1, t2, k, table);
+  tmp = Ldd_term_constrain_recur (ldd, e, t1, t2, k, table);
   if (tmp != NULL) cuddRef (tmp);
   Cudd_IterDerefBdd (CUDD, e);
   if (tmp == NULL)
@@ -1006,7 +1006,7 @@ Ldd_term_constrain_recur (LddManager *tdd, LddNode *f, linterm_t t1,
   
   
   /* construct the result */
-  r = Ldd_ite_recur (tdd, CUDD->vars[F->index], t, e);
+  r = Ldd_ite_recur (ldd, CUDD->vars[F->index], t, e);
 
   
   if (r != NULL) cuddRef (r);

@@ -1261,7 +1261,7 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
 }
 
 LddNode*
-tvpi_to_tdd(LddManager *m, tvpi_cons_t c)
+tvpi_to_ldd(LddManager *m, tvpi_cons_t c)
 {
   /* the theory */
   tvpi_theory_t *theory;
@@ -1382,7 +1382,7 @@ tvpi_create_theory (size_t vn)
   t->base.destroy_lincons = (void(*)(lincons_t)) tvpi_destroy_cons;
   
 
-  t->base.to_tdd = (LddNode*(*)(LddManager*,lincons_t))tvpi_to_tdd;
+  t->base.to_ldd = (LddNode*(*)(LddManager*,lincons_t))tvpi_to_ldd;
   t->base.print_lincons = (void(*)(FILE*,lincons_t))tvpi_print_cons;
 
   t->base.num_of_vars = (size_t(*)(theory_t*))tvpi_num_of_vars;

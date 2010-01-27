@@ -1,7 +1,7 @@
 #include "util.h"
 #include "tddInt.h"
 
-static void Ldd_print_minterm_aux (LddManager *tdd, LddNode *node, int* list);
+static void Ldd_print_minterm_aux (LddManager *ldd, LddNode *node, int* list);
 
 
 /**
@@ -9,7 +9,7 @@ static void Ldd_print_minterm_aux (LddManager *tdd, LddNode *node, int* list);
  * Cudd_PrintMinterm
  */
 int
-Ldd_PrintMinterm (LddManager *tdd, LddNode* node)
+Ldd_PrintMinterm (LddManager *ldd, LddNode* node)
 {
   int i, *list;
   DdNode *zero;
@@ -24,7 +24,7 @@ Ldd_PrintMinterm (LddManager *tdd, LddNode* node)
     }
   
   for (i = 0; i < CUDD->size; i++) list[i] = 2;
-  Ldd_print_minterm_aux (tdd, node, list);
+  Ldd_print_minterm_aux (ldd, node, list);
   FREE(list);
   return (1);
   
@@ -32,7 +32,7 @@ Ldd_PrintMinterm (LddManager *tdd, LddNode* node)
 
 
 static void 
-Ldd_print_minterm_aux (LddManager *tdd, LddNode *n, int* list)
+Ldd_print_minterm_aux (LddManager *ldd, LddNode *n, int* list)
 {
   DdNode *N, *Nv, *Nnv;
   int i, v, index, p;
@@ -61,10 +61,10 @@ Ldd_print_minterm_aux (LddManager *tdd, LddNode *n, int* list)
 	      /* skip don't care */
 	      if (v == 2) continue;
 
-	      if (v == 0 && tdd->ddVars [p] != NULL)
+	      if (v == 0 && ldd->ddVars [p] != NULL)
 		{
 		  lincons_t c;
-		  c = THEORY->negate_cons (tdd->ddVars [p]);
+		  c = THEORY->negate_cons (ldd->ddVars [p]);
 		  
 		  if (negc != NULL)
 		    {
@@ -97,13 +97,13 @@ Ldd_print_minterm_aux (LddManager *tdd, LddNode *n, int* list)
 
 	      /* if v is not a don't care but p does not correspond to 
 	       * a constraint, print it as a Boolean variable */
-	      if (v != 2 && tdd->ddVars [p] == NULL) 
+	      if (v != 2 && ldd->ddVars [p] == NULL) 
 		fprintf (stderr, "%sb%d", (v == 0 ? "!" : " "), p);
 	      /* v is true */
 	      else if (v == 1)
 		{
 		  THEORY->print_lincons (CUDD->out, 
-					 tdd->ddVars [p]);
+					 ldd->ddVars [p]);
 		  fprintf (CUDD->out, " ");
 		}
 	    }
@@ -124,9 +124,9 @@ Ldd_print_minterm_aux (LddManager *tdd, LddNode *n, int* list)
       Nnv = Cudd_NotCond (cuddE(N), N != n);
       index = N->index;
       list[index] = 0;
-      Ldd_print_minterm_aux (tdd, Nnv, list);
+      Ldd_print_minterm_aux (ldd, Nnv, list);
       list[index] = 1;
-      Ldd_print_minterm_aux (tdd, Nv, list);
+      Ldd_print_minterm_aux (ldd, Nv, list);
       list[index] = 2;
     }
   return;

@@ -4,25 +4,25 @@
 #include "tddInt.h"
 
 static void ddClearFlag(LddNode * n);
-static void ddOccurCount (LddManager *tdd, LddNode *N, int *occurrences);
+static void ddOccurCount (LddManager *ldd, LddNode *N, int *occurrences);
 
 
 void 
-Ldd_ManagerDebugDump (LddManager* tdd)
+Ldd_ManagerDebugDump (LddManager* ldd)
 {
   int i;
   
-  fprintf (stderr, "LddManager @%p\n", tdd);
-  fprintf (stderr, "\tcudd @%p, theory @%p\n", tdd->cudd, tdd->theory);
-  fprintf (stderr, "\tvarsSize=%d\n", tdd->varsSize);
+  fprintf (stderr, "LddManager @%p\n", ldd);
+  fprintf (stderr, "\tcudd @%p, theory @%p\n", ldd->cudd, ldd->theory);
+  fprintf (stderr, "\tvarsSize=%d\n", ldd->varsSize);
 
-  for (i = 0; i < tdd->varsSize; i++)
+  for (i = 0; i < ldd->varsSize; i++)
     {
       fprintf (stderr, "\t %d: %d: ", i, CUDD->perm[i]);
-      if (tdd->ddVars [i] == NULL)
+      if (ldd->ddVars [i] == NULL)
 	fprintf (stderr, "(nil)");
       else
-	tdd->theory->print_lincons (stderr, tdd->ddVars [i]);
+	ldd->theory->print_lincons (stderr, ldd->ddVars [i]);
 
       fprintf (stderr, "\n");
     }
@@ -34,10 +34,10 @@ Ldd_ManagerDebugDump (LddManager* tdd)
  * Computes the number of paths in a diagram.  Running time is linear
  * in the number of path, exponential in the size of the diagram.
  *
- * tdd argument is deprecated. 
+ * ldd argument is deprecated. 
  */
 int 
-Ldd_PathSize (LddManager * tdd, LddNode * n)
+Ldd_PathSize (LddManager * ldd, LddNode * n)
 {
   LddNode * N, *t, *e;
   
@@ -45,7 +45,7 @@ Ldd_PathSize (LddManager * tdd, LddNode * n)
   
   if (n == NULL) return 0;
 
-  /* one = Ldd_GetTrue (tdd); */
+  /* one = Ldd_GetTrue (ldd); */
   /* zero = Ldd_Not (one); */
   
   /* if (n == one) return 1; */
@@ -61,13 +61,13 @@ Ldd_PathSize (LddManager * tdd, LddNode * n)
   t = Cudd_NotCond (cuddT (N), n != N);
   e = Cudd_NotCond (cuddE (N), n != N);
 
-  return Ldd_PathSize (tdd, t) + Ldd_PathSize (tdd, e);  
+  return Ldd_PathSize (ldd, t) + Ldd_PathSize (ldd, e);  
 }
 
 
 /** Checks sanity of the datastructures. Aborts execution on error */
 void 
-Ldd_SanityCheck (LddManager * tdd)
+Ldd_SanityCheck (LddManager * ldd)
 {
   unsigned int i, j;
   DdSubtable *subtable;
@@ -85,12 +85,12 @@ Ldd_SanityCheck (LddManager * tdd)
       
       for (j = 0; j < subtable->slots; j++)
 	for (node = nodelist [j]; node != sentinel; node = node->next)
-	    Ldd_NodeSanityCheck (tdd, (LddNode*)node);
+	    Ldd_NodeSanityCheck (ldd, (LddNode*)node);
     }
 }
 
 void
-Ldd_NodeSanityCheck (LddManager *tdd, LddNode *n)
+Ldd_NodeSanityCheck (LddManager *ldd, LddNode *n)
 {
   DdNode *f, *g, *G;
   
@@ -107,7 +107,7 @@ Ldd_NodeSanityCheck (LddManager *tdd, LddNode *n)
   assert (cuddI (CUDD, n->index) < cuddI(CUDD, f->index));
   assert (cuddI (CUDD, n->index) < cuddI(CUDD,  G->index));
 
-  nCons = tdd->ddVars [n->index];
+  nCons = ldd->ddVars [n->index];
   
 
   /* THEN edge is not negated */
@@ -115,7 +115,7 @@ Ldd_NodeSanityCheck (LddManager *tdd, LddNode *n)
 
   if (f != DD_ONE(CUDD))
     {
-      fCons = tdd->ddVars [f->index];
+      fCons = ldd->ddVars [f->index];
       
       /* redundant decision */
       assert (!THEORY->is_stronger_cons (nCons, fCons));
@@ -125,7 +125,7 @@ Ldd_NodeSanityCheck (LddManager *tdd, LddNode *n)
     {
       DdNode *g1;
       
-      gCons = tdd->ddVars [G->index];
+      gCons = ldd->ddVars [G->index];
       
       g1 = Cudd_NotCond (cuddT (G), g != G);
 
@@ -143,13 +143,13 @@ Ldd_NodeSanityCheck (LddManager *tdd, LddNode *n)
 
 /**
  * Counts the number of times each variable occurs in the support of a
- * TDD.
+ * LDD.
  * 
  * The size of the occurrences array is at least the number of
  * variables in n.
  */
 void
-Ldd_SupportVarOccurrences (LddManager *tdd, 
+Ldd_SupportVarOccurrences (LddManager *ldd, 
 			     LddNode *n, 
 			     int* occurrences)
 {
@@ -164,8 +164,8 @@ Ldd_SupportVarOccurrences (LddManager *tdd,
   /* no variables in the constant node */
   if (Cudd_IsConstant (n)) return;
   
-  reorderEnabled = tdd->cudd->autoDyn;
-  tdd->cudd->autoDyn = 0;
+  reorderEnabled = ldd->cudd->autoDyn;
+  ldd->cudd->autoDyn = 0;
 
 
   /* compute the support. 
@@ -174,7 +174,7 @@ Ldd_SupportVarOccurrences (LddManager *tdd,
 
   if (S == NULL) 
     { 
-      tdd->cudd->autoDyn = reorderEnabled;
+      ldd->cudd->autoDyn = reorderEnabled;
       return;
     }
   
@@ -193,7 +193,7 @@ Ldd_SupportVarOccurrences (LddManager *tdd,
       T = cuddT (N);
 
       v = N->index;
-      vCons = tdd->ddVars [v];
+      vCons = ldd->ddVars [v];
       vTerm = THEORY->get_term (vCons);
       
       uTerm = NULL;
@@ -201,7 +201,7 @@ Ldd_SupportVarOccurrences (LddManager *tdd,
       if (T != DD_ONE(CUDD))
 	{
 	  u = T->index;
-	  uCons = tdd->ddVars [u];
+	  uCons = ldd->ddVars [u];
 	  uTerm = THEORY->get_term (uCons);
 	}
 
@@ -215,21 +215,21 @@ Ldd_SupportVarOccurrences (LddManager *tdd,
 
   Cudd_IterDerefBdd (CUDD, S);
 
-  tdd->cudd->autoDyn = reorderEnabled;
+  ldd->cudd->autoDyn = reorderEnabled;
 
 }
 
 
 /**
- * Counts the number each variable occurs in the DAG of a TDD. 
+ * Counts the number each variable occurs in the DAG of a LDD. 
  *
  * XXX This over-approximates occurrences: a term is double counted if
  * it appears in THEN and ELSE sub-trees of n. 
  */
 void 
-Ldd_VarOccurrences (LddManager *tdd, LddNode *n, int* occurrences)
+Ldd_VarOccurrences (LddManager *ldd, LddNode *n, int* occurrences)
 {
-  ddOccurCount (tdd, Cudd_Regular (n), occurrences);
+  ddOccurCount (ldd, Cudd_Regular (n), occurrences);
   ddClearFlag (Cudd_Regular (n));
 }
 
@@ -238,7 +238,7 @@ Ldd_VarOccurrences (LddManager *tdd, LddNode *n, int* occurrences)
  * Recursive part of Ldd_var_occurrences
  */
 static void 
-ddOccurCount (LddManager *tdd, LddNode *N, int *occurrences)
+ddOccurCount (LddManager *ldd, LddNode *N, int *occurrences)
 {
 
   LddNode *E;
@@ -252,9 +252,9 @@ ddOccurCount (LddManager *tdd, LddNode *N, int *occurrences)
   /* constants have no variables */
   if (cuddIsConstant (N)) return;
 
-  ddOccurCount (tdd, cuddT(N), occurrences);
+  ddOccurCount (ldd, cuddT(N), occurrences);
   E = Cudd_Regular (cuddE (N));
-  ddOccurCount (tdd, E, occurrences);
+  ddOccurCount (ldd, E, occurrences);
   
   /* To avoid double-counting, only count the current node N if its
      ELSE child has a different term than N
@@ -263,7 +263,7 @@ ddOccurCount (LddManager *tdd, LddNode *N, int *occurrences)
   /* case 1: ELSE child is a constant */
   if (DD_ONE(CUDD) == E)
     {
-      THEORY->var_occurrences (tdd->ddVars [N->index], occurrences);
+      THEORY->var_occurrences (ldd->ddVars [N->index], occurrences);
       return;
     }
   
@@ -274,11 +274,11 @@ ddOccurCount (LddManager *tdd, LddNode *N, int *occurrences)
     linterm_t vTerm, uTerm;
     
     v = N->index;
-    vCons = tdd->ddVars [v];
+    vCons = ldd->ddVars [v];
     vTerm = THEORY->get_term (vCons);
     
     u = E->index;
-    uCons = tdd->ddVars [u];
+    uCons = ldd->ddVars [u];
     uTerm = THEORY->get_term (uCons);
     
     if (!THEORY->term_equals (vTerm, uTerm))

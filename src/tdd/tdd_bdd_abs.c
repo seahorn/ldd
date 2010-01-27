@@ -3,7 +3,7 @@
 
 /** BDD Style existential quantification */
 LddNode * 
-Ldd_BddExistAbstract (LddManager * tdd,
+Ldd_BddExistAbstract (LddManager * ldd,
 			LddNode * f,
 			LddNode * cube)
 {
@@ -12,7 +12,7 @@ Ldd_BddExistAbstract (LddManager * tdd,
   do
     {
       CUDD->reordered = 0;
-      res = Ldd_bdd_exist_abstract_recur (tdd, f, cube);
+      res = Ldd_bdd_exist_abstract_recur (ldd, f, cube);
     } while (CUDD->reordered == 1);
 
   return res;
@@ -24,7 +24,7 @@ Ldd_BddExistAbstract (LddManager * tdd,
  * Boolean array vars.
  */
 LddNode * 
-Ldd_OverAbstract (LddManager *tdd, 
+Ldd_OverAbstract (LddManager *ldd, 
 		   LddNode * f, 
 		   bool * vars)
 {
@@ -33,12 +33,12 @@ Ldd_OverAbstract (LddManager *tdd,
   LddNodeset* varset;
 
   
-  varset = Ldd_TermsWithVars (tdd, vars);
+  varset = Ldd_TermsWithVars (ldd, vars);
   
   if (varset == NULL) return NULL;
   cuddRef (varset);
 
-  res = Ldd_BddExistAbstract (tdd, f, varset);
+  res = Ldd_BddExistAbstract (ldd, f, varset);
 
   if (res != NULL)
     cuddRef (res);
@@ -57,33 +57,33 @@ Ldd_OverAbstract (LddManager *tdd,
  * the Boolean array vars.
  */
 LddNodeset *
-Ldd_TermsWithVars (LddManager *tdd,
+Ldd_TermsWithVars (LddManager *ldd,
 		     bool * vars)
 {
   LddNodeset * res;
   
   int i;
 
-  res = (LddNodeset*) Ldd_GetTrue (tdd); //Ldd_empty_nodeset (tdd);
+  res = (LddNodeset*) Ldd_GetTrue (ldd); //Ldd_empty_nodeset (ldd);
   cuddRef (res);
   
-  for (i = tdd->varsSize - 1; i >= 0; i--)
+  for (i = ldd->varsSize - 1; i >= 0; i--)
     {
-      if (tdd->ddVars [i] == NULL) continue;
+      if (ldd->ddVars [i] == NULL) continue;
       
-      if (THEORY->term_has_vars (THEORY->get_term (tdd->ddVars [i]), vars))
+      if (THEORY->term_has_vars (THEORY->get_term (ldd->ddVars [i]), vars))
 	{
 	  LddNodeset *tmp;
 	  
-	  //assert (is_valid_nodeset (tdd, res) && "Before ADD");
-	  //tmp = Ldd_NodesetAdd (tdd, res, CUDD->vars [i]);
-	  tmp = Ldd_NodesetUnion (tdd, Ldd_NodeToNodeset (CUDD->vars [i]), res);
-	  //assert (is_valid_nodeset (tdd, tmp) && "After ADD");
+	  //assert (is_valid_nodeset (ldd, res) && "Before ADD");
+	  //tmp = Ldd_NodesetAdd (ldd, res, CUDD->vars [i]);
+	  tmp = Ldd_NodesetUnion (ldd, Ldd_NodeToNodeset (CUDD->vars [i]), res);
+	  //assert (is_valid_nodeset (ldd, tmp) && "After ADD");
 	  if (tmp != NULL) cuddRef (tmp);
 	  Cudd_IterDerefBdd (CUDD, res);
 	  if (tmp == NULL) return NULL;
 	  res = tmp;
-	  //assert (is_valid_nodeset (tdd, res) && "END OF LOOP");
+	  //assert (is_valid_nodeset (ldd, res) && "END OF LOOP");
 	}
     }
 
@@ -96,7 +96,7 @@ Ldd_TermsWithVars (LddManager *tdd,
 
 /* taken from cuddBddAbs.c/cuddBddExistAbstractRecur */
 LddNode *
-Ldd_bdd_exist_abstract_recur (LddManager *tdd,
+Ldd_bdd_exist_abstract_recur (LddManager *ldd,
 			      LddNode *f,
 			      LddNodeset *varset)
 {
@@ -137,7 +137,7 @@ Ldd_bdd_exist_abstract_recur (LddManager *tdd,
 	    return(one);
 	}
 	res1 = 
-	  Ldd_bdd_exist_abstract_recur(tdd, T, Cudd_Regular(cuddE(varset)));
+	  Ldd_bdd_exist_abstract_recur(ldd, T, Cudd_Regular(cuddE(varset)));
 	if (res1 == NULL) return(NULL);
 	if (res1 == one) {
 	    if (F->ref != 1)
@@ -146,14 +146,14 @@ Ldd_bdd_exist_abstract_recur (LddManager *tdd,
 	    return(one);
 	}
         cuddRef(res1);
-	res2 = Ldd_bdd_exist_abstract_recur(tdd, E, 
+	res2 = Ldd_bdd_exist_abstract_recur(ldd, E, 
 					    Cudd_Regular (cuddE(varset)));
 	if (res2 == NULL) {
 	    Cudd_IterDerefBdd(manager,res1);
 	    return(NULL);
 	}
         cuddRef(res2);
-	res = Ldd_and_recur(tdd, Cudd_Not(res1), Cudd_Not(res2));
+	res = Ldd_and_recur(ldd, Cudd_Not(res1), Cudd_Not(res2));
 	if (res == NULL) {
 	    Cudd_IterDerefBdd(manager, res1);
 	    Cudd_IterDerefBdd(manager, res2);
@@ -169,10 +169,10 @@ Ldd_bdd_exist_abstract_recur (LddManager *tdd,
 	cuddDeref(res);
         return(res);
     } else { /* if (cuddI(manager,F->index) < cuddI(manager,cube->index)) */
-	res1 = Ldd_bdd_exist_abstract_recur(tdd, T, varset);
+	res1 = Ldd_bdd_exist_abstract_recur(ldd, T, varset);
 	if (res1 == NULL) return(NULL);
         cuddRef(res1);
-	res2 = Ldd_bdd_exist_abstract_recur(tdd, E, varset);
+	res2 = Ldd_bdd_exist_abstract_recur(ldd, E, varset);
 	if (res2 == NULL) {
 	    Cudd_IterDerefBdd(manager, res1);
 	    return(NULL);
@@ -180,7 +180,7 @@ Ldd_bdd_exist_abstract_recur (LddManager *tdd,
         cuddRef(res2);
 	/* ITE takes care of possible complementation of res1 and of the
         ** case in which res1 == res2. */
-	res = Ldd_ite_recur(tdd, manager->vars[F->index], res1, res2);
+	res = Ldd_ite_recur(ldd, manager->vars[F->index], res1, res2);
 	if (res == NULL) {
 	    Cudd_IterDerefBdd(manager, res1);
 	    Cudd_IterDerefBdd(manager, res2);

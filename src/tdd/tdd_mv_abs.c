@@ -17,14 +17,14 @@ static int choose_var_idx (int *, size_t , int *);
 
 
 /* 
- * Existentially quantifies out multiple variables from a TDD
+ * Existentially quantifies out multiple variables from a LDD
  * 
- * n        TDD from which variables are eliminated
+ * n        LDD from which variables are eliminated
  * qvars    list of quantified variables
  * qsize    the size of qvars
  */
 LddNode *
-Ldd_MvExistAbstract (LddManager* tdd, LddNode *n, int * qvars, size_t qsize)
+Ldd_MvExistAbstract (LddManager* ldd, LddNode *n, int * qvars, size_t qsize)
 {
   LddNode * res;
 
@@ -58,10 +58,10 @@ Ldd_MvExistAbstract (LddManager* tdd, LddNode *n, int * qvars, size_t qsize)
       if (Cudd_IsConstant (res)) break;
 
       memset (occurlist, 0, sizeof (int) * t_vsize);
-      Ldd_SupportVarOccurrences (tdd, res, occurlist);
+      Ldd_SupportVarOccurrences (ldd, res, occurlist);
       
       memset (varlist, 0, sizeof (int) * t_vsize);
-      tmp = drop_single_use_constraints (tdd, res, qvars, qsize, 
+      tmp = drop_single_use_constraints (ldd, res, qvars, qsize, 
 					 occurlist, varlist);
 
       if (tmp == NULL)
@@ -93,7 +93,7 @@ Ldd_MvExistAbstract (LddManager* tdd, LddNode *n, int * qvars, size_t qsize)
       /* no more variables to eliminate, break out */
       if (v < 0) break;
 
-      tmp = Ldd_ExistAbstract (tdd, res, qvars [v]);
+      tmp = Ldd_ExistAbstract (ldd, res, qvars [v]);
       if (tmp == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, res);
@@ -114,7 +114,7 @@ Ldd_MvExistAbstract (LddManager* tdd, LddNode *n, int * qvars, size_t qsize)
 }
 
 static  LddNode *
-drop_single_use_constraints (LddManager *tdd, LddNode *n, int * qvars, 
+drop_single_use_constraints (LddManager *ldd, LddNode *n, int * qvars, 
 			     size_t qsize, int *occurlist, int *varlist)
 {
   size_t i;
@@ -131,7 +131,7 @@ drop_single_use_constraints (LddManager *tdd, LddNode *n, int * qvars,
       if (occurlist [v] == 1) varlist [v] = 1;
     }
 
-  return Ldd_OverAbstract (tdd, n, varlist);
+  return Ldd_OverAbstract (ldd, n, varlist);
 }
 
 static int 

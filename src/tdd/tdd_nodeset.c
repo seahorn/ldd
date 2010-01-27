@@ -2,19 +2,19 @@
 #include "tddInt.h"
 
 LddNodeset *
-Ldd_emtpy_nodeset (LddManager* tdd)
+Ldd_emtpy_nodeset (LddManager* ldd)
 {
-  return (LddNodeset*) Ldd_GetTrue (tdd);
+  return (LddNodeset*) Ldd_GetTrue (ldd);
 }
 
 LddNodeset * 
-Ldd_NodesetAdd (LddManager* tdd, LddNodeset* s, LddNode *f)
+Ldd_NodesetAdd (LddManager* ldd, LddNodeset* s, LddNode *f)
 {
-  return Ldd_NodesetUnion (tdd, Ldd_NodeToNodeset (f), s);
+  return Ldd_NodesetUnion (ldd, Ldd_NodeToNodeset (f), s);
 }
 
 LddNodeset *
-Ldd_NodesetUnion (LddManager* tdd, LddNodeset *f, LddNodeset* g)
+Ldd_NodesetUnion (LddManager* ldd, LddNodeset *f, LddNodeset* g)
 {
   DdNode *res;
   int rs = CUDD->autoDyn;
@@ -23,7 +23,7 @@ Ldd_NodesetUnion (LddManager* tdd, LddNodeset *f, LddNodeset* g)
   do 
     {
       CUDD->reordered = 0;
-      res = LddNodeset_union_recur (tdd, f, g);
+      res = LddNodeset_union_recur (ldd, f, g);
     } while (CUDD->reordered == 1);
   
   CUDD->autoDyn = rs;
@@ -31,7 +31,7 @@ Ldd_NodesetUnion (LddManager* tdd, LddNodeset *f, LddNodeset* g)
 }
 
 int
-Ldd_is_valid_nodeset (LddManager *tdd, LddNodeset *f)
+Ldd_is_valid_nodeset (LddManager *ldd, LddNodeset *f)
 {
   LddNode *r;
 
@@ -48,7 +48,7 @@ Ldd_is_valid_nodeset (LddManager *tdd, LddNodeset *f)
 
 
 LddNodeset * 
-LddNodeset_union_recur (LddManager* tdd, LddNodeset *f, LddNodeset *g)
+LddNodeset_union_recur (LddManager* ldd, LddNodeset *f, LddNodeset *g)
 {
   LddNode *fnv, *gnv;
   LddNode *res, *e;
@@ -105,12 +105,12 @@ LddNodeset_union_recur (LddManager* tdd, LddNodeset *f, LddNodeset *g)
     gnv = g;
   
 
-  e = LddNodeset_union_recur (tdd, fnv, gnv);
+  e = LddNodeset_union_recur (ldd, fnv, gnv);
   if (e == NULL)
     return NULL;
   cuddRef (e);
 
-  res = Ldd_unique_inter (tdd, index, DD_ONE(CUDD), Cudd_Not (e));
+  res = Ldd_unique_inter (ldd, index, DD_ONE(CUDD), Cudd_Not (e));
   if (res != NULL) cuddRef (res);
   Cudd_IterDerefBdd (CUDD, e);
   if (res == NULL) return NULL;
