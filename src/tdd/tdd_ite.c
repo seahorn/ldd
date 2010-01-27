@@ -5,8 +5,16 @@
 static int bddVarToCanonicalSimple (DdManager *dd, DdNode **fp, DdNode **gp, DdNode **hp, unsigned int *topfp, unsigned int *topgp, unsigned int *tophp);
 
 
+/**
+   \brief Computes ITE(f,g,h)
+   
+   \return a pointer to the resulting LDD if successful; NULL if the
+   immediate result blows up.
 
-LddNode * Ldd_Ite (LddManager *ldd, LddNode *f, LddNode *g, LddNode *h)
+   \sa Ldd_Or(), Ldd_And(), Ldd_Xor()
+ */
+LddNode * 
+Ldd_Ite (LddManager *ldd, LddNode *f, LddNode *g, LddNode *h)
 {
   LddNode *res;
   
@@ -19,7 +27,16 @@ LddNode * Ldd_Ite (LddManager *ldd, LddNode *f, LddNode *g, LddNode *h)
 }
 
 
-LddNode * Ldd_And (LddManager *ldd, LddNode * f, LddNode *g)
+/**
+   \brief Computes conjunction of two LDDs f and g.
+   
+   \return a pointer to the resulting LDD if successful; NULL if the
+   immediate result blows up.
+
+   \sa Ldd_Or(), Ldd_Ite(), Ldd_Xor()
+ */
+LddNode * 
+Ldd_And (LddManager *ldd, LddNode * f, LddNode *g)
 {
   LddNode *res;
   
@@ -31,7 +48,14 @@ LddNode * Ldd_And (LddManager *ldd, LddNode * f, LddNode *g)
 }
 
 
+/**
+   \brief Computes disjunction of two LDDs f and g.
+   
+   \return a pointer to the resulting LDD if successful; NULL if the
+   immediate result blows up.
 
+   \sa Ldd_And(), Ldd_Ite(), Ldd_Xor()
+ */
 LddNode * Ldd_Or (LddManager* ldd,
 		   LddNode * f,
 		   LddNode * g)
@@ -47,6 +71,14 @@ LddNode * Ldd_Or (LddManager* ldd,
   return (res);
 }
 
+/**
+   \brief Computes exclusive OR of two LDDs f and g.
+   
+   \return a pointer to the resulting LDD if successful; NULL if the
+   immediate result blows up.
+
+   \sa Ldd_And(), Ldd_Ite(), Ldd_Or()
+ */
 LddNode * Ldd_Xor (LddManager * ldd,
 		    LddNode * f,
 		    LddNode *g)

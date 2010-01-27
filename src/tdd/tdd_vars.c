@@ -53,7 +53,8 @@ Ldd_GetTrue (LddManager *ldd)
 
    \sa Ldd_GetTrue()
  */
-LddNode *Ldd_GetFalse (LddManager *ldd)
+LddNode *
+Ldd_GetFalse (LddManager *ldd)
 {
   return Ldd_Not (DD_ONE (CUDD));
 }

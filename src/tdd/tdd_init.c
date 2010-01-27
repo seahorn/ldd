@@ -3,6 +3,14 @@
 
 static int bin_false (lincons_t, lincons_t);
 
+/**
+   \brief Creates a new LDD manager.
+
+   \param t theory for managing labels of nodes
+   \return a pointer to the manager if successful; NULL otherwise
+   
+   \sa Cudd_Init(), and Ldd_Quit()
+ */
 LddManager * 
 Ldd_Init (DdManager *cudd, theory_t * t)
 {
@@ -36,6 +44,11 @@ Ldd_Init (DdManager *cudd, theory_t * t)
   return ldd;
 }
 
+/**
+   \brief Deletes resources allocated with DD manager.
+   
+   \sa Cudd_Quit(), and Ldd_Quit()
+ */
 void 
 Ldd_Quit (LddManager * ldd)
 {
