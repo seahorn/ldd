@@ -55,7 +55,19 @@ Ldd_Quit (LddManager * ldd)
   FREE (ldd);
 }
 
+/**
+   \brief Returns an LDD node corresponding to a given constraint.
 
+   Returns an LDD corresponding to a given constraint. If needed, a
+   new node is created.
+
+   \param ldd diagram manager
+   \param l   linear constraint
+
+   \return a pointer to an LDD node if successful; NULL otherwise.
+
+   \pre the constraint is in canonical form.
+ */
 LddNode* 
 Ldd_FromCons (LddManager *ldd, lincons_t l)
 {
