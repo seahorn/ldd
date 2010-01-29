@@ -142,11 +142,16 @@ Ldd_NodeSanityCheck (LddManager *ldd, LddNode *n)
 
 
 /**
- * Counts the number of times each variable occurs in the support of a
- * LDD.
- * 
- * The size of the occurrences array is at least the number of
- * variables in n.
+ * \brief Returns the number of times each variable occurs in an LDD.
+  
+  \param ldd manager
+  \param n LDD node
+
+  \param[out] occurrences the number of occurrences of variable i is
+  the ith element of the array
+
+  \pre The size of the occurrences array is at least the number of
+  variables in n.
  */
 void
 Ldd_SupportVarOccurrences (LddManager *ldd, 

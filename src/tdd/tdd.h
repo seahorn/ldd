@@ -219,31 +219,30 @@ struct theory
    * Returns a copy of l
    */
   lincons_t (*dup_lincons)(lincons_t l);
-  
-  /**
-   DD toDD (c)
-   {
-     // -- normalize c. 
 
-   DD k = find(c);
-   if (k != NULL) return k
-
-   DD n = the weakest constraint t such that is_stronger_cons (t, c), or NULL
-  
-   if (n == NULL) 
-     k = allocate new DD node for c
-     associate k with c locally
-     return k
-
-   k = allocate new DD node right after n for c
-   associate k with c locally
-   return k;
-   }
-
-   also, see ddd-notes-ver2.txt somewhere in the same repository
-  */
+  /** 
+   * Returns an LDD corresponding to a constraint 
+   */
   LddNode* (*to_ldd)(LddManager* m, lincons_t l);
 
+  /**
+   * Substitute (t + c) for x in l. 
+   */
+  LddNode* (*subst)(LddManager* m, lincons_t l, 
+		   int x, linterm_t t, constant_t c);
+  
+  /**
+   * Substitute (t + c + epsilon) for x in l, where epsilon is
+   * an arbitrary small value */
+  LddNode* (*subst_pluse)(LddManager *m, lincons_t l,
+			  int x, linterm_t t, constant_t c);
+  
+  /**								
+   * Substitute negative infinity for x in l 
+   */
+  LddNode* (*subst_ninf)(LddManager *m, lincons_t l, int x);
+  
+  
   
   void (*print_lincons) (FILE* f, lincons_t l);
 
