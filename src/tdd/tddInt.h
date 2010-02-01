@@ -39,6 +39,7 @@ struct LddManager
  * Extracts a constraint corresponding to a given index
  */
 #define tddC(tdd,index) ((index)>=tdd->varsSize?NULL:(tdd)->ddVars[(index)])
+#define lddC(ldd,index) ((index)>=ldd->varsSize?NULL:(ldd)->ddVars[(index)])
 
 
 LddNode* Ldd_unique_inter (LddManager *m, unsigned int idx, 
@@ -84,5 +85,8 @@ LddNode* Ldd_term_constrain_recur (LddManager*, LddNode*,
 LddNodeset* LddNodeset_union_recur(LddManager*, LddNodeset*, LddNodeset*);
 
 int Ldd_is_valid_nodeset (LddManager*, LddNodeset*);
+
+LddNode *lddSubstNinfForVarRecur (LddManager*, LddNode*, int, DdHashTable*);
+
 
 #endif

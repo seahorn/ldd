@@ -310,6 +310,7 @@ LddNode* Ldd_Or (LddManager* m, LddNode* n1, LddNode* n2);
 LddNode* Ldd_Xor (LddManager* m, LddNode* n1, LddNode* n2);
 LddNode* Ldd_Ite (LddManager* m, LddNode* n1, LddNode* n2, LddNode* n3);
 
+LddNode* Ldd_ExistsAbstractLW (LddManager*, LddNode *, int);
 LddNode* Ldd_ExistAbstract (LddManager*, LddNode*, int);
 LddNode* Ldd_UnivAbstract (LddManager*, LddNode*, int);
 LddNode* Ldd_ResolveElim (LddManager*, LddNode*, linterm_t, 
@@ -349,6 +350,13 @@ int Ldd_PrintMinterm(LddManager*, LddNode*);
 DdManager * Ldd_GetCudd (LddManager *);
   lincons_t Ldd_GetCons (LddManager*, LddNode*);
 /* LddNode* Ldd_and_resolve (LddManager *m, LddNode *n1, int x);*/
+
+  LddNode* Ldd_SubstNinfForVar (LddManager*, LddNode*, int);
+  LddNode* Ldd_SubstTermForVar (LddManager*, LddNode*, int, 
+				linterm_t, constant_t);
+  LddNode* Ldd_SubstTermPlusForVar (LddManager*, LddNode*, int,
+				    linterm_t, constant_t);
+  
 
 #ifdef __cplusplus
 }

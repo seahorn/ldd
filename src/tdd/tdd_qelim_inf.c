@@ -1,10 +1,31 @@
 /** Quantifier elimination using The Methods of Infinitesimals by Loos
     and Weispfenning 
 */
+#include "util.h"
+#include "tddInt.h"
+
+static LddNode *
+lddSubstFnForVar (LddManager *ldd,
+		  LddNode *f,
+		  int var,
+		  LddNode*(*fn)(LddManager*,lincons_t,int,
+				linterm_t,constant_t),
+		  linterm_t t,
+		  constant_t c);
+static LddNode *
+lddSubstFnForVarRecur (LddManager *ldd,
+		       LddNode *f,
+		       int var,
+		       LddNode*(*fn)(LddManager*,lincons_t,int,
+				     linterm_t,constant_t),
+		       linterm_t t,
+		       constant_t c,
+		       DdHashTable *table);
+
 
 
 LddNode *
-Ldd_SubsNinfForVar (LddManager *ldd,
+Ldd_SubstNinfForVar (LddManager *ldd,
 		    LddNode *f,
 		    int var)
 {
@@ -27,8 +48,55 @@ Ldd_SubsNinfForVar (LddManager *ldd,
   return res;
 }
 
+LddNode * Ldd_SubstTermForVar (LddManager *ldd,
+			       LddNode *f,
+			       int var, 
+			       linterm_t t, 
+			       constant_t c)
+{
+  return lddSubstFnForVar (ldd, f, var, THEORY->subst, t, c);
+}
 
-Ldd_Node*
+LddNode * 
+Ldd_SubstTermPlusForVar (LddManager *ldd,
+				   LddNode *f,
+				   int var,
+				   linterm_t t,
+				   constant_t c)
+{
+  return lddSubstFnForVar (ldd, f, var, THEORY->subst_pluse, t, c);
+}
+
+
+static LddNode *
+lddSubstFnForVar (LddManager *ldd,
+		  LddNode *f,
+		  int var,
+		  LddNode*(*fn)(LddManager*,lincons_t,int,
+				linterm_t,constant_t),
+		  linterm_t t,
+		  constant_t c)
+{
+  LddNode *res;
+  DdHashTable *table;
+  
+  do
+    {
+      CUDD->reordered = 0;
+      table = cuddHashTableInit (CUDD, 1, 2);
+      
+      res = lddSubstFnForVarRecur (ldd, f, var, fn, t, c, table);
+      if (res != NULL)
+	cuddRef (res);
+      cuddHashTableQuit (table);
+    }
+  while (CUDD->reordered == 1);
+
+  if (res != NULL) cuddDeref (res);
+  return res;  
+}
+
+LddNode *
 Ldd_ExistsAbstractLW (LddManager *ldd,
 		      LddNode *f,
 		      int var)
@@ -69,7 +137,7 @@ Ldd_ExistsAbstractLW (LddManager *ldd,
 
       /* skip empty entries */
       if (support [i] == 0) continue;
-      l = tddC (ldd, i);
+      l = lddC (ldd, i);
       
       /* skip constraints that don't depend on var */
       if (!THEORY->term_has_var (THEORY->get_term (l), var)) continue;
@@ -97,8 +165,8 @@ Ldd_ExistsAbstractLW (LddManager *ldd,
       tmp = Ldd_Or (ldd, res, g);
       if (tmp == NULL)
 	{
-	  Cudd_IterDerefBdd (ldd, g);
-	  Cudd_IterDerefBdd (ldd, res);
+	  Cudd_IterDerefBdd (CUDD, g);
+	  Cudd_IterDerefBdd (CUDD, res);
 	  return NULL;
 	}
       cuddRef (tmp);
@@ -120,7 +188,6 @@ lddSubstNinfForVarRecur (LddManager * ldd,
 {
   DdNode *F;
   DdNode *res;
-  DdNode *zero;
   
   lincons_t lCons;
   
@@ -132,10 +199,9 @@ lddSubstNinfForVarRecur (LddManager * ldd,
     return Cudd_NotCond (res, f != F);
 
 
-  zero = Cudd_Not (DD_ONE(CUDD));
 
   lCons = lddC (ldd, F->index);
-  if (THEORY->term_has_var (THEORY->get_term (lCons)), var)
+  if (THEORY->term_has_var (THEORY->get_term (lCons), var))
     {
       if (THEORY->subst_ninf (ldd, lCons, var) == DD_ONE(CUDD))
 	res = lddSubstNinfForVarRecur (ldd, cuddT (F), var, table);
@@ -147,11 +213,11 @@ lddSubstNinfForVarRecur (LddManager * ldd,
   else 
     {
       DdNode *t, *e;
-      t = lddSubstNinfForVarRecur (ldd, f1, var, table);
+      t = lddSubstNinfForVarRecur (ldd, cuddT (F), var, table);
       if (t == NULL) return NULL;
       cuddRef (t);
       
-      e = lddSubstNinfForVarRecur (ldd, f0, var, table);
+      e = lddSubstNinfForVarRecur (ldd, cuddE (F), var, table);
       if (e == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, t);
@@ -192,6 +258,105 @@ lddSubstNinfForVarRecur (LddManager * ldd,
     }
   
   
+  if (F->ref != 1)
+    {
+      ptrint fanout = (ptrint) F->ref;
+      cuddSatDec (fanout);
+      if (!cuddHashTableInsert1 (table, F, res, fanout))
+	{
+	  Cudd_IterDerefBdd (CUDD, res);
+	  return NULL;
+	}
+    }
+
+  cuddDeref (res);
+  return Cudd_NotCond (res, f != F);
+}
+
+
+static LddNode *
+lddSubstFnForVarRecur (LddManager *ldd,
+		       LddNode *f,
+		       int var,
+		       LddNode*(*fn)(LddManager*,lincons_t,int,
+				     linterm_t,constant_t),
+		       linterm_t term,
+		       constant_t cst,
+		       DdHashTable *table)
+{
+  DdNode *F, *res;
+  DdNode *one, *zero;
+  
+  
+  DdNode *root;
+  lincons_t lCons;
+  
+  one = DD_ONE(CUDD);
+  zero = Cudd_Not (one);
+  
+
+  F = Cudd_Regular (f);
+  if (F == one) return f;
+  
+  if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, F)) != NULL))
+    return Cudd_NotCond (res, f != F);
+
+
+  lCons = lddC (ldd, F->index);
+  if (THEORY->term_has_var (THEORY->get_term (lCons), var))
+    root = fn (ldd, lCons, var, term, cst);
+  else
+    root = Cudd_bddIthVar (CUDD, F->index);
+
+  if (root == NULL) return NULL;
+  cuddRef (root);
+
+  if (root == one || root == zero)
+    {
+      DdNode *fi = root == one ? cuddT (F) : cuddE (F);
+      res = lddSubstFnForVarRecur (ldd, fi, var, fn, term, cst, table);
+      if (res == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, root);
+	  return NULL;
+	}
+      cuddRef (res);
+    }
+  else
+    {
+      DdNode *t, *e;
+      t = lddSubstFnForVarRecur (ldd, cuddT (F), var, fn, term, cst, table);
+      if (t == NULL) 
+	{
+	  Cudd_IterDerefBdd (CUDD, root);
+	  return NULL;
+	}
+      cuddRef (t);
+
+      e = lddSubstFnForVarRecur (ldd, cuddE (F), var, fn, term, cst, table);
+      if (e == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, root);
+	  Cudd_IterDerefBdd (CUDD, t);
+	  return NULL;
+	}
+      cuddRef (e);
+      
+      res = Ldd_ite_recur (ldd, root, t, e);
+      if (res == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, root);
+	  Cudd_IterDerefBdd (CUDD, t);
+	  Cudd_IterDerefBdd (CUDD, e);
+	  return NULL;
+	}
+      cuddRef (res);
+    
+      Cudd_IterDerefBdd (CUDD, t);
+      Cudd_IterDerefBdd (CUDD, e);
+    }
+  Cudd_IterDerefBdd (CUDD, root);
+
   if (F->ref != 1)
     {
       ptrint fanout = (ptrint) F->ref;
