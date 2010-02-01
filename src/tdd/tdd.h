@@ -106,7 +106,12 @@ struct theory
    * Returns the coefficient of the ith variable with a non-zero
    * coefficient.  Requires: 0 <= i <= term_size (t)
    */  
-  constant_t (*term_get_coeff)(linterm_t, int i);
+  constant_t (*term_get_coeff)(linterm_t t, int i);
+
+  /**
+   * Returns coefficients of variable x in t
+   */
+  constant_t (*var_get_coeff)(linterm_t t, int x);
 
   /**
    * Creates a term coeff[0]*var[0] + ... + coeff[n]*var[n]. An
@@ -243,6 +248,11 @@ struct theory
   LddNode* (*subst_ninf)(LddManager *m, lincons_t l, int x);
   
   
+  
+  /**
+     \brief Computes the bound of a variable in a constraint
+   */
+  void (*var_bound)(lincons_t l, int x, linterm_t* dt, constant_t* dc);
   
   void (*print_lincons) (FILE* f, lincons_t l);
 

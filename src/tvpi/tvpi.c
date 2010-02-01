@@ -4,8 +4,9 @@
 #include "tdd-octInt.h" /* enable for debugging */
 #endif
 
-static mpq_t *one = NULL;
-static mpq_t *none = NULL;
+static tvpi_cst_t one = NULL;
+static tvpi_cst_t none = NULL;
+static tvpi_cst_t zero = NULL;
 
 /* forward declarations */
 LddNode* tvpi_to_ldd(LddManager *m, tvpi_cons_t c);
@@ -373,6 +374,17 @@ tvpi_term_get_coeff (tvpi_term_t t, int i)
   return t->sgn > 0 ? one : none;
 }
 
+tvpi_cst_t
+tvpi_var_get_coeff (tvpi_term_t t, int x)
+{
+  if (t->var [1] == x) return t->coeff;
+
+  if (t->var [0] == x)
+    return t->first_coeff != NULL ? t->first_coeff : one;
+
+  return zero;
+}
+
 
 
 
@@ -547,9 +559,12 @@ tvpi_pick_var (tvpi_term_t t, bool *vars)
 void
 tvpi_destroy_term (tvpi_term_t t)
 {
-  tvpi_destroy_cst (t->fst_coeff);
-  tvpi_destroy_cst (t->coeff);
-  free (t);
+  if (t != NULL)
+    {
+      tvpi_destroy_cst (t->fst_coeff);
+      tvpi_destroy_cst (t->coeff);
+      free (t);
+    }
 }
 
 /**
@@ -896,8 +911,11 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 void
 tvpi_destroy_cons (tvpi_cons_t c)
 {
-  tvpi_destroy_cst (c->cst);
-  tvpi_destroy_term (c);
+  if (c != NULL)
+    {
+      tvpi_destroy_cst (c->cst);
+      tvpi_destroy_term (c);
+    }
 }
 
 LddNode*
@@ -906,7 +924,8 @@ tvpi_subst_ninf (LddManager *ldd,
 		 int x)
 {
   /* bail out if x is not one of the variables */
-  if (l->var [0] != x && l->var [1] != x) return NULL;
+  if (l->var [0] != x && l->var [1] != x) 
+    return tvpi_to_ldd (ldd, l);
   
   if ((l->var [0] == x && l->sgn > 0) || 
       (l->var [1] == x && mpq_sgn (*l->coeff) > 0))
@@ -1173,6 +1192,38 @@ tvpi_subst_pluse (LddManager *ldd,
 }
 
 
+void
+tvpi_var_bound (tvpi_cons_t l, 
+		int x, tvpi_term_t* dt, 
+		tvpi_cst_t* dc)
+{
+  assert ((l->var [0] == x || l->var [1] == x) && "No variable to bound");
+  if (l->var [1] == x)
+    {
+      *dc = new_cst ();
+      mpq_div (**dc, *l->cst, *l->coeff);
+    }
+  else
+    *dc = tvpi_dup_cst (l->cst);
+
+  if (l->var [1] == x)
+    {
+      *dt = new_term ();      
+      (*dt)->var [0] = l->var [0];
+      (*dt)->fst_coeff = tvpi_create_si_cst (-1);
+      mpq_div (*(*dt)->fst_coeff, *(*dt)->fst_coeff, *l->coeff);
+      
+    }
+  else if (IS_VAR (l->var [1]))
+    {
+      *dt = new_term ();
+      (*dt)->var [0] = l->var [1];
+      (*dt)->fst_coeff = new_cst ();  
+      mpq_neg (*(*dt)->fst_coeff, *l->coeff);
+    }
+  else
+    *dt = NULL;
+}
 
 
 /**
@@ -1599,18 +1650,13 @@ tvpi_create_theory (size_t vn)
   
 
   if (one == NULL)
-    {
-      one = new_cst ();
-      mpq_init (*one);
-      mpq_set_si (*one, 1, 1);
-    }
+    one = tvpi_create_si_cst (1);
   
   if (none == NULL)
-    {
-      none = new_cst ();
-      mpq_init (*none);
-      mpq_set_si (*none, -1, 1);
-    }
+    none = tvpi_create_si_cst (-1);
+  
+  if (zero == NULL)
+    zero = tvpi_create_si_cst (0);
   
   
   t->base.create_int_cst =  (constant_t(*)(int)) tvpi_create_si_cst;
@@ -1636,6 +1682,7 @@ tvpi_create_theory (size_t vn)
   t->base.term_size = (int(*)(linterm_t))tvpi_term_size;
   t->base.term_get_var = (int(*)(linterm_t,int))tvpi_term_get_var;
   t->base.term_get_coeff = (constant_t(*)(linterm_t,int))tvpi_term_get_coeff;
+  t->base.var_get_coeff = (constant_t(*)(linterm_t,int))tvpi_var_get_coeff;
   
   t->base.dup_term = (linterm_t(*)(linterm_t))tvpi_dup_term;
   t->base.term_equals = (int(*)(linterm_t,linterm_t))tvpi_term_equlas;
@@ -1680,6 +1727,9 @@ tvpi_create_theory (size_t vn)
     tvpi_subst_pluse;
   
   t->base.subst_ninf = (LddNode*(*)(LddManager*,lincons_t,int))tvpi_subst_ninf;
+  t->base.var_bound = 
+    (void(*)(lincons_t,int,linterm_t*,constant_t*))tvpi_var_bound;
+  
 
   /* unimplemented */
   t->base.theory_debug_dump = NULL;
