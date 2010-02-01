@@ -905,21 +905,38 @@ tvpi_subst_ninf (LddManager *ldd,
 		 tvpi_cons_t l, 
 		 int x)
 {
+  /* bail out if x is not one of the variables */
+  if (l->var [0] != x && l->var [1] != x) return NULL;
+  
+  if ((l->var [0] == x && l->sgn > 0) || 
+      (l->var [1] == x && mpq_sgn (*l->coeff) > 0))
+    return Ldd_GetTrue (ldd);
 
-  if (l->var [0] == x)
-    return l->sgn > 0 ? Ldd_GetTrue (ldd) : Ldd_GetFalse (ldd);
-
-  if (l->var [1] == x)
-    return mpq_sgn (*l->coeff) > 0 ? Ldd_GetTrue (ldd) : Ldd_GetFalse (ldd);
-
-  return NULL;  
+  return Ldd_GetFalse (ldd);
 }
 
-LddNode* tvpi_subst (LddManager *ldd,
+/**
+   \brief substitutes a sum t + c, where t is a term and c a constant,
+   for variable x in l. 
+
+   \return an LDD for the new constraint if successful; NULL otherwise.
+
+   \param ldd diagram manager
+   \param l destination of the substitution
+   \param x a variable being replaced. Does not have to occur in l.
+   \param t a term replacing x. Can be NULL.
+   \param c a constant replacing x. Can be NULL.
+   \param op the operator of the resulting constraint
+
+   \pre l is in a canonical form. t has only one variable.
+ */
+LddNode* 
+tvpi_subst_internal (LddManager *ldd,
 		     tvpi_cons_t l,
 		     int x,
 		     tvpi_term_t t,
-		     tvpi_cst_t c)
+		     tvpi_cst_t c,
+		     op_t op)
 {
 
   assert (l->sgn > 0 && "Constraint must be positive");
@@ -932,17 +949,17 @@ LddNode* tvpi_subst (LddManager *ldd,
 
   tvpi_cons_t res;
   res = new_cons ();
-  res->op = l->op;
   res->var [0] = -1;
   res->var [1] = -1;
   res->coeff = NULL;
+  res->op = op;
 
   /* compute the constant of the new constraint */
   if (c != NULL)
     {
       if (l->var [0] == x)
 	res->cst = tvpi_dup_cst (c);
-      else
+      else /* l->var [1] == x */
 	{
 	  res->cst = new_cst ();
 	  mpq_init (*res->cst);
@@ -955,6 +972,11 @@ LddNode* tvpi_subst (LddManager *ldd,
 
 
   /* compute the term of the new constraint */
+
+  /* Notation: 
+       OTHER : variable of l different from x
+       NEW   : variable of t that is replacing x in l
+  */
 
   /* variable x is replaced by a constant */
   if (t == NULL)
@@ -973,16 +995,15 @@ LddNode* tvpi_subst (LddManager *ldd,
   /* variable x is replaced by a term */
   else
     {
-      /*  use 1st position for the new variable, and 2nd for the non-x
-	  variable of l*/
+      /*  use 1st position for NEW, and 2nd for OTHER */
       res->var [0] = t->var [0];
       
-      /* compute the new coefficient for replacement to x*/
+      /* compute the new coefficient for NEW */
 
       /* if x had a coefficient, multiply t by it */
       if (l->var [1] == x)
 	{
-	  /* no explicit coefficient in t. It is 1 implicitly */
+	  /* no explicit coefficient in t. The coefficient is 1 implicitly */
 	  if (t->fst_coeff == NULL)
 	    res->fst_coeff = tvpi_dup_cst (l->coeff);
 	  /* multiply the coefficients */
@@ -998,12 +1019,12 @@ LddNode* tvpi_subst (LddManager *ldd,
 	res->fst_coeff = tvpi_dup_cst (t->fst_coeff);
 
 
-      /* compute the coefficient for the OTHER (non x) variable of l */
+      /* compute the coefficient for OTHER */
 
-      /* check whether the other variable in l is in the 1st position */
+      /* OTHER is in the 1st position in l */
       if (l->var [0] != x)
 	{
-	  /* the other variable is same as the one in the result */
+	  /* OTHER == NEW, add up their coefficients */
 	  if (l->var [0] == res->var [0])
 	    {
 	      /* deal with implicit coefficients */
@@ -1014,7 +1035,7 @@ LddNode* tvpi_subst (LddManager *ldd,
 		  /* 1 + 1 = 2. Two implicit coefficients added up */
 		  mpq_set_ui (*res->fst_coeff, 2, 1);
 		}
-	      else
+	      else /* res->fst_coeff != NULL */
 		{
 		  /* only one implicit coefficient */
 		  /* using (n/d)+1 == (n+d)/d */
@@ -1023,7 +1044,7 @@ LddNode* tvpi_subst (LddManager *ldd,
 			   mpq_denref (*res->fst_coeff));
 		}
 	    }
-	  /* the other variable is different */
+	  /* OTHER != NEW */
 	  else 
 	    {
 	      res->var [1] = l->var [0];
@@ -1033,11 +1054,11 @@ LddNode* tvpi_subst (LddManager *ldd,
 	      mpq_set_ui (*res->coeff, 1, 1);
 	    }
 	}
-      /* the other variable is in the second position */
+      /* OTHER is in the 2nd position */
       else if (IS_VAR (l->var [1]))
 	{
 	  
-	  /* the other variable is same as new variable */
+	  /* OTHER == NEW, add up coefficients */
 	  if (l->var [1] == res->var [0])
 	    {
 	      /* implicit coefficient */
@@ -1053,7 +1074,7 @@ LddNode* tvpi_subst (LddManager *ldd,
 	      else
 		mpq_add (*res->fst_coeff, *res->fst_coeff, *l->coeff);
 	    }
-	  /* the other variable is different from the new variable */
+	  /* OTHER != NEW */
 	  else
 	    {
 	      res->var [1] = l->var [1];
@@ -1065,16 +1086,17 @@ LddNode* tvpi_subst (LddManager *ldd,
   
   LddNode *rn;
   
-  /* the coefficient of the new variable is 0. Only possible if the
-     OTHER variable of l and the NEW variable in t are the same */
+  /* the coefficient of NEW variable is 0. This is possible only if
+     OTHER == NEW */
   if (!IS_VAR (res->var [1]) && 
       res->fst_coeff != NULL && 
       mpq_sgn (*res->fst_coeff) == 0)
     {
-      /* result is reduced to a constant, compute it */
+      /* result is reduced to a constant; compute the result */
       int sgn = mpq_sgn (*res->cst);
 
-      rn = (sgn > 0 || (res->op == LEQ && sgn >= 0)) ? 
+      /* the comparison depends on the operator of the result */
+      rn = (sgn > 0 || (res->op == LEQ && sgn == 0)) ? 
 	Ldd_GetTrue (ldd) : Ldd_GetFalse (ldd);
       tvpi_destroy_cons (res);
       return rn;
@@ -1086,13 +1108,17 @@ LddNode* tvpi_subst (LddManager *ldd,
       res->var [0] > res->var [1])
     {
       /* switch coefficients */
-      tvpi_cst_t cst = res->coeff;
-      res->coeff = res->fst_coeff;
-      res->fst_coeff = cst;
-
-      /* turn implicit coefficient into explicit one */
-      if (res->coeff == NULL) 
-	res->coeff = tvpi_create_si_cst (1);
+      if (res->fst_coeff != NULL)
+	{
+	  tvpi_cst_t cst = res->coeff;
+	  res->coeff = res->fst_coeff;
+	  res->fst_coeff = cst;
+	}
+      else
+	{
+	  res->fst_coeff = res->coeff;
+	  res->coeff = tvpi_create_si_cst (1);
+	}
 
       /* switch variables */
       int v = res->var [0];
@@ -1113,19 +1139,37 @@ LddNode* tvpi_subst (LddManager *ldd,
       res->fst_coeff = NULL;
     }
   
+  /* construct LDD */
   rn = tvpi_to_ldd (ldd, res);
+  /* clear temporary constraint */
   tvpi_destroy_cons (res);
   return rn;
 }
 
-LddNode* tvpi_subst_pluse (LddManager *ldd,
-			   tvpi_cons_t l,
-			   int x,
-			   tvpi_term_t t,
-			   tvpi_cst_t c)
+LddNode* 
+tvpi_subst (LddManager *ldd,
+	    tvpi_cons_t l,
+	    int x,
+	    tvpi_term_t t,
+	    tvpi_cst_t c)
 {
-  /* XXX TODO XXX */
-  return NULL;
+  return tvpi_subst_internal (ldd, l, x, t, c, l->op);
+}
+
+
+LddNode* 
+tvpi_subst_pluse (LddManager *ldd,
+		  tvpi_cons_t l,
+		  int x,
+		  tvpi_term_t t,
+		  tvpi_cst_t c)
+{
+  /* compute the operator of the new constraint */
+  op_t op = LT;  
+  if (l->var [1] == x && mpq_sgn (*l->coeff) < 0)
+    op = LEQ;
+
+  return tvpi_subst_internal (ldd, l, x, t, c, op);
 }
 
 
