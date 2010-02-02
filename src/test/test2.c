@@ -25,7 +25,7 @@ int main(int argc, char** argv)
   LddNode *d1, *d2, *d3, *d4, *d5, *d6, *d7;
 
   /* 1 is DDD, 2 is TVPI, 3 is OCT */
-  int t_type = 3;
+  int t_type = 2;
   if (argc > 1)
     {
       if (argv [1][0] == 't')

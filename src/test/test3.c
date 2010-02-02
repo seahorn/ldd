@@ -54,7 +54,7 @@ void test(testcase_t *tc)
   //existential abstraction
   LddNode *abs = impl;
   for(i = 0;i < tc->varnum;++i) {
-    abs = Ldd_ExistAbstract (tdd, abs, i);
+    abs = Ldd_ExistsAbstractLW (tdd, abs, i);
   }
   abs = Ldd_Not(abs);
 

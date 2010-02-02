@@ -114,7 +114,7 @@ Ldd_ExistsAbstractLW (LddManager *ldd,
   cuddRef (res);
   
   /* get index of all constraints that occur in the diagram */
-  size = ldd->varsSize;
+  size = ldd->cudd->size;
   support = Cudd_SupportIndex (CUDD, f);
   if (support == NULL) 
     {
@@ -134,11 +134,15 @@ Ldd_ExistsAbstractLW (LddManager *ldd,
       LddNode *g, *tmp;
 
       
+      fprintf (stderr, "%d iteration of LW\n", i);
 
       /* skip empty entries */
       if (support [i] == 0) continue;
       l = lddC (ldd, i);
-      
+
+      /* skip non-constraint entries */
+      if (l == NULL) continue;
+
       /* skip constraints that don't depend on var */
       if (!THEORY->term_has_var (THEORY->get_term (l), var)) continue;
       
@@ -193,7 +197,7 @@ lddSubstNinfForVarRecur (LddManager * ldd,
   
   F = Cudd_Regular (f);
   
-  if (f == DD_ONE(CUDD)) return f;
+  if (F == DD_ONE(CUDD)) return f;
 
   if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, F)) != NULL))
     return Cudd_NotCond (res, f != F);

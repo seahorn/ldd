@@ -32,7 +32,10 @@ new_cons ()
   
   c = (tvpi_cons_t) malloc (sizeof (struct tvpi_cons));
   c->fst_coeff = NULL;
+  c->coeff = NULL;
+  c->cst = NULL;
   c->op = LEQ;
+  c->var [1] = -1;
   return c;
 
 }
@@ -435,7 +438,7 @@ tvpi_print_cst (FILE *f, tvpi_cst_t k)
 void
 tvpi_print_term (FILE *f, tvpi_term_t t)
 {
-  if (t->sgn < 0)
+  if (t->fst_coeff == NULL && t->sgn < 0)
     fprintf (f, "%s", "-");
   
   if (t->fst_coeff != NULL)
@@ -468,7 +471,9 @@ tvpi_print_cons (FILE *f, tvpi_cons_t c)
   char *op1, *op2;
   
   mpq_init (k1);
-  mpq_set (k1, *(c->coeff));
+  if (IS_VAR (c->var [1]))
+    mpq_set (k1, *(c->coeff));
+
   mpq_init (k2);
   mpq_set (k2, *(c->cst));
 
@@ -958,6 +963,8 @@ tvpi_subst_internal (LddManager *ldd,
 		     op_t op)
 {
 
+  tvpi_cons_t res;
+
   assert (l->sgn > 0 && "Constraint must be positive");
   assert (!IS_VAR (t->var [1]) && "Not a one-variable term");
   assert ((t != NULL || c != NULL) && "Empty substitution");
@@ -966,7 +973,6 @@ tvpi_subst_internal (LddManager *ldd,
   if (l->var [0] != x && l->var [1] != x)
     return tvpi_to_ldd (ldd, l);
 
-  tvpi_cons_t res;
   res = new_cons ();
   res->var [0] = -1;
   res->var [1] = -1;
@@ -1183,6 +1189,8 @@ tvpi_subst_pluse (LddManager *ldd,
 		  tvpi_term_t t,
 		  tvpi_cst_t c)
 {
+  assert (l != NULL && "Bad constraint");
+  
   /* compute the operator of the new constraint */
   op_t op = LT;  
   if (l->var [1] == x && mpq_sgn (*l->coeff) < 0)
@@ -1201,6 +1209,7 @@ tvpi_var_bound (tvpi_cons_t l,
   if (l->var [1] == x)
     {
       *dc = new_cst ();
+      mpq_init (**dc);
       mpq_div (**dc, *l->cst, *l->coeff);
     }
   else
@@ -1210,6 +1219,7 @@ tvpi_var_bound (tvpi_cons_t l,
     {
       *dt = new_term ();      
       (*dt)->var [0] = l->var [0];
+      (*dt)->var [1] = -1;
       (*dt)->fst_coeff = tvpi_create_si_cst (-1);
       mpq_div (*(*dt)->fst_coeff, *(*dt)->fst_coeff, *l->coeff);
       
@@ -1217,8 +1227,11 @@ tvpi_var_bound (tvpi_cons_t l,
   else if (IS_VAR (l->var [1]))
     {
       *dt = new_term ();
+      (*dt)->sgn = 1;
       (*dt)->var [0] = l->var [1];
+      (*dt)->var [1] = -1;
       (*dt)->fst_coeff = new_cst ();  
+      mpq_init (*(*dt)->fst_coeff);
       mpq_neg (*(*dt)->fst_coeff, *l->coeff);
     }
   else

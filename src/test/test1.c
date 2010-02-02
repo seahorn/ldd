@@ -27,7 +27,7 @@ int main(int argc, char** argv)
 
 
   /* 1 is DDD, 2 is TVPI , 5 is UTVPI(Z)*/
-  int t_type = 1;
+  int t_type = 2;
   if (argc > 1)
     {
       if (argv [1][0] == 't')
@@ -115,10 +115,20 @@ int main(int argc, char** argv)
     printf ("univ d7 is:\n");
     Ldd_PrintMinterm (tdd, d7);
 
-    d7 = Ldd_ExistAbstract (tdd, d6, 0);
+    d7 = Ldd_ExistAbstract (tdd, d6, 2);
+    printf ("exist x2. d6 is:\n");
+    Ldd_PrintMinterm (tdd, d7);
     d7 = Ldd_ExistAbstract (tdd, d7, 1);
-    d7 = Ldd_ExistAbstract (tdd, d7, 2);
+    d7 = Ldd_ExistAbstract (tdd, d7, 0);
     printf ("exist d7 is:\n");
+    Ldd_PrintMinterm (tdd, d7);
+
+    d7 = Ldd_ExistsAbstractLW (tdd, d6, 2);
+    printf ("existLW x2. d6 is:\n");
+    Ldd_PrintMinterm (tdd, d7);
+    d7 = Ldd_ExistsAbstractLW (tdd, d7, 1);
+    d7 = Ldd_ExistsAbstractLW (tdd, d7, 0);
+    printf ("exist LW d7 is:\n");
     Ldd_PrintMinterm (tdd, d7);
   }
       
