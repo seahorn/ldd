@@ -380,7 +380,7 @@ tvpi_var_get_coeff (tvpi_term_t t, int x)
   if (t->var [1] == x) return t->coeff;
 
   if (t->var [0] == x)
-    return t->first_coeff != NULL ? t->first_coeff : one;
+    return t->fst_coeff != NULL ? t->fst_coeff : one;
 
   return zero;
 }
