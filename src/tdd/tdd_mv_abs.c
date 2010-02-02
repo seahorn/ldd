@@ -93,7 +93,7 @@ Ldd_MvExistAbstract (LddManager* ldd, LddNode *n, int * qvars, size_t qsize)
       /* no more variables to eliminate, break out */
       if (v < 0) break;
 
-      tmp = Ldd_ExistAbstract (ldd, res, qvars [v]);
+      tmp = ldd->existsAbstract (ldd, res, qvars [v]);
       if (tmp == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, res);

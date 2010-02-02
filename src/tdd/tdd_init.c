@@ -25,6 +25,8 @@ Ldd_Init (DdManager *cudd, theory_t * t)
   ldd->cudd = cudd;
   ldd->theory = t;
 
+  ldd->existsAbstract = Ldd_ExistsAbstractFM;
+
   ldd->be_bddlike = 0;
 
   /* allocate the map from DD nodes to linear constraints*/
@@ -105,6 +107,15 @@ Ldd_BddlikeManager (LddManager *ldd)
   ldd->be_bddlike = 1;
   return ldd;
 }
+
+LddManager *
+Ldd_SetExistsAbstract (LddManager *ldd,
+		       LddNode*(*fn)(LddManager*,LddNode*,int))
+{
+  ldd->existsAbstract = fn;
+  return ldd;
+}
+
 
 
 static int 

@@ -33,6 +33,10 @@ struct LddManager
   bool be_bddlike;
 
   theory_t* theory;
+
+  /** default implementation of existential quantification of a single
+      variable */
+  LddNode* (*existsAbstract)(LddManager*,LddNode*,int);
 };
 
 /**
@@ -48,7 +52,7 @@ LddNode* Ldd_unique_inter (LddManager *m, unsigned int idx,
 LddNode* Ldd_and_recur (LddManager*, LddNode*, LddNode*);
 LddNode* Ldd_xor_recur (LddManager*, LddNode*, LddNode*);
 LddNode* Ldd_ite_recur (LddManager*, LddNode*, LddNode*, LddNode*);
-LddNode* Ldd_exist_abstract_recur (LddManager*, LddNode*, int, 
+LddNode* lddExistsAbstractFMRecur (LddManager*, LddNode*, int, 
 				    DdHashTable*);
 LddNode * Ldd_resolve_elim_inter (LddManager * tdd, LddNode * f, 
 				   linterm_t t, lincons_t cons, int var);
@@ -57,17 +61,17 @@ LddNode* Ldd_resolve_elim_recur (LddManager*, LddNode*,
 
 LddNode* Ldd_resolve_recur(LddManager*, LddNode*, linterm_t, lincons_t, lincons_t, int, DdHashTable*);
 
-LddNode* Ldd_exist_abstract_v2_recur (LddManager*, LddNode*, bool*, 
-				       qelim_context_t *,
-				       DdHashTable*);
+LddNode* lddExistAbstractPATRecur (LddManager*, LddNode*, bool*, 
+				   qelim_context_t *,
+				   DdHashTable*);
 
 LddNode* Ldd_sat_reduce_recur (LddManager*, LddNode*, 
 				qelim_context_t*, int);
 bool Ldd_is_sat_recur (LddManager*, LddNode*, 
 				qelim_context_t*);
 LddNode* Ldd_bdd_exist_abstract_recur (LddManager*, LddNode*, LddNode*);
-LddNode* Ldd_exist_abstract_v3_recur (LddManager*, LddNode*, int, 
-				       DdHashTable*);
+LddNode* lddExistsAbstractSFMRecur (LddManager*, LddNode*, int, 
+				    DdHashTable*);
 
 void Ldd_debug_print_mtr (MtrNode*);
 int Ldd_fix_mtr_tree (DdManager*, const char *, void*);

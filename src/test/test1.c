@@ -115,11 +115,11 @@ int main(int argc, char** argv)
     printf ("univ d7 is:\n");
     Ldd_PrintMinterm (tdd, d7);
 
-    d7 = Ldd_ExistAbstract (tdd, d6, 2);
+    d7 = Ldd_ExistsAbstract (tdd, d6, 2);
     printf ("exist x2. d6 is:\n");
     Ldd_PrintMinterm (tdd, d7);
-    d7 = Ldd_ExistAbstract (tdd, d7, 1);
-    d7 = Ldd_ExistAbstract (tdd, d7, 0);
+    d7 = Ldd_ExistsAbstract (tdd, d7, 1);
+    d7 = Ldd_ExistsAbstract (tdd, d7, 0);
     printf ("exist d7 is:\n");
     Ldd_PrintMinterm (tdd, d7);
 

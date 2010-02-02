@@ -310,14 +310,19 @@ LddNode* Ldd_Or (LddManager* m, LddNode* n1, LddNode* n2);
 LddNode* Ldd_Xor (LddManager* m, LddNode* n1, LddNode* n2);
 LddNode* Ldd_Ite (LddManager* m, LddNode* n1, LddNode* n2, LddNode* n3);
 
-LddNode* Ldd_ExistsAbstractLW (LddManager*, LddNode *, int);
-LddNode* Ldd_ExistAbstract (LddManager*, LddNode*, int);
+LddNode* Ldd_ExistsAbstract (LddManager*, LddNode*, int);
 LddNode* Ldd_UnivAbstract (LddManager*, LddNode*, int);
+
+LddNode* Ldd_ExistsAbstractLW (LddManager*, LddNode *, int);
+LddNode* Ldd_ExistsAbstractFM (LddManager*, LddNode *, int);
+LddNode* Ldd_ExistsAbstractSFM (LddManager*, LddNode *, int);
+
+LddNode* Ldd_ExistAbstractPAT (LddManager*, LddNode *, int*);
+
 LddNode* Ldd_ResolveElim (LddManager*, LddNode*, linterm_t, 
 			    lincons_t, int);
 LddNode* Ldd_Resolve (LddManager*, LddNode*, 
 		       linterm_t, lincons_t, lincons_t, int);
-LddNode* Ldd_ExistAbstractV2 (LddManager*, LddNode*, int*);
 
 void Ldd_ManagerDebugDump (LddManager*);
 int Ldd_PathSize (LddManager*, LddNode*);
@@ -335,21 +340,20 @@ LddNode *Ldd_TermsWithVars (LddManager*, int*);
 LddNode *Ldd_OverAbstract (LddManager *,LddNode*,int*);
 void Ldd_SupportVarOccurrences (LddManager*,LddNode*,int*);
 LddManager * Ldd_BddlikeManager (LddManager *);
-LddNode * Ldd_ExistAbstractV3 (LddManager*, LddNode*, int);
+  LddManager *Ldd_SetExistsAbstract (LddManager *, 
+				     LddNode*(*)(LddManager*,LddNode*,int));
 LddNode * Ldd_MvExistAbstract (LddManager*, LddNode *, int * , size_t );
 LddNode * Ldd_BoxExtrapolate (LddManager*, LddNode*, LddNode*);
 LddNode* Ldd_TermReplace (LddManager*, LddNode*, linterm_t, linterm_t, constant_t, constant_t, constant_t);
 LddNode* Ldd_TermMinmaxApprox (LddManager*, LddNode*);
 LddNode* Ldd_TermConstrain (LddManager*, LddNode*, 
 				linterm_t, linterm_t, constant_t);
-/* LddNodeset* Ldd_empty_nodeset (LddManager*); */
 LddNodeset* Ldd_NodesetUnion (LddManager*, LddNodeset*, LddNodeset*);
 LddNodeset* Ldd_NodesetAdd (LddManager*, LddNodeset*, LddNode*);
 int Ldd_PrintMinterm(LddManager*, LddNode*);
 
 DdManager * Ldd_GetCudd (LddManager *);
   lincons_t Ldd_GetCons (LddManager*, LddNode*);
-/* LddNode* Ldd_and_resolve (LddManager *m, LddNode *n1, int x);*/
 
   LddNode* Ldd_SubstNinfForVar (LddManager*, LddNode*, int);
   LddNode* Ldd_SubstTermForVar (LddManager*, LddNode*, int, 

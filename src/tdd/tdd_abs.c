@@ -2,10 +2,29 @@
 #include "tddInt.h"
 
 
-LddNode *
-Ldd_ExistAbstract (LddManager * ldd,
-		    LddNode * f,
+/**
+   \brief Existentially quantifies a variable in a diagram.
+   
+   
+ */
+LddNode * 
+Ldd_ExistsAbstract (LddManager *ldd,
+		    LddNode *f,
 		    int var)
+{
+  return ldd->existsAbstract (ldd, f, var);
+}
+
+
+
+/**
+   \brief Existentially quantifies a variable in a diagram using
+   Fourier-Motzkin technique.
+ */
+LddNode *
+Ldd_ExistsAbstractFM (LddManager * ldd,
+		      LddNode * f,
+		      int var)
 {
   LddNode *res;
   DdHashTable *table;
@@ -16,7 +35,7 @@ Ldd_ExistAbstract (LddManager * ldd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = Ldd_exist_abstract_recur (ldd, f, var, table);
+      res = lddExistsAbstractFMRecur (ldd, f, var, table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -28,11 +47,16 @@ Ldd_ExistAbstract (LddManager * ldd,
 
 
 /**
- * Existential quantification through resolution. Unoptimized version
- * of Ldd_exist_abstract.
+   \brief Existentially quantifies a variable in a diagram using
+   Simple Fourier-Motzkin. This is a less aggressive version of
+   Ldd_ExistsAbstractFM()
+   
+   Useful for benchmarks.
+
+   \sa Ldd_ExistsAbstractFM()
  */
 LddNode *
-Ldd_ExistAbstractV3(LddManager * ldd,
+Ldd_ExistsAbstractSFM (LddManager * ldd,
 		       LddNode * f,
 		       int var)
 {
@@ -45,7 +69,7 @@ Ldd_ExistAbstractV3(LddManager * ldd,
       table = cuddHashTableInit (CUDD, 1, 2);
       if (table == NULL) return NULL;
       
-      res = Ldd_exist_abstract_v3_recur (ldd, f, var, table);
+      res = lddExistsAbstractSFMRecur (ldd, f, var, table);
       if (res != NULL)
 	cuddRef (res);
       cuddHashTableQuit (table);
@@ -57,27 +81,13 @@ Ldd_ExistAbstractV3(LddManager * ldd,
 
 
 LddNode * Ldd_UnivAbstract (LddManager * ldd,
-			      LddNode * f,
-			      int var)
+			    LddNode * f,
+			    int var)
 {
   LddNode *res;
-  DdHashTable *table;
-  do
-    {
-      CUDD->reordered = 0;
-      table = cuddHashTableInit (CUDD, 1, 2);
-      if (table == NULL) return NULL;
-      
-      res = Ldd_exist_abstract_recur (ldd, Cudd_Not (f), var, table);
-      if (res != NULL)
-	cuddRef (res);
-      cuddHashTableQuit (table);
-    }
-  while (CUDD->reordered == 1);
-
-  if (res != NULL) cuddDeref (res);
-
-  return Cudd_NotCond (res, res != NULL);
+  
+  res = ldd->existsAbstract (ldd, Cudd_Not (f), var);
+  return Cudd_Not (res);
 }
 
 LddNode * Ldd_ResolveElim (LddManager * ldd, LddNode * f, 
@@ -122,9 +132,16 @@ LddNode * Ldd_Resolve (LddManager * ldd, LddNode * f,
 
 }
 
-LddNode *Ldd_ExistAbstractV2 (LddManager * ldd,
-				 LddNode * f,
-				 bool * vars)
+/**
+   \brief Existential quantifies out variables from a diagram using
+   Path-At-a-Time technique.
+
+   \pre theory provides supports quantifier elimination.
+ */
+LddNode *
+Ldd_ExistAbstractPAT (LddManager * ldd,
+		      LddNode * f,
+		      bool * vars)
 {
   LddNode *res;
   DdHashTable *table;
@@ -146,7 +163,7 @@ LddNode *Ldd_ExistAbstractV2 (LddManager * ldd,
 	  return NULL;
 	}
 
-      res = Ldd_exist_abstract_v2_recur (ldd, f, vars, qelimCtx, table);
+      res = lddExistAbstractPATRecur (ldd, f, vars, qelimCtx, table);
       if (res != NULL)
 	cuddRef (res);
 
@@ -191,7 +208,7 @@ LddNode * Ldd_resolve_elim_inter (LddManager * ldd, LddNode * f,
  * table is the hash table to keep computed results of this operation
  */
 LddNode * 
-Ldd_exist_abstract_recur (LddManager * ldd, 
+lddExistsAbstractFMRecur (LddManager * ldd, 
 			  LddNode * f, 
 			  int var, 
 			  DdHashTable * table)
@@ -283,7 +300,7 @@ Ldd_exist_abstract_recur (LddManager * ldd,
   
 
   /* recurse to THEN and ELSE branches*/
-  T = Ldd_exist_abstract_recur (ldd, fv, var, table);
+  T = lddExistsAbstractFMRecur (ldd, fv, var, table);
   if (T == NULL)
     {
       Cudd_IterDerefBdd (manager, fv);
@@ -294,7 +311,7 @@ Ldd_exist_abstract_recur (LddManager * ldd,
   Cudd_IterDerefBdd (manager, fv);
   fv = NULL;
   
-  E = Ldd_exist_abstract_recur (ldd, fnv, var, table);
+  E = lddExistsAbstractFMRecur (ldd, fnv, var, table);
   if (E == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -371,7 +388,7 @@ Ldd_exist_abstract_recur (LddManager * ldd,
  * table is the hash table to keep computed results of this operation
  */
 LddNode * 
-Ldd_exist_abstract_v3_recur (LddManager * ldd, 
+lddExistsAbstractSFMRecur (LddManager * ldd, 
 			     LddNode * f, 
 			     int var, 
 			     DdHashTable * table)
@@ -473,7 +490,7 @@ Ldd_exist_abstract_v3_recur (LddManager * ldd,
   
 
   /* recurse to THEN and ELSE branches*/
-  T = Ldd_exist_abstract_v3_recur (ldd, fv, var, table);
+  T = lddExistsAbstractSFMRecur (ldd, fv, var, table);
   if (T == NULL)
     {
       Cudd_IterDerefBdd (manager, fv);
@@ -484,7 +501,7 @@ Ldd_exist_abstract_v3_recur (LddManager * ldd,
   Cudd_IterDerefBdd (manager, fv);
   fv = NULL;
   
-  E = Ldd_exist_abstract_v3_recur (ldd, fnv, var, table);
+  E = lddExistsAbstractSFMRecur (ldd, fnv, var, table);
   if (E == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -948,7 +965,7 @@ Ldd_resolve_recur (LddManager * ldd,
 }
 
 
-LddNode * Ldd_exist_abstract_v2_recur (LddManager * ldd, 
+LddNode * lddExistAbstractPATRecur (LddManager * ldd, 
 					LddNode * f, 
 					bool * vars, 
 					qelim_context_t * qelimCtx,
@@ -1042,7 +1059,7 @@ LddNode * Ldd_exist_abstract_v2_recur (LddManager * ldd,
     }
   
 
-  T = Ldd_exist_abstract_v2_recur (ldd, fv, vars, qelimCtx, table);
+  T = lddExistAbstractPATRecur (ldd, fv, vars, qelimCtx, table);
 
   if (fElimRoot) 
     THEORY->qelim_pop (qelimCtx);
@@ -1066,7 +1083,7 @@ LddNode * Ldd_exist_abstract_v2_recur (LddManager * ldd,
       THEORY->qelim_push (qelimCtx, nvCons);
     }    
 
-  E = Ldd_exist_abstract_v2_recur (ldd, fnv, vars, qelimCtx, table);
+  E = lddExistAbstractPATRecur (ldd, fnv, vars, qelimCtx, table);
 
   if (fElimRoot)
     THEORY->destroy_lincons (THEORY->qelim_pop (qelimCtx));
