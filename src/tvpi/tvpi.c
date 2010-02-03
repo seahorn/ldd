@@ -965,8 +965,33 @@ tvpi_subst_internal (LddManager *ldd,
 
   tvpi_cons_t res;
 
+  /* fprintf (stderr, "sub_internal:\n"); */
+  /* fprintf (stderr, "\tl is "); */
+  /* if (l != NULL) */
+  /*   tvpi_print_cons (stderr, l); */
+  /* else */
+  /*   fprintf (stderr, "NULL"); */
+  /* fprintf (stderr, "\n"); */
+
+  /* fprintf (stderr, "\tt is "); */
+  /* if (t != NULL) */
+  /*   tvpi_print_term (stderr, t); */
+  /* else */
+  /*   fprintf (stderr, "NULL"); */
+  /* fprintf (stderr, "\n"); */
+
+  /* fprintf (stderr, "\tc is "); */
+  /* if (c != NULL) */
+  /*   tvpi_print_cst (stderr, c); */
+  /* else */
+  /*   fprintf (stderr, "NULL"); */
+  /* fprintf (stderr, "\n"); */
+
+
+  
+
   assert (l->sgn > 0 && "Constraint must be positive");
-  assert (!IS_VAR (t->var [1]) && "Not a one-variable term");
+  assert ((t == NULL || !IS_VAR (t->var [1])) && "Not a one-variable term");
   assert ((t != NULL || c != NULL) && "Empty substitution");
 
   /* nothing to do */
@@ -1007,10 +1032,10 @@ tvpi_subst_internal (LddManager *ldd,
   if (t == NULL)
     {
       /* if x is 1st variable of l, then 2nd variable is moved up */
-      if (l->var [0] == x)
+      if (l->var [0] == x && IS_VAR (l->var [1]))
 	{
 	  res->var [0] = l->var [1];
-	  res->fst_coeff = l->coeff;
+	  res->fst_coeff = tvpi_dup_cst (l->coeff);
 	}
       else
 	/* if x is 2nd variable of l. */
@@ -1156,12 +1181,24 @@ tvpi_subst_internal (LddManager *ldd,
     {
       res->sgn = mpq_sgn (*res->fst_coeff);
 
+      assert (res->sgn != 0 && "first coefficient is 0");
+
       mpq_abs (*res->fst_coeff, *res->fst_coeff);
       mpq_div (*res->cst, *res->cst, *res->fst_coeff);
       if (IS_VAR (res->var [1]))
 	mpq_div (*res->coeff, *res->coeff, *res->fst_coeff);
       tvpi_destroy_cst (res->fst_coeff);
       res->fst_coeff = NULL;
+    }
+  else
+    /* first coefficient is +1 implicitly */
+    res->sgn = 1;
+
+  /* if var[1] is not a variable, set the coefficient to 0 */
+  if (!IS_VAR (res->var [1]))
+    {
+      res->coeff = new_cst ();
+      mpq_init (*res->coeff);
     }
   
   /* construct LDD */
