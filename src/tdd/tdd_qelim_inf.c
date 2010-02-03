@@ -134,8 +134,6 @@ Ldd_ExistsAbstractLW (LddManager *ldd,
       LddNode *g, *tmp;
 
       
-      fprintf (stderr, "%d iteration of LW\n", i);
-
       /* skip empty entries */
       if (support [i] == 0) continue;
       l = lddC (ldd, i);
