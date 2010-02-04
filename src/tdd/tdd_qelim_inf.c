@@ -131,8 +131,8 @@ Ldd_ExistsAbstractLW (LddManager *ldd,
       constant_t c; 
       int sgn;
 
-      LddNode *g, *tmp;
-
+      LddNode *g;
+      
       
       /* skip empty entries */
       if (support [i] == 0) continue;
@@ -148,35 +148,43 @@ Ldd_ExistsAbstractLW (LddManager *ldd,
       THEORY->var_bound (l, var, &t, &c);
       sgn = THEORY->sgn_cst (THEORY->var_get_coeff (THEORY->get_term (l), var));
 
-      if ((THEORY->is_strict (l) && sgn > 0) || 
-	  (!THEORY->is_strict (l) && sgn < 0))
-	g = Ldd_SubstTermForVar (ldd, f, var, t, c);
+      assert (sgn != 0 && "Found 0 coefficient");
+      
+      if ((THEORY->is_strict (l) && sgn > 0) ||
+      	  ((!THEORY->is_strict (l)) && sgn < 0))
+      	g = Ldd_SubstTermForVar (ldd, f, var, t, c);
       else
-	g = Ldd_SubstTermPlusForVar (ldd, f, var, t, c);
+      	g = Ldd_SubstTermPlusForVar (ldd, f, var, t, c);
 
       THEORY->destroy_term (t);
       THEORY->destroy_cst (c);
 
-      if (g == NULL) 
+      if (g == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, res);
+	  FREE (support);
 	  return NULL;
 	}
-      cuddRef (g);
+      cuddRef(g);
       
-      tmp = Ldd_Or (ldd, res, g);
-      if (tmp == NULL)
-	{
-	  Cudd_IterDerefBdd (CUDD, g);
-	  Cudd_IterDerefBdd (CUDD, res);
-	  return NULL;
-	}
-      cuddRef (tmp);
-      Cudd_IterDerefBdd (CUDD, res);
-      Cudd_IterDerefBdd (CUDD, g);
-      res = tmp;
+      {
+	LddNode *tmp;
+	tmp = Ldd_Or (ldd, res, g);
+	if (tmp == NULL)
+	  {
+	    Cudd_IterDerefBdd (CUDD, g);
+	    Cudd_IterDerefBdd (CUDD, res);
+	    FREE (support);
+	    return NULL;
+	  }
+	cuddRef (tmp);
+	Cudd_IterDerefBdd (CUDD, res);
+	Cudd_IterDerefBdd (CUDD, g);
+	res = tmp;
+      }
     }
   
+  FREE (support);
   cuddDeref (res);
   return res;
 }
