@@ -1080,10 +1080,8 @@ tvpi_subst_internal (LddManager *ldd,
 	      /* deal with implicit coefficients */
 	      if (res->fst_coeff == NULL)
 		{
-		  res->fst_coeff = new_cst ();
-		  mpq_init (*res->fst_coeff);
 		  /* 1 + 1 = 2. Two implicit coefficients added up */
-		  mpq_set_ui (*res->fst_coeff, 2, 1);
+		  res->fst_coeff = tvpi_create_si_cst (2);
 		}
 	      else /* res->fst_coeff != NULL */
 		{
@@ -1098,10 +1096,8 @@ tvpi_subst_internal (LddManager *ldd,
 	  else 
 	    {
 	      res->var [1] = l->var [0];
-	      res->coeff = new_cst ();
-	      mpq_init (*res->coeff);
 	      /* implicit coefficient */
-	      mpq_set_ui (*res->coeff, 1, 1);
+	      res->coeff = tvpi_create_si_cst (1);
 	    }
 	}
       /* OTHER is in the 2nd position */
@@ -1142,11 +1138,12 @@ tvpi_subst_internal (LddManager *ldd,
       res->fst_coeff != NULL && 
       mpq_sgn (*res->fst_coeff) == 0)
     {
-      /* result is reduced to a constant; compute the result */
+      /* result is reduced to a constant; compute '0 op cst', where 'op'
+	 and 'cst' come from res */
       int sgn = mpq_sgn (*res->cst);
 
       /* the comparison depends on the operator of the result */
-      rn = (sgn > 0 || (res->op == LEQ && sgn == 0)) ? 
+      rn = (sgn > 0 || (sgn == 0 && res->op == LEQ)) ? 
 	Ldd_GetTrue (ldd) : Ldd_GetFalse (ldd);
       tvpi_destroy_cons (res);
       return rn;
@@ -1226,12 +1223,13 @@ tvpi_subst_pluse (LddManager *ldd,
 		  tvpi_term_t t,
 		  tvpi_cst_t c)
 {
+  op_t op;
+
   assert (l != NULL && "Bad constraint");
+  assert (l->sgn > 0 && "Substitution into negative constraint");
   
   /* compute the operator of the new constraint */
-  op_t op = LT;  
-  if (l->var [1] == x && mpq_sgn (*l->coeff) < 0)
-    op = LEQ;
+  op = (l->var [1] == x && mpq_sgn (*l->coeff) < 0) ? LEQ : LT;
 
   return tvpi_subst_internal (ldd, l, x, t, c, op);
 }
@@ -1528,7 +1526,7 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
      variables of c */
   ln = t->map[var0][var1];
 
-  /* first constraint ever */
+  /* first ever constraint with var0 and var1 */
   if (ln == NULL)
     {
       ln = (tvpi_list_node_t*) malloc (sizeof (tvpi_list_node_t));
@@ -1545,21 +1543,23 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       return ln->dd;
     }
   
-  assert (ln != NULL);
-  
   /* find a place to insert c */
+  /* p iterates over the list */
   p = ln;
-  
   while (1)
     {
+      /* compare coefficients */
       i = mpq_cmp (*(p->cons->coeff), *(c->coeff));
       
+      
+      /* no 'c' in the list. break and insert a new element */
       if (i > 0) break;
 
       /* same coefficient, check the constant */
       if (i == 0)
 	{
 	  j = mpq_cmp (*(p->cons->cst), *(c->cst));
+	  /* no 'c' in the list. break and insert a new element */
 	  if (j >= 0) break;
 	}
       /* reached end of list */
@@ -1568,17 +1568,31 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       p = p->next;
     }
 
-  /* i is the result of comparing the coefficients of p->cons and c
-   * if i == 0, then j is the result of comparing the constants of p->cons and c 
+  /* i is the result of comparing the coefficients of p->cons and c if
+   * i == 0, then j is the result of comparing the constants of
+   * p->cons and c
    */
   
-  /* p->cons equals c */
-  if (i == 0 && j == 0 && p->cons->op == c->op)
+  /* p->cons has the same term and constant as c  */
+  if (i == 0 && j == 0)
     {
-      return p->dd;
+      /* p->cons == c */
+      if (p->cons->op == c->op)
+	return p->dd;
+
+      /* p->next->cons == c */
+      if (c->op == LEQ && 
+	  p->next != NULL && 
+	  p->next->cons->op == LEQ &&
+	  mpq_cmp (*p->cons->coeff, *p->next->cons->coeff) == 0 &&
+	  mpq_cmp (*p->cons->cst, *p->next->cons->cst) == 0)
+	return p->next->dd;
+
+      /* need to insert c right after p */
     }
+
   /* c precedes p->cons, insert before p->cons */
-  else if (i > 0 || // c->coeff < p->cons->coeff
+  if (i > 0 || // c->coeff < p->cons->coeff
 	   (i == 0 && j > 0) ||  // c->cst < p->cons->cst
 	   (i == 0 && j == 0 && c->op == LT)) // c->op < p->cons->op
     {
@@ -1613,9 +1627,9 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       return n->dd;	  
     }
   /* p->cons precedes c */
-  else if (i < 0 || 
-	   (i == 0 && j < 0) || 
-	   (i == 0 && j == 0 && p->cons->op == LT))
+  if (i < 0 || 
+      (i == 0 && j < 0) || 
+      (i == 0 && j == 0 && p->cons->op == LT))
     {
       tvpi_list_node_t *n;
       
