@@ -1042,9 +1042,11 @@ tvpi_subst_internal (LddManager *ldd,
 	  res->var [0] = l->var [1];
 	  res->fst_coeff = tvpi_dup_cst (l->coeff);
 	}
-      else
+      else if (l->var [1] == x)
 	/* if x is 2nd variable of l. */
 	res->var [0] = l->var [0];
+      else
+	res->fst_coeff = tvpi_create_si_cst (0);
     }
 
   /* variable x is replaced by a term */
@@ -1137,8 +1139,8 @@ tvpi_subst_internal (LddManager *ldd,
   
   LddNode *rn;
   
-  /* the coefficient of NEW variable is 0. This is possible only if
-     OTHER == NEW */
+  /* the coefficient of NEW variable is 0. This is possible  if
+     OTHER == NEW or when replacing a one-variable constraint with a constant*/
   if (!IS_VAR (res->var [1]) && 
       res->fst_coeff != NULL && 
       mpq_sgn (*res->fst_coeff) == 0)
@@ -1222,7 +1224,36 @@ tvpi_subst (LddManager *ldd,
 	    tvpi_term_t t,
 	    tvpi_cst_t c)
 {
-  return tvpi_subst_internal (ldd, l, x, t, c, l->op);
+  LddNode* r;
+  /* if (l->var [0] == x || l->var [1] == x) */
+  /*   { */
+  /*     fprintf (stdout, "subst: "); */
+  /*     if (t != NULL) */
+  /* 	  tvpi_print_term (stdout, t); */
+  /*     if (c != NULL) */
+  /* 	{ */
+  /* 	  fprintf (stdout, " + "); */
+  /* 	  tvpi_print_cst (stdout, c); */
+  /* 	} */
+  /*     fprintf (stdout, " in "); */
+  /*     tvpi_print_cons (stdout, l); */
+  /*     fprintf (stdout, " for x%d\n", x); */
+  /*   } */
+  r = tvpi_subst_internal (ldd, l, x, t, c, l->op);
+  /* if (l->var [0] == x || l->var [1] == x) */
+  /*   { */
+      
+  /*     fprintf (stdout, "\t"); */
+  /*     if (Ldd_GetTrue (ldd) == r) */
+  /* 	fprintf (stdout, "TRUE"); */
+  /*     else if (Ldd_GetFalse (ldd) == r) */
+  /* 	fprintf (stdout, "FALSE"); */
+  /*     else */
+  /* 	tvpi_print_cons (stdout, Ldd_GetCons (ldd, r)); */
+  /*     fprintf (stdout, "\n"); */
+  /*   } */
+  return r;
+
 }
 
 
@@ -1234,6 +1265,7 @@ tvpi_subst_pluse (LddManager *ldd,
 		  tvpi_cst_t c)
 {
   op_t op;
+  LddNode* r;
 
   assert (l != NULL && "Bad constraint");
   assert (l->sgn > 0 && "Substitution into negative constraint");
@@ -1241,7 +1273,35 @@ tvpi_subst_pluse (LddManager *ldd,
   /* compute the operator of the new constraint */
   op = (l->var [1] == x && mpq_sgn (*l->coeff) < 0) ? LEQ : LT;
 
-  return tvpi_subst_internal (ldd, l, x, t, c, op);
+  /* if (l->var [0] == x || l->var [1] == x) */
+  /*   { */
+  /*     fprintf (stdout, "subst+e: "); */
+  /*     if (t != NULL) */
+  /* 	  tvpi_print_term (stdout, t); */
+  /*     if (c != NULL) */
+  /* 	{ */
+  /* 	  fprintf (stdout, " + "); */
+  /* 	  tvpi_print_cst (stdout, c); */
+  /* 	} */
+      
+  /*     fprintf (stdout, " in "); */
+  /*     tvpi_print_cons (stdout, l); */
+  /*     fprintf (stdout, " for x%d\n", x); */
+  /*   } */
+  r = tvpi_subst_internal (ldd, l, x, t, c, op);
+  /* if (l->var [0] == x || l->var [1] == x) */
+  /*   { */
+      
+  /*     fprintf (stdout, "\t"); */
+  /*     if (Ldd_GetTrue (ldd) == r) */
+  /* 	fprintf (stdout, "TRUE"); */
+  /*     else if (Ldd_GetFalse (ldd) == r) */
+  /* 	fprintf (stdout, "FALSE"); */
+  /*     else */
+  /* 	tvpi_print_cons (stdout, Ldd_GetCons (ldd, r)); */
+  /*     fprintf (stdout, "\n"); */
+  /*   } */
+  return r;
 }
 
 
