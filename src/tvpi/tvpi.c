@@ -657,6 +657,11 @@ tvpi_negate_cons (tvpi_cons_t c)
 {
   tvpi_cons_t r;
 
+  /**
+     ! (t <= c)  === -t < -c
+     ! (t < c)   ===  -t <= -c
+   */
+
   /* negate the term constraint */
   r = tvpi_negate_term (c);
   
@@ -883,14 +888,14 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 
   /* if both variables are the same, add up the coefficients and
      remove second occurrence of the variable */
-  if (c->var [0] == c->var[1]) 
+  if (c->var [0] == c->var [1]) 
     { 
       mpq_add (*c->fst_coeff, *c->fst_coeff, *c->coeff);
 
       assert (mpq_sgn (*c->fst_coeff) != 0 && "First coefficient becomes 0");
       
       c->var [1] = -1; 
-      mpq_set_d (*c->coeff, 0.0); 
+      mpq_set_si (*c->coeff, 0, 1);
     }
   
   /* set the negative flag and absolute value of the first coefficient */
@@ -1180,10 +1185,15 @@ tvpi_subst_internal (LddManager *ldd,
 
       assert (res->sgn != 0 && "first coefficient is 0");
 
-      mpq_abs (*res->fst_coeff, *res->fst_coeff);
-      mpq_div (*res->cst, *res->cst, *res->fst_coeff);
-      if (IS_VAR (res->var [1]))
-	mpq_div (*res->coeff, *res->coeff, *res->fst_coeff);
+      if (res->sgn < 0)
+	mpq_abs (*res->fst_coeff, *res->fst_coeff);
+      
+      if (mpq_cmp_si (*res->fst_coeff, 1, 1) != 0)
+	{
+	  mpq_div (*res->cst, *res->cst, *res->fst_coeff);
+	  if (IS_VAR (res->var [1]))
+	    mpq_div (*res->coeff, *res->coeff, *res->fst_coeff);
+	}
       tvpi_destroy_cst (res->fst_coeff);
       res->fst_coeff = NULL;
     }
@@ -1584,11 +1594,11 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       if (c->op == LEQ && 
 	  p->next != NULL && 
 	  p->next->cons->op == LEQ &&
-	  mpq_cmp (*p->cons->coeff, *p->next->cons->coeff) == 0 &&
-	  mpq_cmp (*p->cons->cst, *p->next->cons->cst) == 0)
+	  mpq_cmp (*c->coeff, *p->next->cons->coeff) == 0 &&
+	  mpq_cmp (*c->cst, *p->next->cons->cst) == 0)
 	return p->next->dd;
-
-      /* need to insert c right after p */
+      
+      /* need to insert c */
     }
 
   /* c precedes p->cons, insert before p->cons */
@@ -1605,7 +1615,7 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       n->prev = p->prev;
       p->prev = n;
       
-      /* add n to the lsit */
+      /* add n to the list */
       if (n->prev != NULL) /* mid list */
 	n->prev->next = n;
       else /* head of the list */
@@ -1639,6 +1649,9 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       n->prev = p;
       n->next = p->next;
       p->next = n;
+
+      if (n->next != NULL)
+	n->next->prev = n;
       
       n->cons = tvpi_dup_cons (c);
 
