@@ -546,7 +546,8 @@ tvpi_term_t
 tvpi_negate_term (tvpi_term_t t)
 {
   tvpi_term_t r;
-  
+ 
+  assert (t->fst_coeff == NULL && "Cannot negate term with first coeff");
   r = tvpi_dup_term (t);
   r->sgn = -t->sgn;
   if (IS_VAR (t->var [1])) mpq_neg (*r->coeff, *r->coeff);
@@ -917,6 +918,26 @@ tvpi_resolve_cons (tvpi_cons_t c1, tvpi_cons_t c2, int x)
 
   return c;  
 }
+
+tvpi_cons_t
+tvpi_resolve_cons_debug (tvpi_cons_t c1, tvpi_cons_t c2, int x)
+{
+  tvpi_cons_t r;
+  
+  fprintf (stdout, "Resolve: ");
+  tvpi_print_cons (stdout, c1);
+  fprintf (stdout, " with ");
+  tvpi_print_cons (stdout, c2);
+  fprintf (stdout, " on x%d\n", x);
+  r = tvpi_resolve_cons (c1, c2, x);
+  fprintf (stdout, "\t");
+  if (r == NULL) fprintf (stdout, "NULL");
+  else tvpi_print_cons (stdout, r);
+  fprintf (stdout, "\n");
+  return r;
+}
+
+
 
 void
 tvpi_destroy_cons (tvpi_cons_t c)
@@ -1578,6 +1599,7 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
 {
   tvpi_list_node_t *ln;
   tvpi_list_node_t *p;
+  tvpi_list_node_t *o;
   
   /* keys into the map */
   int var0, var1;
@@ -1614,57 +1636,74 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
     }
   
   /* find a place to insert c */
-  /* p iterates over the list */
-  p = ln;
-  while (1)
-    {
-      /* compare coefficients */
-      i = mpq_cmp (*(p->cons->coeff), *(c->coeff));
-      
-      
-      /* no 'c' in the list. break and insert a new element */
-      if (i > 0) break;
 
-      /* same coefficient, check the constant */
-      if (i == 0)
-	{
-	  j = mpq_cmp (*(p->cons->cst), *(c->cst));
-	  /* no 'c' in the list. break and insert a new element */
-	  if (j >= 0) break;
-	}
-      /* reached end of list */
-      if (p->next == NULL) break;
-      /* advance */
+  /* find the first constraint with the same term as c */
+
+  /* p iterates over the list */
+  /* o is prev of p */
+  o = NULL;
+  p = ln;
+  while (p != NULL &&  (i = mpq_cmp (*(p->cons->coeff), *(c->coeff))) < 0)
+    {
+      o = p;
       p = p->next;
     }
 
-  /* i is the result of comparing the coefficients of p->cons and c if
-   * i == 0, then j is the result of comparing the constants of
-   * p->cons and c
-   */
-  
-  /* p->cons has the same term and constant as c  */
-  if (i == 0 && j == 0)
+  /* nothing with same term as c. Insert after 'o' in the list */
+  if (p == NULL || i != 0)
     {
-      /* p->cons == c */
-      if (p->cons->op == c->op)
-	return p->dd;
+      tvpi_list_node_t *n;
 
-      /* p->next->cons == c */
-      if (c->op == LEQ && 
-	  p->next != NULL && 
-	  p->next->cons->op == LEQ &&
-	  mpq_cmp (*c->coeff, *p->next->cons->coeff) == 0 &&
-	  mpq_cmp (*c->cst, *p->next->cons->cst) == 0)
-	return p->next->dd;
+      assert ((p != NULL || o != NULL) && "Unexpected NULL");
+      /* insert after o */
+      if (o != NULL)
+	{
+	  n = (tvpi_list_node_t*) malloc (sizeof (tvpi_list_node_t));
+	  if (n == NULL) return NULL;
+	  
+	  n->prev = o;
+	  n->next = o->next;
+	  o->next = n;
+
+	  if (n->next != NULL)
+	    n->next->prev = n;
+	}
+      /* insert before p */
+      else
+	{
+	  n = (tvpi_list_node_t*) malloc (sizeof (tvpi_list_node_t));
+	  if (n == NULL) return NULL;
       
-      /* need to insert c */
+	  n->next = p;
+	  n->prev = p->prev;
+	  p->prev = n;
+      
+	  /* since o is NULL, n is the new head of the list */
+	  /* add n to the list */
+	  t->map [var0][var1] = n;
+	}
+      
+      
+      n->cons = tvpi_dup_cons (c);
+      n->dd = Ldd_NewVar (m, (lincons_t) n->cons);
+      
+      assert (n->dd != NULL);
+      Ldd_Ref (n->dd);
+      return n->dd;
     }
+  
 
-  /* c precedes p->cons, insert before p->cons */
-  if (i > 0 || // c->coeff < p->cons->coeff
-	   (i == 0 && j > 0) ||  // c->cst < p->cons->cst
-	   (i == 0 && j == 0 && c->op == LT)) // c->op < p->cons->op
+  /* p->cons has same term as c->cons. 
+     First check whether c->cons < p->cons
+  */
+  j = mpq_cmp (*(p->cons->cst), *(c->cst));
+  
+  /* found c in the list */
+  if (j == 0 && p->cons->op == c->op)
+    return p->dd;
+  
+  /* c->cons precedes p->cons */
+  if (j > 0 || (j == 0 && c->op == LT && p->cons->op == LEQ))
     {
       tvpi_list_node_t *n;
       
@@ -1682,54 +1721,70 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
 	t->map [var0][var1] = n;
       
       n->cons = tvpi_dup_cons (c);
-
-      /* if this is the first constraint with this term, get a new variable.
-       * otherwise, get a new variable that follows p->dd in dd order.
-       */
-      if (i == 0)
-	n->dd = Ldd_NewVarBefore (m, p->dd, (lincons_t)n->cons);
-      else
-	n->dd = Ldd_NewVar (m, (lincons_t) n->cons);
-
-      assert (n->dd != NULL);
-      Ldd_Ref (n->dd);
-
-      return n->dd;	  
-    }
-  /* p->cons precedes c */
-  if (i < 0 || 
-      (i == 0 && j < 0) || 
-      (i == 0 && j == 0 && p->cons->op == LT))
-    {
-      tvpi_list_node_t *n;
-      
-      n = (tvpi_list_node_t*) malloc (sizeof (tvpi_list_node_t));
-      if (n == NULL) return NULL;
-      
-      n->prev = p;
-      n->next = p->next;
-      p->next = n;
-
-      if (n->next != NULL)
-	n->next->prev = n;
-      
-      n->cons = tvpi_dup_cons (c);
-
-      /* if this is the first constraint with this term, get a new variable.
-       * otherwise, get a new variable that follows p->dd in dd order.
-       */
-      if (i == 0)
-	n->dd = Ldd_NewVarAfter (m, p->dd, (lincons_t)n->cons);
-      else
-	n->dd = Ldd_NewVar (m, (lincons_t) n->cons);
-      
+      n->dd = Ldd_NewVarBefore (m, p->dd, (lincons_t)n->cons);
       assert (n->dd != NULL);
       Ldd_Ref (n->dd);
       return n->dd;
     }
   
+  /* LOOP INVARIANTS
+   *  p->cons NOT EQUALS c->cons
+   * TERM (p->cons) EQUALS (c->cons)
+   * p->cons LESS c->cons
+   *
+   * LOOP TERMINATES when 
+   *   p->next == NULL OR 
+   *   p->next->cons EQUALS c->cons OR
+   *   c->cons LESS p->next->cons 
+   */
+  /* iterate through the list to find an element to insert c after */
+  while (p->next != NULL)
+    {
+      /* REUSE o: now points to p->next */
+      o = p->next;
 
-  assert (0 && "UNREACHABLE");
+      /* o has different term than c */
+      if (mpq_cmp (*o->cons->coeff, *c->coeff) != 0) break;
+      
+      /* check the constant */
+      j = mpq_cmp (*(o->cons->cst), *(c->cst));
+      /* o->cons->cst > c->cst */
+      if (j > 0) break;
+      
+      /* invariant: i == 0 */
+
+      /* found same constraint as c */
+      if (j == 0 && c->op == o->cons->op)
+	return o->dd;
+      /* same constant, but strict inequality precedes non-strict one */      
+      else if (j == 0 && c->op == LT && o->cons->op == LEQ) break;
+      
+
+      p = p->next;
+    }
+
+  assert (p != NULL);
+
+  {
+    tvpi_list_node_t *n;
+    
+    n = (tvpi_list_node_t*) malloc (sizeof (tvpi_list_node_t));
+    if (n == NULL) return NULL;
+      
+    n->prev = p;
+    n->next = p->next;
+    p->next = n;
+
+    if (n->next != NULL)
+      n->next->prev = n;
+      
+    n->cons = tvpi_dup_cons (c);
+    n->dd = Ldd_NewVarAfter (m, p->dd, (lincons_t) n->cons);
+      
+    assert (n->dd != NULL);
+    Ldd_Ref (n->dd);
+    return n->dd;
+  }
 }
 
 LddNode*
