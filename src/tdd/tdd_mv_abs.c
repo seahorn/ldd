@@ -58,11 +58,12 @@ Ldd_MvExistAbstract (LddManager* ldd, LddNode *n, int * qvars, size_t qsize)
       if (Cudd_IsConstant (res)) break;
 
       memset (occurlist, 0, sizeof (int) * t_vsize);
-      Ldd_SupportVarOccurrences (ldd, res, occurlist);
+      Ldd_SupportVarOccurrences (ldd, res, occurlist); 
       
       memset (varlist, 0, sizeof (int) * t_vsize);
-      tmp = drop_single_use_constraints (ldd, res, qvars, qsize, 
-					 occurlist, varlist);
+      tmp = drop_single_use_constraints (ldd, res, qvars, qsize,
+      					 occurlist, varlist);
+
 
       if (tmp == NULL)
 	{
