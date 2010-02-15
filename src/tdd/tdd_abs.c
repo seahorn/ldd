@@ -423,7 +423,7 @@ lddExistsAbstractSFMRecur (LddManager * ldd,
 
   /* deconstruct f into the root constraint and cofactors */
   v = F->index;
-  vCons = ldd->ddVars [v];
+  vCons = lddC(ldd,v);
   vTerm = THEORY->get_term (vCons);
   
   fv = cuddT (F);
@@ -436,10 +436,10 @@ lddExistsAbstractSFMRecur (LddManager * ldd,
      otherwise, top constraint is removed and propagated to children
      before recursing to children
   */
-  if (!THEORY->term_has_var (vTerm, var))
+  fElimRoot = THEORY->term_has_var (vTerm, var);
+  if (!fElimRoot)
     {
       /* keep the root constraint */
-      fElimRoot = 0;
       /* grab extra references to simplify dereferencing later */
       cuddRef (fv);
       cuddRef (fnv);
@@ -449,42 +449,43 @@ lddExistsAbstractSFMRecur (LddManager * ldd,
       DdNode *tmp;
       lincons_t nvCons;
       
-      DdHashTable * table;
+      DdHashTable * resolveTable;
 
-      table = cuddHashTableInit (CUDD, 1, 2);
-      if (table == NULL) return NULL;
+      resolveTable = cuddHashTableInit (CUDD, 1, 2);
+      if (resolveTable == NULL) return NULL;
 
       /* root constraint is eliminated */
-      fElimRoot = 1;
 
       /* resolve root constraint with THEN branch */
-      tmp = Ldd_resolve_recur (ldd, fv, vTerm, NULL, vCons, var, table);
-      if (tmp == NULL)
-	{
-	  cuddHashTableQuit (table);
-	  return NULL;
-	}      
-      cuddRef (tmp);
-      cuddHashTableQuit (table);
-      table = NULL;
+      tmp = Ldd_resolve_recur (ldd, fv, vTerm, NULL, vCons, var, resolveTable);
+      if (tmp != NULL) cuddRef (tmp);
+      cuddHashTableQuit (resolveTable);
+      resolveTable = NULL;
+      if (tmp == NULL) return NULL;
 
       fv = tmp;
       
       
       /* resolve negation of the root constraint with ELSE branch */
-      table = cuddHashTableInit (CUDD, 1, 2);
-      nvCons = THEORY->negate_cons (vCons);
-      tmp = Ldd_resolve_recur (ldd, fnv, vTerm, nvCons, NULL, var, table);
-      THEORY->destroy_lincons (nvCons);
+      resolveTable = cuddHashTableInit (CUDD, 1, 2);
+      if (resolveTable == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, fv);
+	  return NULL;
+	}
       
+      nvCons = THEORY->negate_cons (vCons);
+      tmp = Ldd_resolve_recur (ldd, fnv, vTerm, nvCons, NULL, 
+			       var, resolveTable);
+      THEORY->destroy_lincons (nvCons);
+
+      if (tmp != NULL) cuddRef (tmp);
+      cuddHashTableQuit (resolveTable);
       if (tmp == NULL)
 	{
 	  Cudd_IterDerefBdd (manager, fv);
-	  cuddHashTableQuit (table);
 	  return NULL;
 	}
-      cuddRef (tmp);
-      cuddHashTableQuit (table);
       fnv = tmp;
     }
   
@@ -781,7 +782,7 @@ Ldd_resolve_recur (LddManager * ldd,
 
   /* get index and constraint of the root node */
   v = F->index;
-  vCons = ldd->ddVars [v];
+  vCons = lddC (ldd, v);
   vTerm = THEORY->get_term (vCons);
   
   /* get THEN and ELSE branches */
@@ -800,8 +801,6 @@ Ldd_resolve_recur (LddManager * ldd,
 
   /* recursive call */
   E = Ldd_resolve_recur (ldd, fnv, t, negCons, posCons, var, table);
-
-
 
   if (E == NULL) 
     {
