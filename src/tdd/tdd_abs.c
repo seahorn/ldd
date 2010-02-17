@@ -27,21 +27,25 @@ Ldd_ExistsAbstractFM (LddManager * ldd,
 		      int var)
 {
   LddNode *res;
-  DdHashTable *table;
+  DdLocalCache *cache;
+
   
+
   do 
     {
       CUDD->reordered = 0;
-      table = cuddHashTableInit (CUDD, 1, 2);
-      if (table == NULL) return NULL;
+
+      cache = cuddLocalCacheInit (CUDD, 1, 2, CUDD->maxCacheHard);
+      if (cache == NULL) return NULL;
       
-      res = lddExistsAbstractFMRecur (ldd, f, var, table);
+      res = lddExistsAbstractFMRecur (ldd, f, var, cache);
       if (res != NULL)
 	cuddRef (res);
-      cuddHashTableQuit (table);
+      cuddLocalCacheQuit (cache);
     } while (CUDD->reordered == 1);
   
   if (res != NULL) cuddDeref (res);
+
   return res;
 }
 
@@ -61,18 +65,18 @@ Ldd_ExistsAbstractSFM (LddManager * ldd,
 		       int var)
 {
   LddNode *res;
-  DdHashTable *table;
+  DdLocalCache *cache;
   
   do 
     {
       CUDD->reordered = 0;
-      table = cuddHashTableInit (CUDD, 1, 2);
-      if (table == NULL) return NULL;
+      cache = cuddLocalCacheInit (CUDD, 1, 2, CUDD->maxCacheHard);
+      if (cache == NULL) return NULL;
       
-      res = lddExistsAbstractSFMRecur (ldd, f, var, table);
+      res = lddExistsAbstractSFMRecur (ldd, f, var, cache);
       if (res != NULL)
 	cuddRef (res);
-      cuddHashTableQuit (table);
+      cuddLocalCacheQuit (cache);
     } while (CUDD->reordered == 1);
   
   if (res != NULL) cuddDeref (res);
@@ -186,7 +190,6 @@ LddNode * Ldd_resolve_elim_inter (LddManager * ldd, LddNode * f,
 {
   LddNode *res;
   bool isNeg;
-  
 
   isNeg = THEORY->is_negative_cons (cons);
   
@@ -211,7 +214,7 @@ LddNode *
 lddExistsAbstractFMRecur (LddManager * ldd, 
 			  LddNode * f, 
 			  int var, 
-			  DdHashTable * table)
+			  DdLocalCache * cache)
 {
   DdNode *F, *T, *E;
   
@@ -230,7 +233,6 @@ lddExistsAbstractFMRecur (LddManager * ldd,
   int fElimRoot;
 
 
- 
   manager = CUDD;
   F = Cudd_Regular (f);
   
@@ -238,7 +240,7 @@ lddExistsAbstractFMRecur (LddManager * ldd,
   if (F == DD_ONE(CUDD)) return f;
 
   /* check cache */
-  if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, f)) != NULL))
+  if (F->ref != 1 && ((res = cuddLocalCacheLookup (cache, &f)) != NULL))
     return res;
 
 
@@ -283,7 +285,6 @@ lddExistsAbstractFMRecur (LddManager * ldd,
 
       fv = tmp;
       
-      
       /* resolve negation of the root constraint with ELSE branch */
       nvCons = THEORY->negate_cons (vCons);
       tmp = Ldd_resolve_elim_inter (ldd, fnv, vTerm, nvCons, var);
@@ -300,7 +301,7 @@ lddExistsAbstractFMRecur (LddManager * ldd,
   
 
   /* recurse to THEN and ELSE branches*/
-  T = lddExistsAbstractFMRecur (ldd, fv, var, table);
+  T = lddExistsAbstractFMRecur (ldd, fv, var, cache);
   if (T == NULL)
     {
       Cudd_IterDerefBdd (manager, fv);
@@ -311,7 +312,7 @@ lddExistsAbstractFMRecur (LddManager * ldd,
   Cudd_IterDerefBdd (manager, fv);
   fv = NULL;
   
-  E = lddExistsAbstractFMRecur (ldd, fnv, var, table);
+  E = lddExistsAbstractFMRecur (ldd, fnv, var, cache);
   if (E == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -367,19 +368,10 @@ lddExistsAbstractFMRecur (LddManager * ldd,
   E = NULL;
 
   if (F->ref != 1)
-    {
-      ptrint fanout = (ptrint) F->ref;
-      cuddSatDec (fanout);
-      if (!cuddHashTableInsert1 (table, f, res, fanout))
-	{
-	  Cudd_IterDerefBdd (CUDD, res);
-	  return NULL;
-	}
-    }
-  
+    cuddLocalCacheInsert (cache, &f, res);
+
   cuddDeref (res);
   return res;
-  
 }
 
 /**
@@ -391,7 +383,7 @@ LddNode *
 lddExistsAbstractSFMRecur (LddManager * ldd, 
 			     LddNode * f, 
 			     int var, 
-			     DdHashTable * table)
+			  DdLocalCache * cache)
 {
   DdNode *F, *T, *E;
   
@@ -417,7 +409,7 @@ lddExistsAbstractSFMRecur (LddManager * ldd,
   if (F == DD_ONE(CUDD)) return f;
 
   /* check cache */
-  if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, f)) != NULL))
+  if (F->ref != 1 && ((res = cuddLocalCacheLookup (cache, &f)) != NULL))
     return res;
 
 
@@ -491,7 +483,7 @@ lddExistsAbstractSFMRecur (LddManager * ldd,
   
 
   /* recurse to THEN and ELSE branches*/
-  T = lddExistsAbstractSFMRecur (ldd, fv, var, table);
+  T = lddExistsAbstractSFMRecur (ldd, fv, var, cache);
   if (T == NULL)
     {
       Cudd_IterDerefBdd (manager, fv);
@@ -502,7 +494,7 @@ lddExistsAbstractSFMRecur (LddManager * ldd,
   Cudd_IterDerefBdd (manager, fv);
   fv = NULL;
   
-  E = lddExistsAbstractSFMRecur (ldd, fnv, var, table);
+  E = lddExistsAbstractSFMRecur (ldd, fnv, var, cache);
   if (E == NULL)
     {
       Cudd_IterDerefBdd (manager, T);
@@ -558,16 +550,8 @@ lddExistsAbstractSFMRecur (LddManager * ldd,
   E = NULL;
 
   if (F->ref != 1)
-    {
-      ptrint fanout = (ptrint) F->ref;
-      cuddSatDec (fanout);
-      if (!cuddHashTableInsert1 (table, f, res, fanout))
-	{
-	  Cudd_IterDerefBdd (CUDD, res);
-	  return NULL;
-	}
-    }
-  
+    cuddLocalCacheInsert (cache, &f, res);
+
   cuddDeref (res);
   return res;
   
@@ -718,6 +702,7 @@ LddNode *Ldd_resolve_elim_recur (LddManager * ldd,
 
   /* return the result */
   cuddDeref (res);
+
   return res;
 }
 
@@ -850,7 +835,6 @@ Ldd_resolve_recur (LddManager * ldd,
       DdNode *tmp;
 
       c = THEORY->to_ldd (ldd, tCons);
-
       THEORY->destroy_lincons (tCons);
       tCons = NULL;
 
@@ -863,6 +847,8 @@ Ldd_resolve_recur (LddManager * ldd,
 	  return NULL;
 	}
       cuddRef (c);
+
+      
       
       tmp = Ldd_and_recur (ldd, c, T);
   
@@ -898,6 +884,7 @@ Ldd_resolve_recur (LddManager * ldd,
 	  return NULL;
 	}
       cuddRef (c);
+
             
       tmp = Ldd_and_recur (ldd, c, E);
 
@@ -909,7 +896,6 @@ Ldd_resolve_recur (LddManager * ldd,
 	  return NULL;
 	}
       cuddRef (tmp);
-
       Cudd_IterDerefBdd (manager, E);
       Cudd_IterDerefBdd (manager, c);
       E = tmp;
@@ -936,6 +922,8 @@ Ldd_resolve_recur (LddManager * ldd,
       return NULL;
     }
   cuddRef (res);
+
+
 
   Cudd_IterDerefBdd (manager, root);
   root = NULL;

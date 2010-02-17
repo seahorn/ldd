@@ -53,7 +53,7 @@ LddNode* Ldd_and_recur (LddManager*, LddNode*, LddNode*);
 LddNode* Ldd_xor_recur (LddManager*, LddNode*, LddNode*);
 LddNode* Ldd_ite_recur (LddManager*, LddNode*, LddNode*, LddNode*);
 LddNode* lddExistsAbstractFMRecur (LddManager*, LddNode*, int, 
-				    DdHashTable*);
+				   DdLocalCache*);
 LddNode * Ldd_resolve_elim_inter (LddManager * tdd, LddNode * f, 
 				   linterm_t t, lincons_t cons, int var);
 LddNode* Ldd_resolve_elim_recur (LddManager*, LddNode*, 
@@ -71,7 +71,7 @@ bool Ldd_is_sat_recur (LddManager*, LddNode*,
 				qelim_context_t*);
 LddNode* Ldd_bdd_exist_abstract_recur (LddManager*, LddNode*, LddNode*);
 LddNode* lddExistsAbstractSFMRecur (LddManager*, LddNode*, int, 
-				    DdHashTable*);
+				    DdLocalCache*);
 
 void Ldd_debug_print_mtr (MtrNode*);
 int Ldd_fix_mtr_tree (DdManager*, const char *, void*);
@@ -85,7 +85,7 @@ LddNode* Ldd_term_replace_recur (LddManager*, LddNode*,
 LddNode* Ldd_term_minmax_approx_recur (LddManager*, LddNode*);
 LddNode* Ldd_term_constrain_recur (LddManager*, LddNode*, 
 				    linterm_t, linterm_t, constant_t,
-				    DdHashTable*);
+				    DdLocalCache*);
 LddNodeset* LddNodeset_union_recur(LddManager*, LddNodeset*, LddNodeset*);
 
 int Ldd_is_valid_nodeset (LddManager*, LddNodeset*);

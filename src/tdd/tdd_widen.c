@@ -86,18 +86,18 @@ Ldd_TermConstrain (LddManager *ldd, LddNode *f, linterm_t t1,
 		    linterm_t t2, constant_t k)
 {
   LddNode *res;
-  DdHashTable * table;
+  DdLocalCache *cache;
   
   do 
     {
       CUDD->reordered = 0;
-      table = cuddHashTableInit (CUDD, 1, 2);
-      if (table == NULL) return NULL;
+      cache = cuddLocalCacheInit (CUDD, 1, 2, CUDD->maxCacheHard);
+      if (cache == NULL) return NULL;
       
-      res = Ldd_term_constrain_recur (ldd, f, t1, t2, k,table);
+      res = Ldd_term_constrain_recur (ldd, f, t1, t2, k, cache);
       if (res != NULL)
 	cuddRef (res);
-      cuddHashTableQuit (table);
+      cuddLocalCacheQuit (cache);
     } while (CUDD->reordered == 1);
   
   if (res != NULL) cuddDeref (res);
@@ -885,9 +885,10 @@ Ldd_term_minmax_approx_recur (LddManager *ldd,
   return r;
 }
 
+
 LddNode * 
 Ldd_term_constrain_recur (LddManager *ldd, LddNode *f, linterm_t t1, 
-			  linterm_t t2, constant_t k, DdHashTable *table)
+			  linterm_t t2, constant_t k, DdLocalCache *cache)
 {
   DdNode *F, *t, *e, *r;
   lincons_t fCons;
@@ -902,7 +903,7 @@ Ldd_term_constrain_recur (LddManager *ldd, LddNode *f, linterm_t t1,
   
   if (F == DD_ONE(CUDD)) return f;
 
-  if (F->ref != 1 && (r = cuddHashTableLookup1 (table, f)) != NULL)
+  if (F->ref != 1 && (r = cuddLocalCacheLookup (cache, &f)) != NULL)
     return r;
 
   fCons = ldd->ddVars [F->index];
@@ -943,7 +944,7 @@ Ldd_term_constrain_recur (LddManager *ldd, LddNode *f, linterm_t t1,
     }
   
   /* recurse on the THEN branch */
-  tmp = Ldd_term_constrain_recur (ldd, t, t1, t2, k, table);
+  tmp = Ldd_term_constrain_recur (ldd, t, t1, t2, k, cache);
   if (tmp != NULL) cuddRef (tmp);
   Cudd_IterDerefBdd (CUDD, t);
   if (tmp == NULL) return NULL;
@@ -994,7 +995,7 @@ Ldd_term_constrain_recur (LddManager *ldd, LddNode *f, linterm_t t1,
     }
 
   /* recurse on the ELSE branch */
-  tmp = Ldd_term_constrain_recur (ldd, e, t1, t2, k, table);
+  tmp = Ldd_term_constrain_recur (ldd, e, t1, t2, k, cache);
   if (tmp != NULL) cuddRef (tmp);
   Cudd_IterDerefBdd (CUDD, e);
   if (tmp == NULL)
@@ -1015,15 +1016,7 @@ Ldd_term_constrain_recur (LddManager *ldd, LddNode *f, linterm_t t1,
   if (r == NULL) return NULL;
 
   if (F->ref != 1)
-    {
-      ptrint fanout = (ptrint) F->ref;
-      cuddSatDec (fanout);
-      if (!cuddHashTableInsert1 (table, f, r, fanout));
-      {
-	Cudd_IterDerefBdd (CUDD, r);
-	return NULL;
-      }
-    }
+    cuddLocalCacheInsert (cache, &f, r);
 
   cuddDeref (r);
   return r;
