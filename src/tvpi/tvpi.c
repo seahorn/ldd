@@ -392,7 +392,7 @@ tvpi_var_get_coeff (tvpi_term_t t, int x)
 
 
 bool
-tvpi_term_equlas (tvpi_term_t t1, tvpi_term_t t2)
+tvpi_term_equals (tvpi_term_t t1, tvpi_term_t t2)
 {
   return ((t1->sgn > 0 && t2->sgn > 0) || (t1->sgn < 0 && t2->sgn < 0)) &&
     t1->var [0] == t2->var [0] &&
@@ -682,7 +682,7 @@ tvpi_is_neg_cons (tvpi_cons_t c)
 bool
 tvpi_is_stronger_cons (tvpi_cons_t c1, tvpi_cons_t c2)
 {
-  if (tvpi_term_equlas (c1, c2)) 
+  if (tvpi_term_equals (c1, c2)) 
     {
       /* t <= k IMPLIES t <= m  iff k <= m 
        * t <= k DOES NOT IMPLY t < k
@@ -1605,6 +1605,11 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
   int var0, var1;
   int i,j;
   
+
+  assert (c->sgn > 0 && "Negative constraint");
+  assert (c->coeff != NULL && "Missing coefficient");
+  assert (c->fst_coeff == NULL && "Not normalized first coefficient");
+  
   /* initialize j */
   j = -1;
   
@@ -1877,7 +1882,7 @@ tvpi_create_theory (size_t vn)
   t->base.var_get_coeff = (constant_t(*)(linterm_t,int))tvpi_var_get_coeff;
   
   t->base.dup_term = (linterm_t(*)(linterm_t))tvpi_dup_term;
-  t->base.term_equals = (int(*)(linterm_t,linterm_t))tvpi_term_equlas;
+  t->base.term_equals = (int(*)(linterm_t,linterm_t))tvpi_term_equals;
   t->base.term_has_var = (int(*)(linterm_t,int)) tvpi_term_has_var;
   t->base.term_has_vars = (int(*)(linterm_t,int*)) tvpi_term_has_vars;
   t->base.var_occurrences = (void(*)(lincons_t,int*))tvpi_var_occurrences;
