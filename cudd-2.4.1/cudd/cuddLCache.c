@@ -364,7 +364,8 @@ cuddLocalCacheClearDead(
 	for (i = 0; i < slots; i++) {
 	    if (item->value != NULL && Cudd_Regular(item->value)->ref == 0) {
 		item->value = NULL;
-	    } else {
+
+	    } else if (item->value != NULL) {
 		key = item->key;
 		for (j = 0; j < keysize; j++) {
 		    if (Cudd_Regular(key[j])->ref == 0) {
