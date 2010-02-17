@@ -155,72 +155,48 @@ Ldd_NodeSanityCheck (LddManager *ldd, LddNode *n)
  */
 void
 Ldd_SupportVarOccurrences (LddManager *ldd, 
-			     LddNode *n, 
-			     int* occurrences)
+			   LddNode *n, 
+			   int* occurrences)
 {
-  DdNode *S, *N, *T;
-  
-  unsigned int v, u;
-  lincons_t vCons, uCons;
-  linterm_t vTerm, uTerm;
 
-  int reorderEnabled;
+  int *support;
+  size_t size, i;
+  
+  lincons_t vCons;
+  linterm_t vTerm, pTerm;
+
 
   /* no variables in the constant node */
   if (Cudd_IsConstant (n)) return;
+
+  /* compute the support. */
+  size = CUDD->size;
+  support = Cudd_SupportIndex (CUDD, n);
+  if (support == NULL) return;
   
-  reorderEnabled = ldd->cudd->autoDyn;
-  ldd->cudd->autoDyn = 0;
-
-
-  /* compute the support. 
-   * XXX This calls malloc. May be inefficient */
-  S = Cudd_Support (CUDD, n);
-
-  if (S == NULL) 
-    { 
-      ldd->cudd->autoDyn = reorderEnabled;
-      return;
-    }
-  
-  cuddRef (S);
-
-
-  /** 
-   * Iterate over the support cube. 
-   * Loop Invariants: have ref to the top of the cube, no reordering.
-   * Hence, don't need to additional references to avoid garbage collection
-   */
-
-  N = S;
-  do 
+  /* last term seen */
+  pTerm = NULL;
+  /* iterate over levels. Levels are term-sorted. */
+  for (i = 0; i < size; i++)
     {
-      T = cuddT (N);
-
-      v = N->index;
-      vCons = ldd->ddVars [v];
+      int idx;
+      idx = CUDD->invperm [i];
+      
+      /* skip all nodes that are not in the support */
+      if (support [idx] == 0) continue;
+      
+      vCons = lddC(ldd, idx);
+      if (vCons == NULL) continue;
       vTerm = THEORY->get_term (vCons);
       
-      uTerm = NULL;
-  
-      if (T != DD_ONE(CUDD))
-	{
-	  u = T->index;
-	  uCons = ldd->ddVars [u];
-	  uTerm = THEORY->get_term (uCons);
-	}
-
-      /** avoid double-counting a term */
-      if (uTerm == NULL || !THEORY->term_equals (vTerm, uTerm))
+      /* only count new terms */
+      if (pTerm == NULL || !THEORY->term_equals (pTerm, vTerm))
 	THEORY->var_occurrences (vCons, occurrences);
 
-      N = T;
+      pTerm = vTerm;
     }
-  while (N != DD_ONE (CUDD));
 
-  Cudd_IterDerefBdd (CUDD, S);
-
-  ldd->cudd->autoDyn = reorderEnabled;
+  FREE(support);
 
 }
 
