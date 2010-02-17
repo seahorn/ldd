@@ -114,7 +114,7 @@ Ldd_ExistsAbstractLW (LddManager *ldd,
   cuddRef (res);
   
   /* get index of all constraints that occur in the diagram */
-  size = ldd->cudd->size;
+  size = CUDD->size;
   support = Cudd_SupportIndex (CUDD, f);
   if (support == NULL) 
     {
