@@ -1,11 +1,6 @@
 #include "util.h"
 #include "tddInt.h"
 
-LddNodeset *
-Ldd_emtpy_nodeset (LddManager* ldd)
-{
-  return (LddNodeset*) Ldd_GetTrue (ldd);
-}
 
 LddNodeset * 
 Ldd_NodesetAdd (LddManager* ldd, LddNodeset* s, LddNode *f)
