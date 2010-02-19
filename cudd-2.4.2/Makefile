@@ -62,7 +62,7 @@ ICFLAGS	= -g -O6
 #  Linux
 #
 # Gcc 3.2.2 or higher on i686.
-XCFLAGS	= -mtune=pentium4 -malign-double -DHAVE_IEEE_754 -DBSD
+XCFLAGS	= -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
 # Gcc 2.8.1 on i686.
 #XCFLAGS	= -mcpu=pentiumpro -malign-double -DHAVE_IEEE_754 -DBSD
 # Gcc 4.2.4 or higher on x86_64 (64-bit compilation)
