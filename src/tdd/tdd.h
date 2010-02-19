@@ -270,6 +270,7 @@ struct theory
 
 
 #define Ldd_Not(X) Cudd_Not(X)
+#define Ldd_NotCond Cudd_NotCond
 #define Ldd_NodeToNodeset(X) ((LddNodeset*)X)
 
 #define Ldd_Ref(X) Cudd_Ref(X)
