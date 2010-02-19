@@ -5,7 +5,7 @@
 
 DdManager *dd;
 
-DdNode *x0, *x1, *y0, *y1, *y2;
+DdNode *x0, *x1, *z0, *z1, *z2;
 
 static void print_order (DdManager *dd);
 static int check_mtr_consistentcy (DdManager *dd, MtrNode *node);
@@ -17,12 +17,12 @@ int main(void)
   
   dd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
 
-  y0 = Cudd_bddIthVar (dd, 0);
-  Cudd_Ref (y0);
-  y1 = Cudd_bddIthVar (dd, 1);
-  Cudd_Ref (y1);
-  y2 = Cudd_bddIthVar (dd, 2);
-  Cudd_Ref (y2);
+  z0 = Cudd_bddIthVar (dd, 0);
+  Cudd_Ref (z0);
+  z1 = Cudd_bddIthVar (dd, 1);
+  Cudd_Ref (z1);
+  z2 = Cudd_bddIthVar (dd, 2);
+  Cudd_Ref (z2);
   
   x0 = Cudd_bddIthVar (dd, 3);
   Cudd_Ref (x0);
@@ -33,9 +33,9 @@ int main(void)
   Cudd_MakeTreeNode (dd, 0, 3, MTR_FIXED);
   Cudd_MakeTreeNode (dd, 3, 2, MTR_FIXED); 
   
-  e = Cudd_bddIte (dd, y0, Cudd_ReadOne (dd), y1);
+  e = Cudd_bddIte (dd, z0, Cudd_ReadOne (dd), z1);
   Cudd_Ref (e);
-  t = Cudd_bddIte (dd, y0, Cudd_ReadOne (dd), y2);
+  t = Cudd_bddIte (dd, z0, Cudd_ReadOne (dd), z2);
   Cudd_Ref (t);
   f = Cudd_bddIte (dd, x0, t, e);
   Cudd_Ref (f);

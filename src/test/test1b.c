@@ -25,7 +25,7 @@ int main(int argc, char** argv)
 
 
   /* 1 is DDD, 2 is TVPI */
-  int t_type = 1;
+  int t_type = 2;
   if (argc > 1)
     {
       if (argv [1][0] == 't')
