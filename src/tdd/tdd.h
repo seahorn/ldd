@@ -66,11 +66,6 @@ struct theory
   /** Return -1*c */
   constant_t (*negate_cst) (constant_t c);
 
-  /** Returns true if c is positive infinity */
-  int (*is_pinf_cst)(constant_t c);
-  /** Returns true if c is negative infinity */
-  int (*is_ninf_cst)(constant_t c);
-
   /* Sign of the constant. -1 if c < 0, 1 if c > 0, 0 if c = 0 */
   int (*sgn_cst)(constant_t c);
 
@@ -130,7 +125,7 @@ struct theory
   int (*term_equals)(linterm_t t1, linterm_t t2);
 
   /** 
-   * Returns truee iff variable 'var' appears with a non-zero
+   * Returns true iff variable 'var' appears with a non-zero
    * coefficient in the term 't'.
    */
   int (*term_has_var) (linterm_t t, int var);
@@ -139,12 +134,12 @@ struct theory
    * Returns true if there exists a variable v in the set var whose
    * coefficient in t is non-zero.
 
-   * t is a term, var is represented as an array of booleans, 
+   * t is a term, var is represented as an array of Boolean, 
    */
   int (*term_has_vars) (linterm_t t, int* vars);
 
 
-  /* Returns the number of variables of the theory */
+  /** Returns the number of variables of the theory */
   size_t (*num_of_vars)(theory_t* self);
 
   /**
@@ -156,10 +151,6 @@ struct theory
 
   /** Returns -1*t */
   linterm_t (*negate_term) (linterm_t t);
-
-  /** Returns a variable in vars that has a non-zero coefficient in t.
-   *  Returns <0 if no such variable exists */
-  int (*pick_var) (linterm_t t, int* vars);
   
   /** Reclaims resources allocated by t*/
   void (*destroy_term) (linterm_t t);
@@ -226,7 +217,7 @@ struct theory
   lincons_t (*dup_lincons)(lincons_t l);
 
   /** 
-   * Returns an LDD corresponding to a constraint 
+   * Returns the unique LDD corresponding to a constraint 
    */
   LddNode* (*to_ldd)(LddManager* m, lincons_t l);
 

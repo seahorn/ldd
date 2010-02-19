@@ -554,13 +554,6 @@ tvpi_negate_term (tvpi_term_t t)
   return r;
 }
 
-int
-tvpi_pick_var (tvpi_term_t t, bool *vars)
-{
-  if (vars [t->var [0]]) return t->var [0];
-  if (IS_VAR (t->var [1]) && vars [t->var [1]]) return t->var [1];
-  return -1;
-}
 
 void
 tvpi_destroy_term (tvpi_term_t t)
@@ -1861,8 +1854,6 @@ tvpi_create_theory (size_t vn)
   t->base.create_double_cst = (constant_t(*)(double)) tvpi_create_d_cst;
   t->base.dup_cst = (constant_t(*)(constant_t)) tvpi_dup_cst;
   t->base.negate_cst = (constant_t(*)(constant_t)) tvpi_negate_cst;
-  t->base.is_pinf_cst = (int(*)(constant_t))always_false_cst;
-  t->base.is_ninf_cst = (int(*)(constant_t))always_false_cst;
 
   t->base.destroy_cst = (void(*)(constant_t))tvpi_destroy_cst;
   t->base.add_cst = (constant_t(*)(constant_t,constant_t))tvpi_add_cst;
@@ -1890,7 +1881,6 @@ tvpi_create_theory (size_t vn)
   t->base.terms_have_resolvent = 
     (int(*)(linterm_t,linterm_t,int))tvpi_terms_have_resolvent;
   t->base.negate_term = (linterm_t(*)(linterm_t))tvpi_negate_term;
-  t->base.pick_var = (int(*)(linterm_t,int*))tvpi_pick_var;
   t->base.destroy_term = (void(*)(linterm_t))tvpi_destroy_term;
   
   t->base.create_cons = (lincons_t(*)(linterm_t,int,constant_t))tvpi_create_cons;
