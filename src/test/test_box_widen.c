@@ -230,7 +230,7 @@ void test2()
   Ldd_ManagerDebugDump (tdd);
 }
 
-int t_type = 4;
+int t_type = 2;
 
 int main(int argc, char** argv)
 {

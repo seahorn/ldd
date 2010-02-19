@@ -112,7 +112,7 @@ void test0 ()
 
 }
 
-int t_type = 1;
+int t_type = 2;
 
 int main(int argc, char** argv)
 {
