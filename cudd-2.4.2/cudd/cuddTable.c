@@ -2063,9 +2063,26 @@ cuddInsertSubtables(
 	cuddRef(unique->vars[i]);
     }
     if (unique->tree != NULL) {
-	unique->tree->size += n;
-	unique->tree->index = unique->invperm[0];
-	ddPatchTree(unique,unique->tree);
+      if (unique->tree->flags == MTR_DEFAULT || unique->tree->child != NULL) {
+	  unique->tree->size += n;
+	  unique->tree->index = unique->invperm[0];
+	  ddPatchTree(unique,unique->tree);
+      } else {
+	  unsigned int oldTreeSize = unique->tree->size;
+	  int idx = unique->tree->index;
+	  MtrNode* group;
+
+	  unique->tree->size += n;
+
+	  group = Mtr_MakeGroup (unique->tree, unique->invperm [idx],
+				 oldTreeSize, unique->tree->flags);
+	  if (group == NULL) return (0);
+	  group->index = idx;
+
+	  unique->tree->flags = MTR_DEFAULT;
+	  unique->tree->low = 0;
+	  unique->tree->index = unique->invperm [0];	
+      }
     }
     unique->autoDyn = reorderSave;
 
@@ -2721,6 +2738,31 @@ ddResizeTable(
 	cuddRef(unique->vars[i]);
     }
     unique->autoDyn = reorderSave;
+
+    if (unique->tree != NULL)  {
+	unsigned int oldTreeSize = unique->tree->size;
+	
+	unique->tree->size = ddMax (unique->tree->size, unique->size);
+
+	/** 
+	 *resizing the tree may require creation of a new group that
+	 * used to be represented by the old root node
+	 */
+	if (unique->tree->child == NULL && 
+	    unique->tree->flags != MTR_DEFAULT &&
+	    oldTreeSize < unique->tree->size)
+	  {
+	    MtrNode* group;
+	    group = Mtr_MakeGroup (unique->tree, unique->tree->low,
+				   oldTreeSize, unique->tree->flags);
+	    if (group == NULL) 
+	      return (0);
+
+	    group->index = unique->tree->index;
+	    unique->tree->flags = MTR_DEFAULT;
+	  }      
+    }
+    
 
     return(1);
 
