@@ -1121,6 +1121,7 @@ extern int cuddSwapping (DdManager *table, int lower, int upper, Cudd_Reordering
 extern int cuddNextHigh (DdManager *table, int x);
 extern int cuddNextLow (DdManager *table, int x);
 extern int cuddSwapInPlace (DdManager *table, int x, int y);
+extern int cuddSwapInPlaceGroup (DdManager *table, int x, int y, int ybot, int xbot);
 extern int cuddBddAlignToZdd (DdManager *table);
 extern DdNode * cuddBddMakePrime (DdManager *dd, DdNode *cube, DdNode *f);
 extern DdNode * cuddSolveEqnRecur (DdManager *bdd, DdNode *F, DdNode *Y, DdNode **G, int n, int *yIndex, int i);

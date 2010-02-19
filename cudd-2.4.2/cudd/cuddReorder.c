@@ -754,6 +754,34 @@ cuddSwapInPlace(
   int  x,
   int  y)
 {
+  /* Make sure nobody is calling this directly */
+  assert (0);
+  return cuddSwapInPlaceGroup (table, x, y, 0, 0);
+} /* end of cuddSwapInPlace */
+
+/**Function********************************************************************
+
+  Synopsis    [Swaps two adjacent variables in an LDD.]
+
+  Description [Swaps two adjacent variables. It assumes that no dead
+  nodes are present on entry to this procedure.  The procedure then
+  guarantees that no dead nodes will be present when it terminates.
+  cuddSwapInPlace assumes that x &lt; y. ybot is the level of the last
+  node whose constraint is implied by constraint on y. xbot is the
+  level of the last node whose constraint is implied by x. Returns the
+  number of keys in the table if successful; 0 otherwise.]
+
+  SideEffects [None]
+
+******************************************************************************/
+int
+cuddSwapInPlaceGroup(
+  DdManager * table,
+  int  x,
+  int  y,
+  int ybot,
+  int xbot)
+{
     DdNodePtr *xlist, *ylist;
     int    xindex, yindex;
     int    xslots, yslots;
@@ -774,7 +802,7 @@ cuddSwapInPlace(
     extern DD_OOMFP MMoutOfMemory;
     DD_OOMFP saveHandler;
 
-#ifdef DD_DEBUG
+#if DD_DEBUG
     int    count,idcheck;
 #endif
 
@@ -791,7 +819,7 @@ cuddSwapInPlace(
 
     /* Get parameters of x subtable. */
     xindex = table->invperm[x];
-    xlist = table->subtables[x].nodelist;
+    xlist = table->subtables[x].nodelist; 
     oldxkeys = table->subtables[x].keys;
     xslots = table->subtables[x].slots;
     xshift = table->subtables[x].shift;
@@ -959,7 +987,12 @@ cuddSwapInPlace(
 	    if ((int) f1->index == yindex) {
 		f11 = cuddT(f1); f10 = cuddE(f1);
 	    } else {
-		f11 = f10 = f1;
+	      f11 = f10 = f1;
+	      /* AG: if the root of f1 is in the same group as y, 
+	       *     skip to its THEN part
+	       */
+	      if (cuddI(table,f11->index) <= ybot)
+		f11 = cuddT (f11);
 	    }
 #ifdef DD_DEBUG
 	    assert(!(Cudd_IsComplement(f11)));
@@ -970,19 +1003,39 @@ cuddSwapInPlace(
 	    if ((int) f0->index == yindex) {
 		f01 = cuddT(f0); f00 = cuddE(f0);
 	    } else {
-		f01 = f00 = f0;
+	        f01 = f00 = f0;
+	        if ((cuddI (table, f01->index) <= ybot))
+		    f01 = cuddT(f01);
 	    }
 	    if (comple) {
 		f01 = Cudd_Not(f01);
 		f00 = Cudd_Not(f00);
 	    }
 	    /* Decrease ref count of f1. */
-	    cuddSatDec(f1->ref);
+	    cuddSatDec(f1->ref); 
 	    /* Create the new T child. */
 	    if (f11 == f01) {
 		newf1 = f11;
 		cuddSatInc(newf1->ref);
-	    } else {
+	    } 
+	    /* AG: TDD reduction rule 5: 
+	     *  xbot > 0  ---  constraint of f01 may be in the same group as x
+	     *  !(Cudd_IsComplement (f01)) --- rule 5 only applies when 
+                                               f01 and f11 have the same 
+                                               complement dots. 
+                                               f11 has no complement dots.
+             *  cuddI(...)  ---  constraint of f01 is implied by x
+             *  cuddT(...)  ---  pre-condition of rule 5
+	     */
+	    else if (xbot > 0 && 
+		     !(Cudd_IsComplement (f01)) &&
+		     cuddI(table,f01->index) <= xbot &&
+		     cuddT(f01) == f11)
+	      {
+		newf1 = f01;
+		cuddSatInc (newf1->ref);
+	      }     
+	    else {
 		/* Check xlist for triple (xindex,f11,f01). */
 		posn = ddHash(f11, f01, xshift);
 		/* For each element newf1 in collision list xlist[posn]. */
@@ -1029,8 +1082,20 @@ cuddSwapInPlace(
 	    if (f10 == f00) {
 		newf0 = f00;
 		tmp = Cudd_Regular(newf0);
-		cuddSatInc(tmp->ref);
-	    } else {
+		cuddSatInc(tmp->ref); 
+	    }
+	    /* AG: TDD reduction rule 5. See comments above */
+	    else if (xbot > 0 &&
+		     Cudd_IsComplement (f00) == Cudd_IsComplement (f10) &&
+		     cuddI(table, Cudd_Regular(f00)->index) <= xbot &&
+		     cuddI(table, Cudd_Regular(f00)->index) > ybot &&
+		     cuddT(Cudd_Regular (f00)) == Cudd_Regular (f10))
+	      {
+		newf0 = f00;
+		tmp = Cudd_Regular (newf0);
+		cuddSatInc (tmp->ref);
+	      }
+	    else {
 		/* make sure f10 is regular */
 		newcomplement = Cudd_IsComplement(f10);
 		if (newcomplement) {
@@ -1051,7 +1116,7 @@ cuddSwapInPlace(
 		    newf0 = *previousP;
 		}
 		if (cuddT(newf0) == f10 && cuddE(newf0) == f00) {
-		    cuddSatInc(newf0->ref);
+		    cuddSatInc(newf0->ref); 
 		} else { /* no match */
 		    newf0 = cuddDynamicAllocNode(table);
 		    if (newf0 == NULL)
@@ -1075,6 +1140,8 @@ cuddSwapInPlace(
 	    }
 	    cuddE(f) = newf0;
 
+	    assert (newf1 != newf0);
+
 	    /* Insert the modified f in ylist.
 	    ** The modified f does not already exists in ylist.
 	    ** (Because of the uniqueness of the cofactors.)
@@ -1090,7 +1157,7 @@ cuddSwapInPlace(
 	    while (newf1 == cuddT(tmp) && newf0 < cuddE(tmp)) {
 		previousP = &(tmp->next);
 		tmp = *previousP;
-	    }
+	    }	    
 	    f->next = *previousP;
 	    *previousP = f;
 	    f = next;
@@ -1106,9 +1173,9 @@ cuddSwapInPlace(
 		next = f->next;
 		if (f->ref == 0) {
 		    tmp = cuddT(f);
-		    cuddSatDec(tmp->ref);
+		    cuddSatDec(tmp->ref); 
 		    tmp = Cudd_Regular(cuddE(f));
-		    cuddSatDec(tmp->ref);
+		    cuddSatDec(tmp->ref);  
 		    cuddDeallocNode(table,f);
 		    newykeys--;
 		} else {
@@ -1212,7 +1279,8 @@ cuddSwapOutOfMem:
 
     return (0);
 
-} /* end of cuddSwapInPlace */
+} /* end of cuddSwapInPlaceGroup */
+
 
 
 /**Function********************************************************************

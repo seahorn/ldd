@@ -1249,7 +1249,7 @@ ddGroupSiftingUp(
 		   table->subtables[y].next == (unsigned) y) {
 	    /* x and y are self groups */
 	    xindex = table->invperm[x];
-	    size = cuddSwapInPlace(table,x,y);
+	    size = cuddSwapInPlaceGroup(table,x,y,0,0);
 #ifdef DD_DEBUG
 	    assert(table->subtables[x].next == (unsigned) x);
 	    assert(table->subtables[y].next == (unsigned) y);
@@ -1414,7 +1414,7 @@ ddGroupSiftingDown(
 		isolated = table->vars[yindex]->ref == 1;
 		R -= table->subtables[y].keys - isolated;
 	    }
-	    size = cuddSwapInPlace(table,x,y);
+	    size = cuddSwapInPlaceGroup(table,x,y,0,0);
 #ifdef DD_DEBUG
 	    assert(table->subtables[x].next == (unsigned) x);
 	    assert(table->subtables[y].next == (unsigned) y);
@@ -1511,7 +1511,8 @@ ddGroupMove(
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
     int  initialSize,bestSize;
 #endif
-
+    int curYbot, curXbot;
+    
 #ifdef DD_DEBUG
     /* We assume that x < y */
     assert(x < y);
@@ -1522,29 +1523,49 @@ ddGroupMove(
     xsize = xbot - xtop + 1;
     ybot = y;
     while ((unsigned) ybot < table->subtables[ybot].next)
-	ybot = table->subtables[ybot].next;
+        ybot = table->subtables[ybot].next;
     ytop = y;
     ysize = ybot - ytop + 1;
 
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
     initialSize = bestSize = table->keys - table->isolated;
 #endif
-    /* Sift the variables of the second group up through the first group */
-    for (i = 1; i <= ysize; i++) {
-	for (j = 1; j <= xsize; j++) {
-	    size = cuddSwapInPlace(table,x,y);
-	    if (size == 0) goto ddGroupMoveOutOfMem;
+    /* AG: Sift the first group down through the second group */
+
+    /* assert: x points to the bottom of xgroup
+       assert: y points to the top of ygroup
+       assert: y = x + 1
+    */
+    curYbot = ybot;
+    curXbot = 0;
+    for (i = 1; i <= xsize; i++) {
+      for (j = 1; j <= ysize; j++) {
+	size = cuddSwapInPlaceGroup(table,x,y,curYbot,curXbot);
+	if (size == 0) goto ddGroupMoveOutOfMem;
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
-	    if (size < bestSize)
-		bestSize = size;
+	if (size < bestSize)
+	  bestSize = size;
 #endif
-	    swapx = x; swapy = y;
-	    y = x;
-	    x = cuddNextLow(table,y);
-	}
-	y = ytop + i;
-	x = cuddNextLow(table,y);
+	/* XXX AG: Not sure what this variables are for.
+	   XXX AG: Not sure if I am setting them correctly.
+	*/ 
+	swapx = x; swapy = y;
+
+	/* x is now where y used to be */
+	x = y;
+	/* y is one below x */
+	y = cuddNextHigh(table,x);
+      }
+      /* the bottom of x-group never moves from this point on */
+      curXbot = ybot;
+      /* repeat starting one level higher */
+      x = xbot - i;
+      y = cuddNextHigh (table, x);
+      /* ybot is moved up a level at each iteration of the loop */
+      curYbot = cuddNextLow (table, curYbot);
     }
+	
+	  
 #if defined(DD_DEBUG) && defined(DD_VERBOSE)
     if ((bestSize < initialSize) && (bestSize < size))
 	(void) fprintf(table->out,"Missed local minimum: initialSize:%d  bestSize:%d  finalSize:%d\n",initialSize,bestSize,size);
@@ -1553,19 +1574,19 @@ ddGroupMove(
     /* fix groups */
     y = xtop; /* ytop is now where xtop used to be */
     for (i = 0; i < ysize - 1; i++) {
-	table->subtables[y].next = cuddNextHigh(table,y);
-	y = cuddNextHigh(table,y);
+        table->subtables[y].next = cuddNextHigh(table,y);
+        y = cuddNextHigh(table,y);
     }
     table->subtables[y].next = xtop; /* y is bottom of its group, join */
-				    /* it to top of its group */
+                                    /* it to top of its group */
     x = cuddNextHigh(table,y);
     newxtop = x;
     for (i = 0; i < xsize - 1; i++) {
-	table->subtables[x].next = cuddNextHigh(table,x);
-	x = cuddNextHigh(table,x);
+        table->subtables[x].next = cuddNextHigh(table,x);
+        x = cuddNextHigh(table,x);
     }
     table->subtables[x].next = newxtop; /* x is bottom of its group, join */
-				    /* it to top of its group */
+                                    /* it to top of its group */
 #ifdef DD_DEBUG
     if (pr > 0) (void) fprintf(table->out,"ddGroupMove:\n");
 #endif
@@ -1584,14 +1605,13 @@ ddGroupMove(
 
 ddGroupMoveOutOfMem:
     while (*moves != NULL) {
-	move = (*moves)->next;
-	cuddDeallocMove(table, *moves);
-	*moves = move;
+        move = (*moves)->next;
+        cuddDeallocMove(table, *moves);
+        *moves = move;
     }
     return(0);
 
 } /* end of ddGroupMove */
-
 
 /**Function********************************************************************
 
@@ -1611,8 +1631,9 @@ ddGroupMoveBackward(
 {
     int size;
     int i,j,xtop,xbot,xsize,ytop,ybot,ysize,newxtop;
-
-
+    
+    int curYbot, curXbot;
+    
 #ifdef DD_DEBUG
     /* We assume that x < y */
     assert(x < y);
@@ -1624,39 +1645,43 @@ ddGroupMoveBackward(
     xsize = xbot - xtop + 1;
     ybot = y;
     while ((unsigned) ybot < table->subtables[ybot].next)
-	ybot = table->subtables[ybot].next;
+        ybot = table->subtables[ybot].next;
     ytop = y;
     ysize = ybot - ytop + 1;
 
+    curYbot = ybot;
+    curXbot = 0;
     /* Sift the variables of the second group up through the first group */
-    for (i = 1; i <= ysize; i++) {
-	for (j = 1; j <= xsize; j++) {
-	    size = cuddSwapInPlace(table,x,y);
-	    if (size == 0)
-		return(0);
-	    y = x;
-	    x = cuddNextLow(table,y);
-	}
-	y = ytop + i;
-	x = cuddNextLow(table,y);
+    for (i = 1; i <= xsize; i++) {
+        for (j = 1; j <= ysize; j++) {
+	  size = cuddSwapInPlaceGroup(table,x,y,curYbot,curXbot);
+            if (size == 0)
+                return(0);
+            x = y;
+	    y = cuddNextHigh (table, x);
+        }
+	curXbot = ybot;
+	x = xbot - i;
+	y = cuddNextHigh (table, x);
+	curYbot = cuddNextLow (table, curYbot);
     }
 
     /* fix groups */
     y = xtop;
     for (i = 0; i < ysize - 1; i++) {
-	table->subtables[y].next = cuddNextHigh(table,y);
-	y = cuddNextHigh(table,y);
+        table->subtables[y].next = cuddNextHigh(table,y);
+        y = cuddNextHigh(table,y);
     }
     table->subtables[y].next = xtop; /* y is bottom of its group, join */
-				    /* to its top */
+                                    /* to its top */
     x = cuddNextHigh(table,y);
     newxtop = x;
     for (i = 0; i < xsize - 1; i++) {
-	table->subtables[x].next = cuddNextHigh(table,x);
-	x = cuddNextHigh(table,x);
+        table->subtables[x].next = cuddNextHigh(table,x);
+        x = cuddNextHigh(table,x);
     }
     table->subtables[x].next = newxtop; /* x is bottom of its group, join */
-				    /* to its top */
+                                    /* to its top */
 #ifdef DD_DEBUG
     if (pr > 0) (void) fprintf(table->out,"ddGroupMoveBackward:\n");
 #endif
@@ -1751,7 +1776,7 @@ ddGroupSiftingBackward(
 	}
 	if ((table->subtables[move->x].next == move->x) &&
 	(table->subtables[move->y].next == move->y)) {
-	    res = cuddSwapInPlace(table,(int)move->x,(int)move->y);
+  	    res = cuddSwapInPlaceGroup(table,(int)move->x,(int)move->y,0,0);
 	    if (!res) return(0);
 #ifdef DD_DEBUG
 	    if (pr > 0) (void) fprintf(table->out,"ddGroupSiftingBackward:\n");
@@ -1760,6 +1785,8 @@ ddGroupSiftingBackward(
 #endif
 	} else { /* Group move necessary */
 	    if (move->flags == MTR_NEWNODE) {
+	        /* Assume no groups have been created and dissolved */ 
+                assert (0);
 		ddDissolveGroup(table,(int)move->x,(int)move->y);
 	    } else {
 		res = ddGroupMoveBackward(table,(int)move->x,(int)move->y);
