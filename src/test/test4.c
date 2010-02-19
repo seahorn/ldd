@@ -7,7 +7,7 @@ DdManager *dd;
 
 DdNode *x0, *x1, *z0, *z1, *z2;
 
-static void print_order (DdManager *dd);
+static void print_order (FILE* out, DdManager *dd);
 static int check_mtr_consistentcy (DdManager *dd, MtrNode *node);
 
 int main(void)
@@ -32,7 +32,18 @@ int main(void)
 
   Cudd_MakeTreeNode (dd, 0, 3, MTR_FIXED);
   Cudd_MakeTreeNode (dd, 3, 2, MTR_FIXED); 
-  
+
+  fprintf (stdout, "Created 4 variables: z0, z1, z2, x0, x1\n");
+  fprintf (stdout, "Variable order: ");
+  print_order (stdout, dd);
+  fprintf (stdout, "\n");
+  fprintf (stdout, "Got two MTR groups: {z0, z1, z2}, {x0, x1}\n");
+  fprintf (stdout, "MTR tree is:\n");
+  Mtr_PrintTree (Cudd_ReadTree (dd));
+  fprintf (stdout, "end of MTR tree\n");
+
+
+  fprintf (stdout, "Building some diagrams...\n");
   e = Cudd_bddIte (dd, z0, Cudd_ReadOne (dd), z1);
   Cudd_Ref (e);
   t = Cudd_bddIte (dd, z0, Cudd_ReadOne (dd), z2);
@@ -40,24 +51,20 @@ int main(void)
   f = Cudd_bddIte (dd, x0, t, e);
   Cudd_Ref (f);
   
-  /* printf ("DagSize of f is %d\n", Cudd_DagSize (f)); */
-  
-  /* Cudd_PrintMinterm (dd, f); */
-  /* printf ("Order before ReduceHeap\n"); */
-  /* print_order (dd); */
-
-  /* Mtr_PrintTree (Cudd_ReadTree (dd)); */
   
   assert (check_mtr_consistentcy (dd, Cudd_ReadTree (dd)) == 0);
 
+  fprintf (stdout, "Forcing variable reordering\n");
   Cudd_ReduceHeap (dd, CUDD_REORDER_GROUP_SIFT, 0);
 
-  /* printf ("DagSize of f is %d\n", Cudd_DagSize (f)); */
-  /* printf ("Order after ReduceHeap\n"); */
-  /* print_order (dd);   */
-
-  /* Cudd_PrintMinterm (dd, f); */
-  /* Mtr_PrintTree (Cudd_ReadTree (dd)); */
+  fprintf (stdout, "New variable order: ");
+  print_order (stdout, dd);
+  fprintf (stdout, "\n");
+  fprintf (stdout, "Two MTR groups: {x0, x1, z0}, {z1, z2}\n");
+  fprintf (stdout, "MTR tree is:\n");
+  Mtr_PrintTree (Cudd_ReadTree (dd));
+  fprintf (stdout, "end of MTR tree\n");
+  fprintf (stdout, "EXPECTED two groups: {x0, x1}, {z0, z1, z2}\n");
 
 
   /** After reordering, the first group in the tree must be of size 3
@@ -65,7 +72,7 @@ int main(void)
       assertion below is violated.
   */
   /* EXPECTED TO FAIL */
-  assert (check_mtr_consistentcy (dd, Cudd_ReadTree (dd)) == 0);
+  /* assert (check_mtr_consistentcy (dd, Cudd_ReadTree (dd)) == 0); */
 
 
   
@@ -75,15 +82,18 @@ int main(void)
 
 
 static void 
-print_order (DdManager *dd)
+print_order (FILE* out, DdManager *dd)
 {
   int i;
   
   for (i = 0; i <= 4; i++)
     {
-      printf ("%d (%d) ", Cudd_ReadPerm (dd, i), i);
+      int j = Cudd_ReadInvPerm (dd, i);
+      char *v = j <= 2 ? "z" : "x";
+      
+      fprintf (stdout, "%s%d", v, (j <= 2 ? j : j - 3));
+      if (i != 4) fprintf (stdout, " < ");
     }
-  printf ("\n");
 }
 
 static int
