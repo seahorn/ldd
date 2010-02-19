@@ -49,7 +49,7 @@ RANLIB	= ranlib
 # These four are typical settings for optimized code with gcc.  The
 # last two also work with icc/ecc.
 #ICFLAGS	= -g -O6 -Wall
-ICFLAGS	= -g -O6
+ICFLAGS	= -g -O6 -Wall
 #ICFLAGS	= -g -O3 -Wall
 #ICFLAGS	= -g -O3
 
@@ -190,9 +190,9 @@ EXE	=
 # End of the configuration section.
 #---------------------------------------------------------------------------
 
-CUDDDIR= ../cudd-2.4.1/
+CUDD= $(realpath ../cudd-2.4.1/)
 MFLAG   = -DMNEMOSYNE
-MNEMLIB	= $(CUDDDIR)/mnemosyne/libmnem.a
+MNEMLIB	= $(CUDD)/mnemosyne/libmnem.a
 
 DDWDIR	= .
 IDIR	= $(DDWDIR)/include
@@ -213,21 +213,21 @@ build:
 	@for dir in $(DIRS); do \
 		(cd $$dir; \
 		echo Making $$dir ...; \
-		make CC=$(CC) RANLIB=$(RANLIB) MFLAG= MNEMLIB= ICFLAGS="$(ICFLAGS)" XCFLAGS="$(XCFLAGS)" DDDEBUG="$(DDDEBUG)" MTRDEBUG="$(MTRDEBUG)" PURE="$(PURE)" EXE="$(EXE)" )\
+		make CC=$(CC) RANLIB=$(RANLIB) MFLAG= MNEMLIB= ICFLAGS="$(ICFLAGS)" XCFLAGS="$(XCFLAGS)" DDDEBUG="$(DDDEBUG)" MTRDEBUG="$(MTRDEBUG)" PURE="$(PURE)" EXE="$(EXE)" CUDD="$(CUDD)")\
 	done
 all:
 	sh ./setup.sh
 	@for dir in $(DIRS); do \
 		(cd $$dir; \
 		echo Making all in $$dir ...; \
-		make CC=$(CC) RANLIB=$(RANLIB) MFLAG= MNEMLIB= ICFLAGS="$(ICFLAGS)" XCFLAGS="$(XCFLAGS)" DDDEBUG="$(DDDEBUG)" MTRDEBUG="$(MTRDEBUG)" PURE="$(PURE)" EXE="$(EXE)" all )\
+		make CC=$(CC) RANLIB=$(RANLIB) MFLAG= MNEMLIB= ICFLAGS="$(ICFLAGS)" XCFLAGS="$(XCFLAGS)" DDDEBUG="$(DDDEBUG)" MTRDEBUG="$(MTRDEBUG)" PURE="$(PURE)" EXE="$(EXE)" CUDD="$(CUDD)" all )\
 	done
 
 clean:
 	@for dir in $(DIRS); do	\
 	    (cd $$dir; 	\
 	     echo Cleaning $$dir ...; \
-	     make -s clean	) \
+	     make -s clean CUDD=$(CUDD)	) \
 	done
 
 distclean:
