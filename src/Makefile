@@ -190,7 +190,7 @@ EXE	=
 # End of the configuration section.
 #---------------------------------------------------------------------------
 
-CUDD= $(realpath ../cudd-2.4.1/)
+CUDD= $(realpath ../cudd-2.4.2/)
 MFLAG   = -DMNEMOSYNE
 MNEMLIB	= $(CUDD)/mnemosyne/libmnem.a
 
