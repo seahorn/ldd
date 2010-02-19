@@ -64,7 +64,7 @@ int main(void)
       and the second of size 2. If the tree is not updated, the
       assertion below is violated.
   */
-  
+  /* EXPECTED TO FAIL */
   assert (check_mtr_consistentcy (dd, Cudd_ReadTree (dd)) == 0);
 
 
