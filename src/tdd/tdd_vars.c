@@ -4,7 +4,7 @@
 static LddNode * lddAssocNode (LddManager *, LddNode *, lincons_t);
 static void lddUpdateCuddMtrTree (DdManager *, LddNode *, LddNode * );
 
-/* static void Ldd_debug_print_mtr (MtrNode* tree);*/
+/* static void lddDebugPrintMtr (MtrNode* tree);*/
 
 
 /**
@@ -23,7 +23,7 @@ Ldd_GetCudd (LddManager *ldd)
 lincons_t 
 Ldd_GetCons (LddManager *ldd, LddNode *node)
 {
-  return tddC(ldd,Cudd_Regular(node)->index);
+  return lddC(ldd,Cudd_Regular(node)->index);
 }
 
 
@@ -109,7 +109,7 @@ Ldd_NewVar (LddManager * ldd, lincons_t l)
 
 #ifdef MTR_DEBUG_FINE
   assert (Cudd_MtrDebugCheck (CUDD) == 0);
-  Ldd_debug_print_mtr (CUDD->tree);
+  lddDebugPrintMtr (CUDD->tree);
 #endif
 
   return n;
@@ -327,7 +327,7 @@ lddUpdateCuddMtrTree (DdManager *cudd, LddNode *v, LddNode *n)
 
   assert (Cudd_MtrDebugCheck (cudd) == 0);
   fprintf (stderr, "BEFORE update_mtr\n");
-  Ldd_debug_print_mtr (tree);
+  lddDebugPrintMtr (tree);
   fprintf (stderr, "BEFORE update_mtr\n\n");
 #endif
 
@@ -366,7 +366,7 @@ lddUpdateCuddMtrTree (DdManager *cudd, LddNode *v, LddNode *n)
   
 #ifdef MTR_DEBUG_FINE
   fprintf (stderr, "AFTER update_mtr\n");
-  Ldd_debug_print_mtr (tree);
+  lddDebugPrintMtr (tree);
   fprintf (stderr, "END update_mtr\n\n");
 #endif
 
@@ -375,7 +375,7 @@ lddUpdateCuddMtrTree (DdManager *cudd, LddNode *v, LddNode *n)
 
 
 void 
-Ldd_debug_print_mtr (MtrNode * tree)
+lddDebugPrintMtr (MtrNode * tree)
 {
   MtrNode *group;
   
@@ -388,7 +388,7 @@ Ldd_debug_print_mtr (MtrNode * tree)
 }
 
 int
-Ldd_fix_mtr_tree (DdManager *table,
+lddFixMtrTree (DdManager *table,
 		  const char * str,
 		  void * data)
 {

@@ -12,7 +12,7 @@ Ldd_BddExistAbstract (LddManager * ldd,
   do
     {
       CUDD->reordered = 0;
-      res = Ldd_bdd_exist_abstract_recur (ldd, f, cube);
+      res = lddBddExistAbstractRecur (ldd, f, cube);
     } while (CUDD->reordered == 1);
 
   return res;
@@ -96,7 +96,7 @@ Ldd_TermsWithVars (LddManager *ldd,
 
 /* taken from cuddBddAbs.c/cuddBddExistAbstractRecur */
 LddNode *
-Ldd_bdd_exist_abstract_recur (LddManager *ldd,
+lddBddExistAbstractRecur (LddManager *ldd,
 			      LddNode *f,
 			      LddNodeset *varset)
 {
@@ -137,7 +137,7 @@ Ldd_bdd_exist_abstract_recur (LddManager *ldd,
 	    return(one);
 	}
 	res1 = 
-	  Ldd_bdd_exist_abstract_recur(ldd, T, Cudd_Regular(cuddE(varset)));
+	  lddBddExistAbstractRecur(ldd, T, Cudd_Regular(cuddE(varset)));
 	if (res1 == NULL) return(NULL);
 	if (res1 == one) {
 	    if (F->ref != 1)
@@ -146,14 +146,14 @@ Ldd_bdd_exist_abstract_recur (LddManager *ldd,
 	    return(one);
 	}
         cuddRef(res1);
-	res2 = Ldd_bdd_exist_abstract_recur(ldd, E, 
+	res2 = lddBddExistAbstractRecur(ldd, E, 
 					    Cudd_Regular (cuddE(varset)));
 	if (res2 == NULL) {
 	    Cudd_IterDerefBdd(manager,res1);
 	    return(NULL);
 	}
         cuddRef(res2);
-	res = Ldd_and_recur(ldd, Cudd_Not(res1), Cudd_Not(res2));
+	res = lddAndRecur(ldd, Cudd_Not(res1), Cudd_Not(res2));
 	if (res == NULL) {
 	    Cudd_IterDerefBdd(manager, res1);
 	    Cudd_IterDerefBdd(manager, res2);
@@ -169,10 +169,10 @@ Ldd_bdd_exist_abstract_recur (LddManager *ldd,
 	cuddDeref(res);
         return(res);
     } else { /* if (cuddI(manager,F->index) < cuddI(manager,cube->index)) */
-	res1 = Ldd_bdd_exist_abstract_recur(ldd, T, varset);
+	res1 = lddBddExistAbstractRecur(ldd, T, varset);
 	if (res1 == NULL) return(NULL);
         cuddRef(res1);
-	res2 = Ldd_bdd_exist_abstract_recur(ldd, E, varset);
+	res2 = lddBddExistAbstractRecur(ldd, E, varset);
 	if (res2 == NULL) {
 	    Cudd_IterDerefBdd(manager, res1);
 	    return(NULL);
@@ -180,7 +180,7 @@ Ldd_bdd_exist_abstract_recur (LddManager *ldd,
         cuddRef(res2);
 	/* ITE takes care of possible complementation of res1 and of the
         ** case in which res1 == res2. */
-	res = Ldd_ite_recur(ldd, manager->vars[F->index], res1, res2);
+	res = lddIteRecur(ldd, manager->vars[F->index], res1, res2);
 	if (res == NULL) {
 	    Cudd_IterDerefBdd(manager, res1);
 	    Cudd_IterDerefBdd(manager, res2);

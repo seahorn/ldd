@@ -40,7 +40,7 @@ Ldd_SatReduce (LddManager *ldd,
 
   do {
     CUDD->reordered = 0;
-    res = Ldd_sat_reduce_recur (ldd, f, ctx, depth);
+    res = lddSatReduceRecur (ldd, f, ctx, depth);
     if (res != NULL)
       cuddRef (res);
   } while (CUDD->reordered == 1);
@@ -86,7 +86,7 @@ Ldd_IsSat (LddManager *ldd,
       return 0;
     }
 
-  res = Ldd_is_sat_recur (ldd, f, ctx);
+  res = lddIsSatRecur (ldd, f, ctx);
   
   THEORY->qelim_destroy_context (ctx);
   ctx = NULL;
@@ -99,7 +99,7 @@ Ldd_IsSat (LddManager *ldd,
 
 
 LddNode *
-Ldd_sat_reduce_recur (LddManager *ldd, 
+lddSatReduceRecur (LddManager *ldd, 
 		      LddNode *f,
 		      qelim_context_t * ctx,
 		      int depth)
@@ -147,7 +147,7 @@ Ldd_sat_reduce_recur (LddManager *ldd,
       cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, tmp);
 
-      t = Ldd_sat_reduce_recur (ldd, fv, ctx, depth - 1);
+      t = lddSatReduceRecur (ldd, fv, ctx, depth - 1);
       
       if (t == NULL)
 	return NULL;
@@ -177,7 +177,7 @@ Ldd_sat_reduce_recur (LddManager *ldd,
       cuddRef (tmp);
       Cudd_IterDerefBdd (CUDD, tmp);
       
-      e = Ldd_sat_reduce_recur (ldd, fnv, ctx, depth - 1);
+      e = lddSatReduceRecur (ldd, fnv, ctx, depth - 1);
       
       if (e == NULL)
 	{
@@ -215,7 +215,7 @@ Ldd_sat_reduce_recur (LddManager *ldd,
 	}
       cuddRef (root);
 
-      res = Ldd_ite_recur (ldd, root, t, e);
+      res = lddIteRecur (ldd, root, t, e);
 
       if (res != NULL)
 	cuddRef (res);
@@ -235,7 +235,7 @@ Ldd_sat_reduce_recur (LddManager *ldd,
 }
 
 bool
-Ldd_is_sat_recur (LddManager *ldd, 
+lddIsSatRecur (LddManager *ldd, 
 		  LddNode *f, 
 		  qelim_context_t * ctx)
 {
@@ -273,12 +273,12 @@ Ldd_is_sat_recur (LddManager *ldd,
   if (tmp == zero)
     {
       THEORY->qelim_pop (ctx);
-      return Ldd_is_sat_recur (ldd, fnv, ctx);
+      return lddIsSatRecur (ldd, fnv, ctx);
     }
 
   assert (tmp == DD_ONE (CUDD));
 
-  res = Ldd_is_sat_recur (ldd, fv, ctx);
+  res = lddIsSatRecur (ldd, fv, ctx);
   THEORY->qelim_pop (ctx);
   
   /* THEN branch is SAT, we are done */
@@ -299,7 +299,7 @@ Ldd_is_sat_recur (LddManager *ldd,
   
   assert (tmp == DD_ONE(CUDD));
   
-  res = Ldd_is_sat_recur (ldd, fnv, ctx);
+  res = lddIsSatRecur (ldd, fnv, ctx);
   THEORY->qelim_pop (ctx);
   THEORY->destroy_lincons (nvCons);
 

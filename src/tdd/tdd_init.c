@@ -41,7 +41,7 @@ Ldd_Init (DdManager *cudd, theory_t * t)
     ldd->ddVars [i] = NULL;
 
   /* add a hook to fix MTR tree after variable reordering */
-  Cudd_AddHook (CUDD, &Ldd_fix_mtr_tree, CUDD_POST_REORDERING_HOOK);
+  Cudd_AddHook (CUDD, &lddFixMtrTree, CUDD_POST_REORDERING_HOOK);
   
   return ldd;
 }

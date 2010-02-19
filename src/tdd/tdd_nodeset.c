@@ -23,7 +23,7 @@ Ldd_NodesetUnion (LddManager* ldd, LddNodeset *f, LddNodeset* g)
   do 
     {
       CUDD->reordered = 0;
-      res = LddNodeset_union_recur (ldd, f, g);
+      res = lddNodesetUnionRecur (ldd, f, g);
     } while (CUDD->reordered == 1);
   
   CUDD->autoDyn = rs;
@@ -31,7 +31,7 @@ Ldd_NodesetUnion (LddManager* ldd, LddNodeset *f, LddNodeset* g)
 }
 
 int
-Ldd_is_valid_nodeset (LddManager *ldd, LddNodeset *f)
+lddIsValidNodeset (LddManager *ldd, LddNodeset *f)
 {
   LddNode *r;
 
@@ -48,7 +48,7 @@ Ldd_is_valid_nodeset (LddManager *ldd, LddNodeset *f)
 
 
 LddNodeset * 
-LddNodeset_union_recur (LddManager* ldd, LddNodeset *f, LddNodeset *g)
+lddNodesetUnionRecur (LddManager* ldd, LddNodeset *f, LddNodeset *g)
 {
   LddNode *fnv, *gnv;
   LddNode *res, *e;
@@ -105,12 +105,12 @@ LddNodeset_union_recur (LddManager* ldd, LddNodeset *f, LddNodeset *g)
     gnv = g;
   
 
-  e = LddNodeset_union_recur (ldd, fnv, gnv);
+  e = lddNodesetUnionRecur (ldd, fnv, gnv);
   if (e == NULL)
     return NULL;
   cuddRef (e);
 
-  res = Ldd_unique_inter (ldd, index, DD_ONE(CUDD), Cudd_Not (e));
+  res = lddUniqueInter (ldd, index, DD_ONE(CUDD), Cudd_Not (e));
   if (res != NULL) cuddRef (res);
   Cudd_IterDerefBdd (CUDD, e);
   if (res == NULL) return NULL;

@@ -242,7 +242,7 @@ lddSubstNinfForVarRecur (LddManager * ldd,
 	  if (Cudd_IsComplement (t))
 	    {
 	      res = 
-		Ldd_unique_inter (ldd, F->index, Cudd_Not (t), Cudd_Not (e));
+		lddUniqueInter (ldd, F->index, Cudd_Not (t), Cudd_Not (e));
 	      if (res == NULL)
 		{
 		  Cudd_IterDerefBdd (CUDD, t);
@@ -253,7 +253,7 @@ lddSubstNinfForVarRecur (LddManager * ldd,
 	    }
 	  else
 	    {
-	      res = Ldd_unique_inter (ldd, F->index, t, e);
+	      res = lddUniqueInter (ldd, F->index, t, e);
 	      if (res == NULL)
 		{
 		  Cudd_IterDerefBdd (CUDD, t);
@@ -352,7 +352,7 @@ lddSubstFnForVarRecur (LddManager *ldd,
 	}
       cuddRef (e);
       
-      res = Ldd_ite_recur (ldd, root, t, e);
+      res = lddIteRecur (ldd, root, t, e);
       if (res == NULL)
 	{
 	  Cudd_IterDerefBdd (CUDD, root);

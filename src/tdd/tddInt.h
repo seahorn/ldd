@@ -42,53 +42,52 @@ struct LddManager
 /**
  * Extracts a constraint corresponding to a given index
  */
-#define tddC(tdd,index) ((index)>=tdd->varsSize?NULL:(tdd)->ddVars[(index)])
 #define lddC(ldd,index) ((index)>=ldd->varsSize?NULL:(ldd)->ddVars[(index)])
 
 
-LddNode* Ldd_unique_inter (LddManager *m, unsigned int idx, 
+LddNode* lddUniqueInter (LddManager *m, unsigned int idx, 
 			    LddNode *n1, LddNode* n2);
 
-LddNode* Ldd_and_recur (LddManager*, LddNode*, LddNode*);
-LddNode* Ldd_xor_recur (LddManager*, LddNode*, LddNode*);
-LddNode* Ldd_ite_recur (LddManager*, LddNode*, LddNode*, LddNode*);
+LddNode* lddAndRecur (LddManager*, LddNode*, LddNode*);
+LddNode* lddXorRecur (LddManager*, LddNode*, LddNode*);
+LddNode* lddIteRecur (LddManager*, LddNode*, LddNode*, LddNode*);
 LddNode* lddExistsAbstractFMRecur (LddManager*, LddNode*, int, 
 				   DdLocalCache*);
-LddNode * Ldd_resolve_elim_inter (LddManager * tdd, LddNode * f, 
+LddNode * lddResolveElimInter (LddManager * tdd, LddNode * f, 
 				   linterm_t t, lincons_t cons, int var);
-LddNode* Ldd_resolve_elim_recur (LddManager*, LddNode*, 
+LddNode* lddResolveElimRecur (LddManager*, LddNode*, 
 				  linterm_t,lincons_t, lincons_t, int);
 
-LddNode* Ldd_resolve_recur(LddManager*, LddNode*, linterm_t, lincons_t, lincons_t, int, DdHashTable*);
+LddNode* lddResolveRecur(LddManager*, LddNode*, linterm_t, lincons_t, lincons_t, int, DdHashTable*);
 
 LddNode* lddExistAbstractPATRecur (LddManager*, LddNode*, bool*, 
 				   qelim_context_t *,
 				   DdHashTable*);
 
-LddNode* Ldd_sat_reduce_recur (LddManager*, LddNode*, 
+LddNode* lddSatReduceRecur (LddManager*, LddNode*, 
 				qelim_context_t*, int);
-bool Ldd_is_sat_recur (LddManager*, LddNode*, 
+bool lddIsSatRecur (LddManager*, LddNode*, 
 				qelim_context_t*);
-LddNode* Ldd_bdd_exist_abstract_recur (LddManager*, LddNode*, LddNode*);
+LddNode* lddBddExistAbstractRecur (LddManager*, LddNode*, LddNode*);
 LddNode* lddExistsAbstractSFMRecur (LddManager*, LddNode*, int, 
 				    DdLocalCache*);
 
-void Ldd_debug_print_mtr (MtrNode*);
-int Ldd_fix_mtr_tree (DdManager*, const char *, void*);
+void lddDebugPrintMtr (MtrNode*);
+int lddFixMtrTree (DdManager*, const char *, void*);
 
-LddNode* Ldd_box_extrapolate_recur (LddManager*, LddNode*, LddNode*);
-LddNode* Ldd_term_replace_recur (LddManager*, LddNode*, 
+LddNode* lddBoxExtrapolateRecur (LddManager*, LddNode*, LddNode*);
+LddNode* lddTermReplaceRecur (LddManager*, LddNode*, 
 				  linterm_t, linterm_t, 
 				  constant_t, 
 				  constant_t, constant_t, 
 				  DdHashTable*);
-LddNode* Ldd_term_minmax_approx_recur (LddManager*, LddNode*);
-LddNode* Ldd_term_constrain_recur (LddManager*, LddNode*, 
+LddNode* lddTermMinmaxApproxRecur (LddManager*, LddNode*);
+LddNode* lddTermConstrainRecur (LddManager*, LddNode*, 
 				    linterm_t, linterm_t, constant_t,
 				    DdLocalCache*);
-LddNodeset* LddNodeset_union_recur(LddManager*, LddNodeset*, LddNodeset*);
+LddNodeset* lddNodesetUnionRecur(LddManager*, LddNodeset*, LddNodeset*);
 
-int Ldd_is_valid_nodeset (LddManager*, LddNodeset*);
+int lddIsValidNodeset (LddManager*, LddNodeset*);
 
 LddNode *lddSubstNinfForVarRecur (LddManager*, LddNode*, int, DdHashTable*);
 
