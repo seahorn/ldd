@@ -131,6 +131,11 @@ int main(int argc, char** argv)
     printf ("exist LW d7 is:\n");
     Ldd_PrintMinterm (tdd, d7);
   }
+
+
+  printf ("d6 in SMTLIB:\n");
+  Ldd_DumpSmtLibV1 (tdd, d6, "d6", stdout);
+  printf ("\n");
       
 
   printf ("Destroying the world...\n");

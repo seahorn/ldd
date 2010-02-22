@@ -515,6 +515,102 @@ tvpi_print_cons (FILE *f, tvpi_cons_t c)
   mpq_clear (k2);
 }
 
+/**
+ * Prints a constraint in SMT-LIB version 1 format. Returns 1 on
+ * success; 0 on failure. */
+int 
+tvpi_print_cons_smtlibv1 (FILE *fp,
+			  tvpi_cons_t c)
+{
+  int retval;
+  mpq_t k;
+  
+  assert (c->sgn > 0 && "Can only print positive constraints");
+  assert (c->fst_coeff == NULL && "Can only print normalized constraints");
+  
+  
+  /* print the term and the comparison operator */
+  if (!IS_VAR (c->var [1]))
+    {
+      retval = fprintf (fp, "(%s v%d ", (c->op == LT ? "<" : "<="), c->var [0]);
+      if (retval < 0) return 0;
+    }
+  else
+    {
+      retval = fprintf (fp, "(%s (+ v%d (* ", 
+			(c->op == LT ? "<" : "<="), c->var [0]);
+      if (retval < 0) return 0;
+      
+      if (mpq_sgn (*c->coeff) < 0)
+	{
+	  retval = fprintf (fp, "(~ ");
+	  if (retval < 0) return 0;
+	}
+
+      mpq_init (k);
+      mpq_abs (k, *c->coeff);
+      retval = mpq_out_str (fp, 10, k);
+      mpq_clear (k);
+      if (retval == 0) return 0;
+
+      if (mpq_sgn (*c->coeff) < 0)
+	{
+	  retval = fprintf (fp, ")");
+	  if (retval < 0) return 0;
+	}
+      
+      retval = fprintf (fp, " v%d)) ", c->var [1]);
+      if (retval < 0) return 0;
+    }
+
+  /* print the constant */
+  if (mpq_sgn (*c->cst) < 0)
+    {
+      retval = fprintf (fp, "(~ ");
+      if (retval < 0) return 0;
+    }
+  mpq_init (k);
+  mpq_abs (k, *c->cst);
+  retval = mpq_out_str (fp, 10, k);
+  mpq_clear (k);
+  if (retval == 0) return 0;
+  
+  if (mpq_sgn (*c->cst) < 0)
+    {
+      retval = fprintf (fp, ")");
+      if (retval < 0) return 0;
+    }
+  
+  /* close the outermost bracket */
+  retval = fprintf (fp, ")");
+  if (retval < 0) return 0;
+  
+  return 1;
+}
+
+int
+tvpi_dump_smtlibv1_prefix (tvpi_theory_t *theory,
+			   FILE *fp,
+			   int *occurrences)
+{
+  int retval;
+  size_t i;
+  
+  retval = fprintf (fp, ":extrafuns (\n");
+  if (retval < 0) return 0;
+  
+  for (i = 0; i < theory->size; i++)
+    if (occurrences == NULL || occurrences [i] > 0)
+      {
+	retval = fprintf (fp, "(v%d %s)\n", i, theory->smt_var_type);
+	if (retval < 0) return 0;
+      }
+  retval = fprintf (fp, ")\n");
+
+  return retval < 0 ? 0 : 1;
+}
+
+
 tvpi_term_t
 tvpi_dup_term (tvpi_term_t t)
 {
@@ -1358,6 +1454,7 @@ tvpi_var_bound (tvpi_cons_t l,
 }
 
 
+
 /**
  * Converts a constraint over rationals to constraint over integers.
  * Requires: r is TVPI
@@ -1819,6 +1916,7 @@ tvpi_create_theory (size_t vn)
   if (t == NULL) return NULL;
 
   t->size = vn;
+  t->smt_var_type = "Real";
 
   /* allocate and initialize the map */  
   t->map = (tvpi_list_node_t***) 
@@ -1916,6 +2014,11 @@ tvpi_create_theory (size_t vn)
   t->base.subst_ninf = (LddNode*(*)(LddManager*,lincons_t,int))tvpi_subst_ninf;
   t->base.var_bound = 
     (void(*)(lincons_t,int,linterm_t*,constant_t*))tvpi_var_bound;
+
+  t->base.print_lincons_smtlibv1 = 
+    (int(*)(FILE*,lincons_t))tvpi_print_cons_smtlibv1;
+  t->base.dump_smtlibv1_prefix = 
+    (int(*)(theory_t*,FILE*,int*))tvpi_dump_smtlibv1_prefix;
   
 
   /* unimplemented */
@@ -1977,6 +2080,7 @@ tvpi_create_utvpiz_theory (size_t vn)
   t = (tvpi_theory_t*)tvpi_create_theory (vn);
   if (t == NULL) return NULL;
   
+  t->smt_var_type = "Int";
 
   /* update UTVPI(Z) specific functions.
    * The unique feature of UTVPI(Z) is that t < k is equivalent to t <= (k-1).
@@ -2006,7 +2110,8 @@ tvpi_create_tvpiz_theory (size_t vn)
   t = (tvpi_theory_t*)tvpi_create_theory (vn);
   if (t == NULL) return NULL;
   
-
+  t->smt_var_type = "Int";
+  
   /* update UTVPI(Z) specific functions.
    * The unique feature of UTVPI(Z) is that t < k is equivalent to t <= (k-1).
    * These following functions ensure that no strict inequalities are created.

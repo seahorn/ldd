@@ -75,6 +75,10 @@ extern "C" {
     size_t size;
     /* maps a pair of variables to the list of constraints they appear in */
     tvpi_list_node_t ***map;
+    
+    /* SMT-LIB type of variables */
+    char* smt_var_type;
+    
   } tvpi_theory_t;
   
 

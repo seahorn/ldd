@@ -248,6 +248,15 @@ struct theory
   void (*print_lincons) (FILE* f, lincons_t l);
 
   /**
+     \brief Prints linear constraint in SMT-LIB v1 format
+   */
+  int (*print_lincons_smtlibv1) (FILE *fp, lincons_t l);
+  /**
+     \brief Prints a prefix of SMTLIB benchmark. 
+   */
+  int (*dump_smtlibv1_prefix) (theory_t *self, FILE*fp, int *occrrences);
+
+  /**
    * Prints debug information from the theory embedded in the manager.
    */
   void (*theory_debug_dump) (LddManager * tdd);
@@ -352,7 +361,7 @@ DdManager * Ldd_GetCudd (LddManager *);
 				linterm_t, constant_t);
   LddNode* Ldd_SubstTermPlusForVar (LddManager*, LddNode*, int,
 				    linterm_t, constant_t);
-  
+  int Ldd_DumpSmtLibV1 (LddManager*, LddNode*, char*, FILE*);
 
 #ifdef __cplusplus
 }
