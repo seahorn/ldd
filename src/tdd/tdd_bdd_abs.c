@@ -1,7 +1,7 @@
 #include "util.h"
 #include "tddInt.h"
 
-/** BDD Style existential quantification */
+/** \brief BDD-style existential quantification */
 LddNode * 
 Ldd_BddExistAbstract (LddManager * ldd,
 			LddNode * f,
@@ -20,8 +20,9 @@ Ldd_BddExistAbstract (LddManager * ldd,
 
 
 /**
- * Over-approximates existential quantification of all variables in
- * Boolean array vars.
+ * \brief Over-approximates existential quantification of all
+  variables in Boolean array vars by eliminating all terms with those
+  variables
  */
 LddNode * 
 Ldd_OverAbstract (LddManager *ldd, 
@@ -53,18 +54,18 @@ Ldd_OverAbstract (LddManager *ldd,
 
 
 /**
- * Constructs a cube of all of the terms that contains variables in
- * the Boolean array vars.
+ * \brief Constructs a nodeset of all of the terms that contain
+  variables in the Boolean array vars.
  */
 LddNodeset *
 Ldd_TermsWithVars (LddManager *ldd,
-		     bool * vars)
+		   bool * vars)
 {
   LddNodeset * res;
   
   int i;
 
-  res = (LddNodeset*) Ldd_GetTrue (ldd); //Ldd_empty_nodeset (ldd);
+  res = (LddNodeset*) Ldd_GetTrue (ldd); 
   cuddRef (res);
   
   for (i = ldd->varsSize - 1; i >= 0; i--)
@@ -75,15 +76,11 @@ Ldd_TermsWithVars (LddManager *ldd,
 	{
 	  LddNodeset *tmp;
 	  
-	  //assert (is_valid_nodeset (ldd, res) && "Before ADD");
-	  //tmp = Ldd_NodesetAdd (ldd, res, CUDD->vars [i]);
 	  tmp = Ldd_NodesetUnion (ldd, Ldd_NodeToNodeset (CUDD->vars [i]), res);
-	  //assert (is_valid_nodeset (ldd, tmp) && "After ADD");
 	  if (tmp != NULL) cuddRef (tmp);
 	  Cudd_IterDerefBdd (CUDD, res);
 	  if (tmp == NULL) return NULL;
 	  res = tmp;
-	  //assert (is_valid_nodeset (ldd, res) && "END OF LOOP");
 	}
     }
 
@@ -94,7 +91,11 @@ Ldd_TermsWithVars (LddManager *ldd,
 
 
 
-/* taken from cuddBddAbs.c/cuddBddExistAbstractRecur */
+/**
+ * \brief Recursive step of Ldd_BddExistAbstract
+ 
+ based on cuddBddAbs.c/cuddBddExistAbstractRecur
+ */
 LddNode *
 lddBddExistAbstractRecur (LddManager *ldd,
 			      LddNode *f,

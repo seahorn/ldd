@@ -11,6 +11,8 @@ static int bddVarToCanonicalSimple (DdManager *dd, DdNode **fp, DdNode **gp, DdN
    \return a pointer to the resulting LDD if successful; NULL if the
    immediate result blows up.
 
+   Based on Cudd_bddIte.
+
    \sa Ldd_Or(), Ldd_And(), Ldd_Xor()
  */
 LddNode * 
@@ -32,6 +34,8 @@ Ldd_Ite (LddManager *ldd, LddNode *f, LddNode *g, LddNode *h)
    
    \return a pointer to the resulting LDD if successful; NULL if the
    immediate result blows up.
+
+   Based on Cudd_bddAnd.
 
    \sa Ldd_Or(), Ldd_Ite(), Ldd_Xor()
  */
@@ -56,9 +60,10 @@ Ldd_And (LddManager *ldd, LddNode * f, LddNode *g)
 
    \sa Ldd_And(), Ldd_Ite(), Ldd_Xor()
  */
-LddNode * Ldd_Or (LddManager* ldd,
-		   LddNode * f,
-		   LddNode * g)
+LddNode * 
+Ldd_Or (LddManager* ldd,
+	LddNode * f,
+	LddNode * g)
 {
   LddNode * res;
   
@@ -77,11 +82,14 @@ LddNode * Ldd_Or (LddManager* ldd,
    \return a pointer to the resulting LDD if successful; NULL if the
    immediate result blows up.
 
+   Based on Cudd_bddXor.
+
    \sa Ldd_And(), Ldd_Ite(), Ldd_Or()
  */
-LddNode * Ldd_Xor (LddManager * ldd,
-		    LddNode * f,
-		    LddNode *g)
+LddNode * 
+Ldd_Xor (LddManager * ldd,
+	 LddNode * f,
+	 LddNode *g)
 {
   LddNode *res;
   
@@ -96,12 +104,23 @@ LddNode * Ldd_Xor (LddManager * ldd,
 
 
 /**
- * Required: 
- *    f != g 
- *    f == Cudd_Regular (f)
+ * \brief Checks the unique table for the existence of an internal node.
+
+ Checks the unique table for the existence of an internal node. If it
+ does not exists, it creates a new one. Does not modify reference
+ count of whatever is returned. 
+
+ \returns A pointer to a new node if successful; NULL if memory is
+ exhausted or reordering took place.
+
+ \pre index is strictly less than index of f and g; f != g; f ==
+ Cudd_Regular (f)
+
+  \sa cuddUniqueInter()
  */
-LddNode* lddUniqueInter (LddManager *ldd, unsigned int index, 
-			    LddNode *f, LddNode *g)
+LddNode* 
+lddUniqueInter (LddManager *ldd, unsigned int index, 
+		LddNode *f, LddNode *g)
 {
   LddNode *res, *v, *G;
 
@@ -216,13 +235,16 @@ LddNode* lddUniqueInter (LddManager *ldd, unsigned int index,
   return res;
 }
 
-
-
-
-LddNode * lddIteRecur (LddManager * ldd,
-			  LddNode *f,
-			  LddNode *g,
-			  LddNode *h)
+/**
+   \brief Recursive step of Ldd_Ite. Based on cuddBddIteRecur().
+   
+   \sa Ldd_Ite()
+ */
+LddNode * 
+lddIteRecur (LddManager * ldd,
+	     LddNode *f,
+	     LddNode *g,
+	     LddNode *h)
 {
   DdNode	 *one, *zero, *res;
   DdNode	 *r, *Fv, *Fnv, *Gv, *Gnv, *H, *Hv, *Hnv, *t, *e;
@@ -387,11 +409,15 @@ LddNode * lddIteRecur (LddManager * ldd,
 
 
 
-
+/**
+   \brief Recursive step of Ldd_And. Based on cuddBddAndRecur().
+   
+   \sa Ldd_And()
+ */
 LddNode * 
 lddAndRecur (LddManager * ldd,
-	       LddNode *f,
-	       LddNode *g)
+	     LddNode *f,
+	     LddNode *g)
 {
   DdManager * manager;
   DdNode *F, *fv, *fnv, *G, *gv, *gnv;
@@ -564,10 +590,15 @@ lddAndRecur (LddManager * ldd,
   return r;
 }
 
-
-LddNode * lddXorRecur (LddManager * ldd,
-			  LddNode *f,
-			  LddNode *g)
+/**
+   \brief Recursive step of Ldd_Xor. Based on cuddBddXorRecur().
+   
+   \sa Ldd_Xor()
+ */
+LddNode * 
+lddXorRecur (LddManager * ldd,
+	     LddNode *f,
+	     LddNode *g)
 {
   DdManager * manager;
   DdNode *fv, *fnv, *G, *gv, *gnv;
@@ -750,6 +781,7 @@ LddNode * lddXorRecur (LddManager * ldd,
   SeeAlso     [bddVarToConst bddVarToCanonical]
 
 ******************************************************************************/
+/** \brief Taken from cuddBddIte.c */
 static int
 bddVarToCanonicalSimple(
   DdManager * dd,
