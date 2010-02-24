@@ -1,10 +1,6 @@
-CC = gcc
-ICFLAGS = -g -Wall -O6 
-XCFLAGS = -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
-INCLUDE = -I$(CUDD)/include -I../include
-CFLAGS = $(ICFLAGS) $(MFLAG) $(XCFLAGS) $(INCLUDE)
-LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp -L../tdd -L../tvpi
-LDLIBS = -lcudd  -ltvpi -ltdd -lst -lutil -lmtr -lepd -ldddmp -lgmp -lm
+ROOT=../..
+include $(ROOT)/src/Makefile.common
+
 BINS = test1 test1b test2 test3 test_box_widen test_term_replace \
        cuddDvoMtrBug cuddMtrBug
 OBJS = test1.o test1b.o test2.o test3.o test_box_widen.o test_term_replace.o \
@@ -13,8 +9,8 @@ DEPS = $(patsubst %.o,%.d,$(OBJS))
 TESTLIBS = $(CUDD)/cudd/libcudd.a $(CUDD)/st/libst.a \
 	   $(CUDD)/util/libutil.a $(CUDD)/mtr/libmtr.a \
 	   $(CUDD)/epd/libepd.a $(CUDD)/dddmp/libdddmp.a \
-	   ../tdd/libtdd.a  \
-	   ../tvpi/libtvpi.a
+	   $(ROOT)/src/tdd/libtdd.a  \
+	   $(ROOT)/src/tvpi/libtvpi.a
 
 .PHONY: all
 .PHONY: clean
@@ -33,5 +29,5 @@ $(BINS) : $(TESTLIBS)
 -include $(DEPS)
 
 clean:
-	rm -f  $(OBJS) $(BINS) *~
+	rm -f  $(OBJS) $(BINS) $(DEPS) *~
 

@@ -1,10 +1,6 @@
-CC = gcc
-ICFLAGS = -g -Wall -O6 
-XCFLAGS = -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
-CFLAGS = $(ICFLAGS) $(MFLAG) $(XCFLAGS) $(INCLUDE)
-INCLUDE = -I$(CUDD)/include -I../include
+ROOT=../..
 
-AR = ar -rcs 
+include $(ROOT)/src/Makefile.common
 OBJS = tvpi.o
 DEPS = $(patsubst %.o,%.d,$(OBJS))
 LIB = libtvpi.a

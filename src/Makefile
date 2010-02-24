@@ -213,27 +213,27 @@ build:
 	@for dir in $(DIRS); do \
 		(cd $$dir; \
 		echo Making $$dir ...; \
-		make CC=$(CC) RANLIB=$(RANLIB) MFLAG= MNEMLIB= ICFLAGS="$(ICFLAGS)" XCFLAGS="$(XCFLAGS)" DDDEBUG="$(DDDEBUG)" MTRDEBUG="$(MTRDEBUG)" PURE="$(PURE)" EXE="$(EXE)" CUDD="$(CUDD)")\
+		make )\
 	done
 all:
 	sh ./setup.sh
 	@for dir in $(DIRS); do \
 		(cd $$dir; \
 		echo Making all in $$dir ...; \
-		make CC=$(CC) RANLIB=$(RANLIB) MFLAG= MNEMLIB= ICFLAGS="$(ICFLAGS)" XCFLAGS="$(XCFLAGS)" DDDEBUG="$(DDDEBUG)" MTRDEBUG="$(MTRDEBUG)" PURE="$(PURE)" EXE="$(EXE)" CUDD="$(CUDD)" all )\
+		make all )\
 	done
 
 clean:
 	@for dir in $(DIRS); do	\
 	    (cd $$dir; 	\
 	     echo Cleaning $$dir ...; \
-	     make -s clean CUDD=$(CUDD)	) \
+	     make clean ) \
 	done
 
 distclean:
 	@for dir in $(DIRS) ; do	\
 	    (cd $$dir; 	\
 	     echo Cleaning $$dir ...; \
-	     make -s EXE="$(EXE)" distclean	) \
+	     make distclean	) \
 	done
 	sh ./shutdown.sh

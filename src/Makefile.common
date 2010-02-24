@@ -1,0 +1,16 @@
+ifndef ROOT
+ROOT := $(shell ($PWD))
+endif
+
+CUDD=$(ROOT)/cudd-2.4.2
+
+CC = gcc
+ICFLAGS = -g -Wall -O6 
+XCFLAGS = -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
+INCLUDE = -I$(CUDD)/include -I$(ROOT)/src/include
+CFLAGS = $(ICFLAGS) $(MFLAG) $(XCFLAGS) $(INCLUDE)
+LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp -L$(ROOT)/src/tdd -L$(ROOT)/src/tvpi
+LDLIBS = -lcudd  -ltvpi -ltdd -lst -lutil -lmtr -lepd -ldddmp -lgmp -lm
+
+
+AR = ar -rcs 
