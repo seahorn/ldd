@@ -341,8 +341,8 @@ LddNode *Ldd_TermsWithVars (LddManager*, int*);
 LddNode *Ldd_OverAbstract (LddManager *,LddNode*,int*);
 void Ldd_SupportVarOccurrences (LddManager*,LddNode*,int*);
 LddManager * Ldd_BddlikeManager (LddManager *);
-  LddManager *Ldd_SetExistsAbstract (LddManager *, 
-				     LddNode*(*)(LddManager*,LddNode*,int));
+LddManager *Ldd_SetExistsAbstract (LddManager *, 
+                                   LddNode*(*)(LddManager*,LddNode*,int));
 LddNode * Ldd_MvExistAbstract (LddManager*, LddNode *, int * , size_t );
 LddNode * Ldd_BoxExtrapolate (LddManager*, LddNode*, LddNode*);
 LddNode* Ldd_TermReplace (LddManager*, LddNode*, linterm_t, linterm_t, constant_t, constant_t, constant_t);
@@ -354,14 +354,14 @@ LddNodeset* Ldd_NodesetAdd (LddManager*, LddNodeset*, LddNode*);
 int Ldd_PrintMinterm(LddManager*, LddNode*);
 
 DdManager * Ldd_GetCudd (LddManager *);
-  lincons_t Ldd_GetCons (LddManager*, LddNode*);
+lincons_t Ldd_GetCons (LddManager*, LddNode*);
 
-  LddNode* Ldd_SubstNinfForVar (LddManager*, LddNode*, int);
-  LddNode* Ldd_SubstTermForVar (LddManager*, LddNode*, int, 
-				linterm_t, constant_t);
-  LddNode* Ldd_SubstTermPlusForVar (LddManager*, LddNode*, int,
-				    linterm_t, constant_t);
-  int Ldd_DumpSmtLibV1 (LddManager*, LddNode*, char*, FILE*);
+LddNode* Ldd_SubstNinfForVar (LddManager*, LddNode*, int);
+LddNode* Ldd_SubstTermForVar (LddManager*, LddNode*, int, 
+                              linterm_t, constant_t);
+LddNode* Ldd_SubstTermPlusForVar (LddManager*, LddNode*, int,
+                                  linterm_t, constant_t);
+int Ldd_DumpSmtLibV1 (LddManager*, LddNode*, char*, FILE*);
 
 #ifdef __cplusplus
 }
