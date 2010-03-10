@@ -578,8 +578,10 @@ lddBoxWidenRecur (LddManager *ldd,
 	  if (t == e)
 	    r = t;
 	  else if (Cudd_IsComplement (t))
-	    r = Cudd_Not (lddUniqueInter (ldd, index, 
-					  Cudd_Not (t), Cudd_Not (e)));
+	    {
+	      r = lddUniqueInter (ldd, index, Cudd_Not (t), Cudd_Not (e));
+	      r = Cudd_NotCond (r, r != NULL);
+	    }
 	  else
 	    r = lddUniqueInter (ldd, index, t, e);
 	  

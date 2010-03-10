@@ -91,6 +91,6 @@ LddNodeset* lddNodesetUnionRecur(LddManager*, LddNodeset*, LddNodeset*);
 int lddIsValidNodeset (LddManager*, LddNodeset*);
 
 LddNode *lddSubstNinfForVarRecur (LddManager*, LddNode*, int, DdHashTable*);
-
+LddNode* lddCofactorRecur (LddManager*, LddNode*, LddNode*);
 
 #endif
