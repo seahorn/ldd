@@ -3,6 +3,21 @@
 
 
 
+LddNode *
+Ldd_BoxWiden (LddManager *ldd, LddNode *f, LddNode *g)
+{
+  LddNode *res;
+  
+  do
+    {
+      CUDD->reordered = 0;
+      res = lddBoxWidenRecur (ldd, f, g);
+    } while (CUDD->reordered == 1);
+  
+  return (res);
+}
+
+
 /** 
  * Extrapolation for intervals. 
  * Extrapolates f by g. Assumes that f IMPLIES g
@@ -120,6 +135,7 @@ Ldd_TermMinmaxApprox (LddManager *ldd, LddNode *f)
     } while (CUDD->reordered == 1);
   return (res);
 }
+
 
 
 
@@ -385,6 +401,203 @@ lddBoxExtrapolateRecur (LddManager *ldd,
   return r;
   
 }
+
+LddNode *
+lddBoxWidenRecur (LddManager *ldd,
+		  LddNode *f,
+		  LddNode *g)
+{
+  DdManager * manager;
+  DdNode *F, *fv, *fnv, *G, *gv, *gnv;
+  DdNode *one, *zero, *r, *t, *e;
+  unsigned int topf, topg, index;
+
+  lincons_t vCons;
+
+  manager = CUDD;
+  statLine(manager);
+  one = DD_ONE(manager);
+  zero = Cudd_Not (one);
+
+  F = Cudd_Regular(f);
+  G = Cudd_Regular(g);
+
+
+  /* Terminal cases. */
+  if (F == one || G == one || F == G) return g;
+
+  /* At this point f and g are not constant. */
+  /* widen is asymmetric. cannot switch operands */
+
+  /* Check cache. */
+  if (F->ref != 1 || G->ref != 1) {
+    r = cuddCacheLookup2(manager, (DD_CTFP)Ldd_BoxWiden, f, g);
+    if (r != NULL) return(r);
+  }
+  else
+    r = NULL;
+  
+  /* Get the levels */
+  /* Here we can skip the use of cuddI, because the operands are known
+  ** to be non-constant.
+  */
+  topf = manager->perm[F->index];
+  topg = manager->perm[G->index];
+
+  /* Compute cofactors. */
+  if (topf <= topg) {
+    index = F->index;
+    fv = cuddT(F);
+    fnv = cuddE(F);
+    if (Cudd_IsComplement(f)) {
+      fv = Cudd_Not(fv);
+      fnv = Cudd_Not(fnv);
+    }
+  } else {
+    index = G->index;
+    fv = fnv = f;
+  }
+  
+  if (topg <= topf) {
+    gv = cuddT(G);
+    gnv = cuddE(G);
+    if (Cudd_IsComplement(g)) {
+      gv = Cudd_Not(gv);
+      gnv = Cudd_Not(gnv);
+    }
+  } else {
+    gv = gnv = g;
+  }
+
+
+  /** 
+   * Get the constraint of the root node 
+   */
+  vCons = lddC (ldd, index);
+
+  /** 
+   * Compute LDD cofactors w.r.t. the top term.  
+   * 
+   * We check whether f and g have the same constraint using the
+   * following facts: 
+   *   vCons is the constraint of the root diagram
+   *   gv == g iff g is not the root diagram
+   *   fv == f iff f is not the root diagram
+   */
+  if (gv == g)
+    {
+      lincons_t gCons = lddC (ldd, G->index);
+      
+      if (THEORY->is_stronger_cons (vCons, gCons))
+	{
+	  gv = cuddT (G);
+	  if (Cudd_IsComplement (g))
+	    gv = Cudd_Not (gv);
+	}
+    }
+  else if (fv == f)
+    {
+      lincons_t fCons = lddC (ldd, F->index);
+      
+      if (THEORY->is_stronger_cons (vCons, fCons))
+	{
+	  fv = cuddT (F);
+	  if (Cudd_IsComplement (f))
+	    fv = Cudd_Not (fv);
+	}
+    }
+  
+  
+  e = lddBoxWidenRecur (ldd, fnv, gnv);
+  if (e == NULL) return NULL;
+  cuddRef (e);
+
+  if (index != topf && fv == gv)
+    /* reference to e is migrated into r */
+    r = e;
+  else
+    {
+      t = lddBoxWidenRecur (ldd, fv, gv);
+      if (t == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, e);
+	  return NULL;
+	}
+      cuddRef (t);
+  
+      if (index != topf)
+	{
+	  unsigned int u;
+	  DdNode *E, *eu, *enu;
+	  lincons_t eCons = NULL;
+	  
+	  E = Cudd_Regular (e);	
+	  
+	  if (E != one)
+	    eCons = lddC (ldd, E->index);
+	  
+	  if (eCons != NULL && THEORY->is_stronger_cons (vCons, eCons))
+	    eu = Cudd_NotCond (cuddT (e), e != E);
+	  else
+	    eu = e;
+	  
+	  if (eu == fv)
+	    {
+
+	      if (eu == e && fv == f)
+		{
+		  r = t;
+		  Cudd_IterDerefBdd (CUDD, e);
+		}
+	      else
+		{
+		  if (fv == f)
+		    u = E->index;
+		  else if (eu == e)
+		    u = F->index;
+		  else
+		    u = F->index < E->index ? F->index : E->index;
+		  
+
+		  if (E->index == u)
+		    enu = Cudd_NotCond (cuddE (e), e != E);
+		  else
+		    enu = e;
+		  
+		  cuddRef (enu);
+		  Cudd_IterDerefBdd (CUDD, e);
+
+		  e = enu;
+		}
+	    }
+	} /* if (index != topf) */
+      
+      
+      if (r == NULL)
+	{
+	  if (t == e)
+	    r = t;
+	  else if (Cudd_IsComplement (t))
+	    r = Cudd_Not (lddUniqueInter (ldd, index, 
+					  Cudd_Not (t), Cudd_Not (e)));
+	  else
+	    r = lddUniqueInter (ldd, index, t, e);
+	  
+	  if (r != NULL) cuddRef (r);
+	  Cudd_IterDerefBdd (CUDD, t);
+	  Cudd_IterDerefBdd (CUDD, e);
+	  if (r == NULL) return NULL;
+	}
+    }
+  
+  
+  if (F->ref != 1 || G->ref != 1)
+    cuddCacheInsert2(manager, (DD_CTFP)Ldd_BoxWiden, f, g, r);
+  
+  cuddDeref (r);
+  return r;
+}
+
 
 LddNode * 
 lddTermReplaceRecur (LddManager * ldd, LddNode *f, 

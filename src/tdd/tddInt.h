@@ -76,6 +76,7 @@ void lddDebugPrintMtr (MtrNode*);
 int lddFixMtrTree (DdManager*, const char *, void*);
 
 LddNode* lddBoxExtrapolateRecur (LddManager*, LddNode*, LddNode*);
+LddNode* lddBoxWidenRecur (LddManager*, LddNode*, LddNode*);
 LddNode* lddTermReplaceRecur (LddManager*, LddNode*, 
 				  linterm_t, linterm_t, 
 				  constant_t, 
