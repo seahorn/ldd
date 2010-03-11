@@ -544,22 +544,16 @@ lddBoxWidenRecur (LddManager *ldd,
 	  if (eu == fv)
 	    {
 
-	      if (eu == e && fv == f)
+	      if (fv == f)
 		{
 		  r = t;
 		  Cudd_IterDerefBdd (CUDD, e);
 		}
 	      else
 		{
-		  if (fv == f)
-		    u = E->index;
-		  else if (eu == e)
-		    u = F->index;
-		  else
-		    u = F->index < E->index ? F->index : E->index;
-		  
+		  index = F->index;
 
-		  if (E->index == u)
+		  if (E->index == index)
 		    enu = Cudd_NotCond (cuddE (e), e != E);
 		  else
 		    enu = e;
