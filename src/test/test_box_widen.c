@@ -164,13 +164,13 @@ void test0 ()
   box2 = Ldd_And (tdd, d3, d2);
   Cudd_Ref (box2);
   
-  box3 = Ldd_BoxExtrapolate (tdd, box1, box2);
+  box3 = Ldd_BoxWiden (tdd, box1, box2);
   Cudd_Ref (box3);
 
   box4 = Ldd_And (tdd, d1, d4);
   Cudd_Ref (box4);
   
-  box5 = Ldd_BoxExtrapolate (tdd, box1, box4);
+  box5 = Ldd_BoxWiden (tdd, box1, box4);
   Cudd_Ref (box5);
 
 
@@ -194,6 +194,10 @@ void test0 ()
   Cudd_PrintMinterm (cudd, box2);
   printf ("box3\n");
   Ldd_PrintMinterm (tdd, box3);
+  printf ("box4\n");
+  Ldd_PrintMinterm (tdd, box4);
+  printf ("box5\n");
+  Ldd_PrintMinterm (tdd, box5);
 
 
   assert (box3 == d2);

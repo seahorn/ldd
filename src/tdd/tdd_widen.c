@@ -1,7 +1,7 @@
 #include "util.h"
 #include "tddInt.h"
 
-
+static LddNode *expandToInfinity (LddManager *, LddNode*, lincons_t);
 
 LddNode *
 Ldd_BoxWiden (LddManager *ldd, LddNode *f, LddNode *g)
@@ -426,8 +426,7 @@ lddBoxWidenRecur (LddManager *ldd,
   /* Terminal cases. */
   if (F == one || G == one || F == G) return g;
 
-  /* At this point f and g are not constant. */
-  /* widen is asymmetric. cannot switch operands */
+  
 
   /* Check cache. */
   if (F->ref != 1 || G->ref != 1) {
@@ -512,11 +511,15 @@ lddBoxWidenRecur (LddManager *ldd,
   if (e == NULL) return NULL;
   cuddRef (e);
 
-  if (index != topf && fv == gv)
+  if (index != F->index && fv == gv)
     /* reference to e is migrated into r */
     r = e;
   else
     {
+      DdNode *E = Cudd_Regular (e);
+      lincons_t eCons = NULL;
+
+      
       t = lddBoxWidenRecur (ldd, fv, gv);
       if (t == NULL)
 	{
@@ -525,16 +528,13 @@ lddBoxWidenRecur (LddManager *ldd,
 	}
       cuddRef (t);
   
-      if (index != topf)
+      if (E != one)
+	eCons = lddC (ldd, E->index);
+      
+      if (index != F->index)
 	{
-	  unsigned int u;
-	  DdNode *E, *eu, *enu;
-	  lincons_t eCons = NULL;
+	  DdNode  *eu, *enu;
 	  
-	  E = Cudd_Regular (e);	
-	  
-	  if (E != one)
-	    eCons = lddC (ldd, E->index);
 	  
 	  if (eCons != NULL && THEORY->is_stronger_cons (vCons, eCons))
 	    eu = Cudd_NotCond (cuddT (e), e != E);
@@ -564,8 +564,23 @@ lddBoxWidenRecur (LddManager *ldd,
 		  e = enu;
 		}
 	    }
-	} /* if (index != topf) */
-      
+	} /* if (index != F->index) */
+      else if (fnv == zero) /* if (index == F->index */
+	{
+	  if (eCons != NULL && THEORY->is_stronger_cons (vCons, eCons))
+	    {
+	      DdNode* ee;
+	      ee = expandToInfinity (ldd, e, vCons);
+	      if (ee != NULL) cuddRef (ee);
+	      Cudd_IterDerefBdd (CUDD, e);
+	      if (ee == NULL)
+		{
+		  Cudd_IterDerefBdd (CUDD, t);
+		  return NULL;
+		}
+	      e = ee;
+	    }
+	}
       
       if (r == NULL)
 	{
@@ -1232,4 +1247,48 @@ lddTermConstrainRecur (LddManager *ldd, LddNode *f, linterm_t t1,
   
 }
 
+
+static LddNode *
+expandToInfinity (LddManager *ldd, LddNode *f, lincons_t c)
+{
+  DdNode *F, *one, *fv, *fnv, *Fnv;
+  
+  DdNode *t, *e, *r;
+  lincons_t fnvCons;
+  
+  one = DD_ONE(CUDD);
+  F = Cudd_Regular (f);
+  
+  assert (F != one);
+
+  fv = Cudd_NotCond (cuddT(F), f != F);
+  fnv = Cudd_NotCond (cuddE(F), f != F);
+
+  Fnv = Cudd_Regular (fnv);
+
+  if (fnv == one) return f;
+
+  /* same as fnv == zero */
+  if (Fnv == one) return fv;
+  
+  fnvCons = lddC (ldd, Fnv->index);
+  if (fnvCons == NULL || ! THEORY->is_stronger_cons (c, fnvCons)) return f;
+  
+  t = fv;
+  e = expandToInfinity (ldd, fnv, c);
+  
+  assert (t != e);
+  
+  if (Cudd_IsComplement (t))
+    {
+      r = lddUniqueInter (ldd, (int) F->index, Cudd_Not (t), Cudd_Not (e));
+      r = Cudd_NotCond (r, r != NULL);
+    }
+  else
+    r = lddUniqueInter (ldd, (int) F->index, t, e);
+  return r;
+  
+  
+  
+}
 
