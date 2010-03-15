@@ -249,9 +249,9 @@ void parentProcess(const string &toolArg,pid_t childPid)
   stats["Cpu"] = buf; 
   totalCpu = cpuUsage;
 
-  //scan output for custom statistics
-  string fname = outDir + "/" + pathToFile(toolArg) + ".stdout";
-  FILE *toolOut = fopen(fname.c_str(),"r");
+  //scan stdout for custom statistics
+  string outName = outDir + "/" + pathToFile(toolArg) + ".stdout";
+  FILE *toolOut = fopen(outName.c_str(),"r");
   while(fscanf(toolOut,"%200s",buf) != EOF) {
     if(!strcmp(buf,"BRUNCH_STAT")) {
       if(fscanf(toolOut,"%200s",buf) == EOF) break;
@@ -262,6 +262,20 @@ void parentProcess(const string &toolArg,pid_t childPid)
     }
   }
   fclose(toolOut);
+
+  //scan stderr for custom statistics
+  string errName = outDir + "/" + pathToFile(toolArg) + ".stderr";
+  FILE *toolErr = fopen(errName.c_str(),"r");
+  while(fscanf(toolErr,"%200s",buf) != EOF) {
+    if(!strcmp(buf,"BRUNCH_STAT")) {
+      if(fscanf(toolErr,"%200s",buf) == EOF) break;
+      string str = buf;
+      if(fscanf(toolErr,"%200s",buf) == EOF) break;
+      if(verbose) printf("setting stat[%s] = %s\n",str.c_str(),buf);
+      stats[str] = buf;
+    }
+  }
+  fclose(toolErr);
 
   //display statistics
   printStats(stats);
