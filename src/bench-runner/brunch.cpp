@@ -22,7 +22,7 @@ size_t cpuLimit = 60;
 size_t memLimit = 512;
 string outDir = "/tmp/brunch.out";
 bool verbose = false;
-list<string> smtFiles;
+list<string> toolArgs;
 vector<string> toolCmd;
 list<string> onLabels;
 string labPref;
@@ -39,7 +39,7 @@ double totalCpu = 0.0;
 /*********************************************************************/
 void usage(char *cmd)
 {
-  printf("Usage : %s <options> <smt file list> <-- tool command>\n",cmd);
+  printf("Usage : %s <options> <tool arg list> <-- tool command>\n",cmd);
   printf("Options:\n");
   printf("\t--help    : display usage and exit\n");
   printf("\t--cpu       [cpu limit in seconds. default is 60.]\n");
@@ -90,13 +90,15 @@ void processArgs(int argc,char *argv[])
       else usage(argv[0]);
     } else if(!strcmp(argv[i],"--verbose")) {
       verbose = true;
-    } else if(strstr(argv[i],".smt") == (argv[i] + (strlen(argv[i]) - 4))) {
-      smtFiles.push_back(argv[i]);
-    } else if(!strcmp(argv[i],"--")) {
+    }
+    //check for tool command
+    else if(!strcmp(argv[i],"--")) {
       for(++i;i < argc;++i) {
         toolCmd.push_back(argv[i]);
       }
-    } else usage(argv[0]);
+    }
+    //by default it is a tool argument
+    else toolArgs.push_back(argv[i]);
   }
 
   if(toolCmd.empty()) usage(argv[0]);
@@ -104,7 +106,7 @@ void processArgs(int argc,char *argv[])
   if(verbose) {
     printf("cpu limit = %d sec\n",cpuLimit);
     printf("mem limit = %d MB\n",memLimit);
-    for(list<string>::const_iterator i = smtFiles.begin(),e = smtFiles.end();i != e;++i) {
+    for(list<string>::const_iterator i = toolArgs.begin(),e = toolArgs.end();i != e;++i) {
       printf("smt file = %s\n",i->c_str());
     }
     printf("tool cmd =");
@@ -128,7 +130,7 @@ string pathToFile(const string &path)
 /*********************************************************************/
 //child process
 /*********************************************************************/
-void childProcess(const string &smtFile)
+void childProcess(const string &toolArg)
 {
   //set cpu limit
   struct rlimit limits;
@@ -146,17 +148,17 @@ void childProcess(const string &smtFile)
   for(size_t j = 0;j < toolCmd.size();++j) {
     cmd[j] = strdup(toolCmd[j].c_str());
   }
-  cmd[toolCmd.size()] = strdup(smtFile.c_str());
+  cmd[toolCmd.size()] = strdup(toolArg.c_str());
   cmd[toolCmd.size() + 1] = NULL;
 
   //redirect stdout
-  string fname = outDir + "/" + pathToFile(smtFile) + ".stdout";
+  string fname = outDir + "/" + pathToFile(toolArg) + ".stdout";
   int fd = creat(fname.c_str(),S_IRWXU);
   close(1);
   dup(fd);
 
   //redirect stderr
-  fname = outDir + "/" + pathToFile(smtFile) + ".stderr";
+  fname = outDir + "/" + pathToFile(toolArg) + ".stderr";
   fd = creat(fname.c_str(),S_IRWXU);
   close(2);
   dup(fd);
@@ -188,7 +190,7 @@ void printStats(const map<string,string> &stats)
 /*********************************************************************/
 //run the parent process
 /*********************************************************************/
-void parentProcess(const string &smtFile,pid_t childPid)
+void parentProcess(const string &toolArg,pid_t childPid)
 {
   //collected statistics
   map<string,string> stats;
@@ -212,12 +214,12 @@ void parentProcess(const string &smtFile,pid_t childPid)
     printf("########################################################\n");
     printf("########################## STDOUT ######################\n");
     printf("########################################################\n");
-    string cmd = "cat " + outDir + "/" + pathToFile(smtFile) + ".stdout";
+    string cmd = "cat " + outDir + "/" + pathToFile(toolArg) + ".stdout";
     system(cmd.c_str());
     printf("########################################################\n");
     printf("########################## STDERR ######################\n");
     printf("########################################################\n");
-    cmd = "cat " + outDir + "/" + pathToFile(smtFile) + ".stderr";
+    cmd = "cat " + outDir + "/" + pathToFile(toolArg) + ".stderr";
     system(cmd.c_str());
     printf("########################################################\n");
   }
@@ -234,12 +236,12 @@ void parentProcess(const string &smtFile,pid_t childPid)
   //check for timeouts
   if((cpuUsage - totalCpu) >= (cpuLimit * 1.0)) {
     FILE *out = fopen(TIMEOUTFILE.c_str(),"a");
-    fprintf(out,"%s\n",pathToFile(smtFile).c_str());
+    fprintf(out,"%s\n",pathToFile(toolArg).c_str());
     fclose(out);
   }
 
   //add file name to stat
-  stats["File"] = pathToFile(smtFile);
+  stats["File"] = pathToFile(toolArg);
 
   //add child resource usage to stat
   char buf[256];  
@@ -248,7 +250,7 @@ void parentProcess(const string &smtFile,pid_t childPid)
   totalCpu = cpuUsage;
 
   //scan output for custom statistics
-  string fname = outDir + "/" + pathToFile(smtFile) + ".stdout";
+  string fname = outDir + "/" + pathToFile(toolArg) + ".stdout";
   FILE *toolOut = fopen(fname.c_str(),"r");
   while(fscanf(toolOut,"%200s",buf) != EOF) {
     if(!strcmp(buf,"BRUNCH_STAT")) {
@@ -270,7 +272,7 @@ void parentProcess(const string &smtFile,pid_t childPid)
 /*********************************************************************/
 void runExperiments()
 { 
-  for(list<string>::const_iterator i = smtFiles.begin(),e = smtFiles.end();i != e;++i) {
+  for(list<string>::const_iterator i = toolArgs.begin(),e = toolArgs.end();i != e;++i) {
     if(verbose) printf("=== processing %s\n",i->c_str());
     pid_t childPid = fork();
 
