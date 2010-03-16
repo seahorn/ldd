@@ -520,7 +520,8 @@ tvpi_print_cons (FILE *f, tvpi_cons_t c)
  * success; 0 on failure. */
 int 
 tvpi_print_cons_smtlibv1 (FILE *fp,
-			  tvpi_cons_t c)
+			  tvpi_cons_t c,
+			  char **vnames /* Variable names (or NULL) */)
 {
   int retval;
   mpq_t k;
@@ -532,13 +533,21 @@ tvpi_print_cons_smtlibv1 (FILE *fp,
   /* print the term and the comparison operator */
   if (!IS_VAR (c->var [1]))
     {
-      retval = fprintf (fp, "(%s v%d ", (c->op == LT ? "<" : "<="), c->var [0]);
+      if (vnames == NULL)
+	retval = fprintf (fp, "(%s v%d ", (c->op == LT ? "<" : "<="), c->var [0]);
+      else
+	retval = fprintf (fp, "(%s %s ", (c->op == LT ? "<" : "<="), vnames [c->var [0]]);
       if (retval < 0) return 0;
     }
   else
     {
-      retval = fprintf (fp, "(%s (+ v%d (* ", 
-			(c->op == LT ? "<" : "<="), c->var [0]);
+      if (vnames == NULL)
+	retval = fprintf (fp, "(%s (+ v%d (* ", 
+			  (c->op == LT ? "<" : "<="), c->var [0]);
+      else
+	retval = fprintf (fp, "(%s (+ %s (* ", 
+			  (c->op == LT ? "<" : "<="), vnames [c->var [0]]);
+
       if (retval < 0) return 0;
       
       if (mpq_sgn (*c->coeff) < 0)
@@ -559,7 +568,10 @@ tvpi_print_cons_smtlibv1 (FILE *fp,
 	  if (retval < 0) return 0;
 	}
       
-      retval = fprintf (fp, " v%d)) ", c->var [1]);
+      if (vnames == NULL)
+	retval = fprintf (fp, " v%d)) ", c->var [1]);
+      else
+	retval = fprintf (fp, " %s)) ", vnames [c->var [1]]);
       if (retval < 0) return 0;
     }
 
@@ -2016,7 +2028,7 @@ tvpi_create_theory (size_t vn)
     (void(*)(lincons_t,int,linterm_t*,constant_t*))tvpi_var_bound;
 
   t->base.print_lincons_smtlibv1 = 
-    (int(*)(FILE*,lincons_t))tvpi_print_cons_smtlibv1;
+    (int(*)(FILE*,lincons_t,char**))tvpi_print_cons_smtlibv1;
   t->base.dump_smtlibv1_prefix = 
     (int(*)(theory_t*,FILE*,int*))tvpi_dump_smtlibv1_prefix;
   

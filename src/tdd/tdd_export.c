@@ -4,7 +4,7 @@
 #include "tddInt.h"
 
 static void ddClearFlag(LddNode * n);
-static int lddDumpSmtLibV1BodyRecur (FILE *, LddManager*, LddNode*);
+static int lddDumpSmtLibV1BodyRecur (FILE *, LddManager*, LddNode*, char**);
 
 /**
    \brief Writes an SMT-LIB version 1 representing the argument LDD
@@ -15,6 +15,7 @@ static int lddDumpSmtLibV1BodyRecur (FILE *, LddManager*, LddNode*);
 int
 Ldd_DumpSmtLibV1 (LddManager *ldd,
 		  LddNode *f,
+		  char **vnames, /* variable names (or NULL) */
 		  char *bname,
 		  FILE *fp)
 {
@@ -53,7 +54,7 @@ Ldd_DumpSmtLibV1 (LddManager *ldd,
   retval = fprintf (fp, ":formula\n");
   if (retval == EOF) goto failure;
   
-  brkt = lddDumpSmtLibV1BodyRecur (fp, ldd, Cudd_Regular (f));
+  brkt = lddDumpSmtLibV1BodyRecur (fp, ldd, Cudd_Regular (f), vnames);
   ddClearFlag (f);
 
   if (brkt < 0) goto failure;
@@ -124,7 +125,8 @@ ddClearFlag(LddNode * n)
 int
 lddDumpSmtLibV1BodyRecur (FILE *fp, 
 			  LddManager *ldd, 
-			  LddNode *F)
+			  LddNode *F,
+			  char **vnames)
 {
   
   int retval;
@@ -142,10 +144,10 @@ lddDumpSmtLibV1BodyRecur (FILE *fp,
   fv = cuddT(F);
   fnv = cuddE (F);
 
-  brktT = lddDumpSmtLibV1BodyRecur (fp, ldd, fv);
+  brktT = lddDumpSmtLibV1BodyRecur (fp, ldd, fv, vnames);
   if (brktT < 0) return brktT;
   
-  brktE = lddDumpSmtLibV1BodyRecur (fp, ldd, Cudd_Regular (fnv));
+  brktE = lddDumpSmtLibV1BodyRecur (fp, ldd, Cudd_Regular (fnv), vnames);
   if (brktE < 0) return brktE;
   
 
@@ -159,7 +161,7 @@ lddDumpSmtLibV1BodyRecur (FILE *fp,
 #endif
   if (retval == EOF) return -1;
   
-  retval = THEORY->print_lincons_smtlibv1 (fp, lddC (ldd, F->index));
+  retval = THEORY->print_lincons_smtlibv1 (fp, lddC (ldd, F->index), vnames);
   if (retval == 0) return -1;
 
   if (cuddIsConstant (fv))

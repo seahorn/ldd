@@ -250,7 +250,7 @@ struct theory
   /**
      \brief Prints linear constraint in SMT-LIB v1 format
    */
-  int (*print_lincons_smtlibv1) (FILE *fp, lincons_t l);
+  int (*print_lincons_smtlibv1) (FILE *fp, lincons_t l, char** vnames);
   /**
      \brief Prints a prefix of SMTLIB benchmark. 
    */
@@ -362,7 +362,7 @@ LddNode* Ldd_SubstTermForVar (LddManager*, LddNode*, int,
                               linterm_t, constant_t);
 LddNode* Ldd_SubstTermPlusForVar (LddManager*, LddNode*, int,
                                   linterm_t, constant_t);
-int Ldd_DumpSmtLibV1 (LddManager*, LddNode*, char*, FILE*);
+  int Ldd_DumpSmtLibV1 (LddManager*, LddNode*, char**, char*, FILE*);
 LddNode* Ldd_Cofactor (LddManager*, LddNode*, LddNode*);
 
 #ifdef __cplusplus

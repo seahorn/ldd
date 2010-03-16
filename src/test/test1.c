@@ -134,9 +134,17 @@ int main(int argc, char** argv)
 
 
   printf ("d6 in SMTLIB:\n");
-  Ldd_DumpSmtLibV1 (tdd, d6, "d6", stdout);
+  Ldd_DumpSmtLibV1 (tdd, d6, NULL, "d6", stdout);
   printf ("\n");
       
+
+  {
+    char* vnames [3] = {"x", "y", "z"  };
+    printf ("d6 in SMTLIB (with var names) :\n");
+    Ldd_DumpSmtLibV1 (tdd, d6, vnames, "d6", stdout);
+    printf ("\n");
+  }
+  
 
   printf ("Destroying the world...\n");
   Ldd_Quit (tdd);
