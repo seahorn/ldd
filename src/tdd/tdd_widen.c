@@ -1286,9 +1286,117 @@ expandToInfinity (LddManager *ldd, LddNode *f, lincons_t c)
     }
   else
     r = lddUniqueInter (ldd, (int) F->index, t, e);
-  return r;
+  return r;  
+}
+
+
+/**
+   \brief Determines whether f is less than or equal to g.
+
+   \return 1 if f is less than or equal to g; 0 otherwise. 
+
+   No new nodes are created.  Based on Cudd_lddLeq.
+ */
+int
+Ldd_TermLeq (LddManager *ldd,
+	     LddNode *f,
+	     LddNode *g)
+{
+    DdNode *one, *zero, *tmp, *F, *fv, *fnv, *gv, *gnv;
+    unsigned int topf, topg, index, res;
+    lincons_t vCons;
+
+    statLine(CUDD);
+
+    /* Terminal cases and normalization. */
+    if (f == g) return(1);
+
+    if (Cudd_IsComplement(g)) {
+	/* Special case: if f is regular and g is complemented,
+	** f(1,...,1) = 1 > 0 = g(1,...,1).
+	*/
+	if (!Cudd_IsComplement(f)) return(0);
+	/* Both are complemented: Swap and complement because
+	** f <= g <=> g' <= f' and we want the second argument to be regular.
+	*/
+	tmp = g;
+	g = Cudd_Not(f);
+	f = Cudd_Not(tmp);
+    } else if (Cudd_IsComplement(f) && g < f) {
+	tmp = g;
+	g = Cudd_Not(f);
+	f = Cudd_Not(tmp);
+    }
+
+    /* Now g is regular and, if f is not regular, f < g. */
+    one = DD_ONE(CUDD);
+    if (g == one) return(1);	/* no need to test against zero */
+    if (f == one) return(0);	/* since at this point g != one */
+    if (Cudd_Not(f) == g) return(0); /* because neither is constant */
+    zero = Cudd_Not(one);
+    if (f == zero) return(1);
+    /* Here neither f nor g is constant. */
+
+    /* Check cache. */
+    tmp = cuddCacheLookup2(CUDD,(DD_CTFP)Ldd_TermLeq,f,g);
+    if (tmp != NULL) {
+	return(tmp == one);
+    }
+
+    F = Cudd_Regular (f);
+    topf = CUDD->perm[F->index];
+    topg = CUDD->perm[g->index];
+
   
+  /* Compute cofactors. */
+  if (topf <= topg) {
+    index = F->index;
+    fv = Cudd_NotCond (cuddT(F), f != F);
+    fnv = Cudd_NotCond (cuddE(F), f != F);
+  } else {
+    index = g->index;
+    fv = fnv = f;
+  }
   
+  if (topg <= topf) {
+    gv = cuddT(g);
+    gnv = cuddE(g);
+  } else {
+    gv = gnv = g;
+  }
+
+
+  /** 
+   * Get the constraint of the root node 
+   */
+  vCons = lddC (ldd, index);
+
+  /* LDD cofactor */
+  if (gv == g)
+    {
+      lincons_t gCons = lddC (ldd, g->index);
+      
+      if (THEORY->is_stronger_cons (vCons, gCons))
+	gv = cuddT (g);
+    }
+  else if (fv == f)
+    {
+      lincons_t fCons = lddC (ldd, F->index);
+      
+      if (THEORY->is_stronger_cons (vCons, fCons))
+	fv = Cudd_NotCond (cuddT (F), f != F);
+    }
   
+    /* Recursive calls. Since we want to maximize the probability of
+    ** the special case f(1,...,1) > g(1,...,1), we consider the negative
+    ** cofactors first. Indeed, the complementation parity of the positive
+    ** cofactors is the same as the one of the parent functions.
+    */
+    res = Ldd_TermLeq (ldd,fnv,gnv) && Ldd_TermLeq(ldd,fv,gv);
+
+    /* Store result in cache and return. */
+    cuddCacheInsert2(CUDD,(DD_CTFP)Ldd_TermLeq,f,g,(res ? one : zero));
+    return(res);
+    
 }
 

@@ -364,6 +364,8 @@ LddNode* Ldd_SubstTermPlusForVar (LddManager*, LddNode*, int,
                                   linterm_t, constant_t);
   int Ldd_DumpSmtLibV1 (LddManager*, LddNode*, char**, char*, FILE*);
 LddNode* Ldd_Cofactor (LddManager*, LddNode*, LddNode*);
+  int Ldd_TermLeq (LddManager *, LddNode *, LddNode *);
+
 
 #ifdef __cplusplus
 }
