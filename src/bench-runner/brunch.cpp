@@ -228,9 +228,9 @@ void parentProcess(const string &toolArg,pid_t childPid)
   struct rusage usage;
   getrusage(RUSAGE_CHILDREN,&usage);
   double cpuUsage = usage.ru_utime.tv_sec * 1.0 + 
-    usage.ru_utime.tv_usec / 1000000.0 + 
-    usage.ru_stime.tv_sec +
-    usage.ru_stime.tv_usec / 1000000.0;
+    usage.ru_utime.tv_usec / 1000000.0; 
+    //usage.ru_stime.tv_sec +
+    //usage.ru_stime.tv_usec / 1000000.0;
   if(verbose) printf("cpu usage = %.3lf sec\n",cpuUsage - totalCpu);
 
   //check for timeouts
