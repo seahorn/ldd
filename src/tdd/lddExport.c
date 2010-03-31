@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 static void ddClearFlag(LddNode * n);
 static int lddDumpSmtLibV1BodyRecur (FILE *, LddManager*, LddNode*, char**);

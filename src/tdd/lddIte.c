@@ -1,5 +1,5 @@
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 
 static int bddVarToCanonicalSimple (DdManager *dd, DdNode **fp, DdNode **gp, DdNode **hp, unsigned int *topfp, unsigned int *topgp, unsigned int *tophp);

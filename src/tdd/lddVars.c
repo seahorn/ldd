@@ -1,5 +1,5 @@
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 static LddNode * lddAssocNode (LddManager *, LddNode *, lincons_t);
 static void lddUpdateCuddMtrTree (DdManager *, LddNode *, LddNode * );

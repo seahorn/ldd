@@ -1,5 +1,5 @@
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 /**
    \brief Computes a cofactor of f with respect to g

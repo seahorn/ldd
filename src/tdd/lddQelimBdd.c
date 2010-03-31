@@ -1,5 +1,5 @@
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 /** \brief BDD-style existential quantification */
 LddNode * 

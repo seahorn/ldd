@@ -2,7 +2,7 @@
     and Weispfenning 
 */
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 static LddNode *
 lddSubstFnForVar (LddManager *ldd,

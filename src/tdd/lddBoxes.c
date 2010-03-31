@@ -1,5 +1,5 @@
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 static LddNode *expandToInfinity (LddManager *, LddNode*, lincons_t);
 

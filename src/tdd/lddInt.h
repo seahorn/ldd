@@ -5,7 +5,7 @@
  * Internal header file. To be used by the tdd library and its extensions.
  */
 
-#include "tdd.h"
+#include "ldd.h"
 #include "cuddInt.h"
 
 /** Macros for internal-only use */

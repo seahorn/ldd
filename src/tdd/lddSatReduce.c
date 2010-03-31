@@ -1,5 +1,5 @@
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 
 static int Ldd_unsat_size_recur (LddManager *ldd, LddNode *f);

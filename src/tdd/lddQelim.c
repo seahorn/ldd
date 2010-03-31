@@ -3,7 +3,7 @@
  * quantifying multiple variables.
  */
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 #include <limits.h>
 
 

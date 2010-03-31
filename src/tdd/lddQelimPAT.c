@@ -3,7 +3,7 @@
    elimination for conjunctions of constraints.
  */
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 
 /**

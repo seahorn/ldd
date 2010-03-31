@@ -2,7 +2,7 @@
    Quantifier elimination using Fourier-Motzkin
  */
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 /**
    \brief Existential quantification using Fourier-Motzkin.

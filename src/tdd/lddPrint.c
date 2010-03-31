@@ -1,5 +1,5 @@
 #include "util.h"
-#include "tddInt.h"
+#include "lddInt.h"
 
 static void Ldd_print_minterm_aux (LddManager *ldd, LddNode *node, int* list);
 
