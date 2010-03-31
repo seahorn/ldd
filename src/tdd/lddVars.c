@@ -7,57 +7,6 @@ static void lddUpdateCuddMtrTree (DdManager *, LddNode *, LddNode * );
 /* static void lddDebugPrintMtr (MtrNode* tree);*/
 
 
-/**
- * Returns DdManager corresponding to a LddManager.
- * Can be used to call CUDD functions directly.
- */
-DdManager * 
-Ldd_GetCudd (LddManager *ldd)
-{
-  return ldd->cudd;
-}
-
-/**
- * Returns a linear constraint at the root of a given node.
- */
-lincons_t 
-Ldd_GetCons (LddManager *ldd, LddNode *node)
-{
-  return lddC(ldd,Cudd_Regular(node)->index);
-}
-
-
-
-/**
-   \brief Returns the one constant of the manager.
-
-   \return pointer to the one constant
-   \remark The one constant is common to LDDs, BDDs, and ADDs.
-
-   \sa Ldd_GetFalse()
- */
-LddNode *
-Ldd_GetTrue (LddManager *ldd)
-{
-  return DD_ONE (CUDD);
-}
-
-
-/**
-   \brief Returns the logic zero constant of the manager.
-
-   \return pointer to the one constant
-
-   \remark The zero constant is common to LDDs and BDDs. It is the
-   complement of the one constant.
-
-   \sa Ldd_GetTrue()
- */
-LddNode *
-Ldd_GetFalse (LddManager *ldd)
-{
-  return Ldd_Not (DD_ONE (CUDD));
-}
 
 
 /**

@@ -347,7 +347,7 @@ lddIteRecur (LddManager * ldd,
 
   vCons = ldd->ddVars [index];
 
-  /** Propagate implication of the top node */
+  /** Ldd part of the cofactor */
   if (Fv == f)
     {
       lincons_t fCons = ldd->ddVars [f->index];
@@ -502,6 +502,9 @@ lddAndRecur (LddManager * ldd,
   vCons = ldd->ddVars [index];
 
   /** 
+   *
+   * Ldd part of the cofactor
+   * 
    * If f and g have the same term, simplify the THEN part of the
    * non-root diagram. This eliminates a redundant test. This assumes
    * that if a constraint A is less than in diagram ordering than B
@@ -677,6 +680,8 @@ lddXorRecur (LddManager * ldd,
   vCons = ldd->ddVars [index];
 
   /** 
+   * Ldd part of the cofactor
+
    * If f and g have the same constraint, simplify the THEN part
    * of the non-root diagram.
    * 

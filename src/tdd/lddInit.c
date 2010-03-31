@@ -1,7 +1,6 @@
 #include "util.h"
 #include "tddInt.h"
 
-static int bin_false (lincons_t, lincons_t);
 
 /**
    \brief Creates a new LDD manager.
@@ -70,56 +69,4 @@ Ldd_Quit (LddManager * ldd)
   FREE (ldd);
 }
 
-/**
-   \brief Returns an LDD node corresponding to a given constraint.
 
-   Returns an LDD corresponding to a given constraint. If needed, a
-   new node is created.
-
-   \param ldd diagram manager
-   \param l   linear constraint
-
-   \return a pointer to an LDD node if successful; NULL otherwise.
-
-   \pre the constraint is in canonical form.
- */
-LddNode* 
-Ldd_FromCons (LddManager *ldd, lincons_t l)
-{
-  return THEORY->to_ldd(ldd, l);
-}
-
-
-/**
- * Converts a given theory t into a theory in which all implications
- * are syntactic.
- */
-theory_t *
-Ldd_SyntacticImplicationTheory (theory_t *t)
-{
-  t->is_stronger_cons = bin_false;
-  return t;
-}
-
-LddManager *
-Ldd_BddlikeManager (LddManager *ldd)
-{
-  ldd->be_bddlike = 1;
-  return ldd;
-}
-
-LddManager *
-Ldd_SetExistsAbstract (LddManager *ldd,
-		       LddNode*(*fn)(LddManager*,LddNode*,int))
-{
-  ldd->existsAbstract = fn;
-  return ldd;
-}
-
-
-
-static int 
-bin_false (lincons_t l1, lincons_t l2)
-{
-  return 0;
-}
