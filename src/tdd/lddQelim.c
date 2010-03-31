@@ -1,11 +1,13 @@
+/**
+ * Top-level quantifier elimination routines and strategies for
+ * quantifying multiple variables.
+ */
 #include "util.h"
 #include "tddInt.h"
 #include <limits.h>
 
 
 /** multiple-variable eliminations strategy */
-
-
 static LddNode *drop_single_use_constraints (LddManager *,
 					      LddNode *, 
 					      int * , size_t, 
@@ -13,18 +15,51 @@ static LddNode *drop_single_use_constraints (LddManager *,
 static int choose_var_idx (int *, size_t , int *);
 
 
+/**
+   \brief Existential quantification using current strategy.
+   
+   \sa Ldd_SetExistsAbstract(), Ldd_UnivAbstract()
+   
+ */
+LddNode * 
+Ldd_ExistsAbstract (LddManager *ldd,
+		    LddNode *f,
+		    int var)
+{
+  return ldd->existsAbstract (ldd, f, var);
+}
+
+/**
+ \brief Universal quantification using current strategy.
+
+ \sa Ldd_SetExistsAbstract, Ldd_ExistsAbstract()
+
+*/
+LddNode * 
+Ldd_UnivAbstract (LddManager * ldd,
+		  LddNode * f,
+		  int var)
+{
+  LddNode *res;
+  
+  res = ldd->existsAbstract (ldd, Cudd_Not (f), var);
+  return Cudd_Not (res);
+}
 
 
-
-/* 
- * Existentially quantifies out multiple variables from a LDD
+/** 
+ * \brief Existentially quantifies out multiple variables from am LDD
  * 
- * n        LDD from which variables are eliminated
- * qvars    list of quantified variables
- * qsize    the size of qvars
+  \param ldd Ldd manager
+  \param n   LDD from which variables are eliminated
+  \param qvars    list of quantified variables
+  \param qsize    the size of qvars
  */
 LddNode *
-Ldd_MvExistAbstract (LddManager* ldd, LddNode *n, int * qvars, size_t qsize)
+Ldd_MvExistAbstract (LddManager* ldd, 
+		     LddNode *n, 
+		     int * qvars, 
+		     size_t qsize)
 {
   LddNode * res;
 
@@ -114,9 +149,20 @@ Ldd_MvExistAbstract (LddManager* ldd, LddNode *n, int * qvars, size_t qsize)
   return res;
 }
 
+
+/**
+   \brief Drops all single-use constraints by Boolean existential
+   quantification.
+   
+   \sa Ldd_MvExistAbstract()
+ */
 static  LddNode *
-drop_single_use_constraints (LddManager *ldd, LddNode *n, int * qvars, 
-			     size_t qsize, int *occurlist, int *varlist)
+drop_single_use_constraints (LddManager *ldd, 
+			     LddNode *n, 
+			     int * qvars, 
+			     size_t qsize, 
+			     int *occurlist, 
+			     int *varlist)
 {
   size_t i;
 
@@ -135,8 +181,15 @@ drop_single_use_constraints (LddManager *ldd, LddNode *n, int * qvars,
   return Ldd_OverAbstract (ldd, n, varlist);
 }
 
+/**
+   \brief A heuristic to pick a variable to be quantified out next
+
+   \sa Ldd_MvExistAbstract()
+ */
 static int 
-choose_var_idx (int * qvars, size_t qsize, int *occurlist)
+choose_var_idx (int * qvars, 
+		size_t qsize, 
+		int *occurlist)
 {
   int res = -1;
   int min = INT_MAX;

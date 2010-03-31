@@ -293,6 +293,9 @@ struct theory
 #define Ldd_T(X) Cudd_T(X)
 #define Ldd_E(X) Cudd_E(X)
 #define Ldd_Regular(X) Cudd_Regular(X)
+
+#define Ldd_ExistAbstract Ldd_MvExistAbstract
+
 LddManager* Ldd_Init (DdManager *cudd, theory_t * t);
 void Ldd_Quit (LddManager* tdd);
 
