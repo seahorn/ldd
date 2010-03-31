@@ -1,6 +1,15 @@
 #include "util.h"
 #include "tddInt.h"
 
+/**
+   \brief Computes a cofactor of f with respect to g
+   
+   \pre g is an LDD cube.
+
+   \return a pointer to the cofactor if successful; NULL otherwise.
+
+   Based on Cudd_Cofactor
+ */
 LddNode *
 Ldd_Cofactor (LddManager *ldd,
 	      DdNode *f,
@@ -121,6 +130,7 @@ lddCofactorRecur (LddManager *ldd,
 	fv = cuddT (F);
     }
 
+  
   if (topf >= topg)
     {
       if (gnv == zero)
