@@ -4,7 +4,7 @@
 
 #ifndef __TVPI__H_
 #define __TVPI__H_
-#include "tdd.h"
+#include "ldd.h"
 
 #ifdef __cplusplus
 extern "C" {

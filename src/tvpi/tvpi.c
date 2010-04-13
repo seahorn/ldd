@@ -132,11 +132,11 @@ tvpi_sgn_cst (tvpi_cst_t k)
 }
 
 
-static bool 
-always_false_cst (tvpi_cst_t k)
-{
-  return 0;
-}
+/* static bool  */
+/* always_false_cst (tvpi_cst_t k) */
+/* { */
+/*   return 0; */
+/* } */
 
 /**
  * Checks whether t1 and t2 have a resolvent on x.

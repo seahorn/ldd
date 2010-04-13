@@ -14,7 +14,7 @@
 #include <string.h>
 #include <assert.h>
 #include <gmp.h>
-#include "tddInt.h"
+#include "lddInt.h"
 
 #ifdef __cplusplus
 extern "C" {
