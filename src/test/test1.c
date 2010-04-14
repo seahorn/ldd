@@ -1,6 +1,6 @@
 #include "util.h"
 #include "cudd.h"
-#include "tdd.h"
+#include "ldd.h"
 #include "tvpi.h"
 
 #include <stdio.h>
@@ -26,7 +26,7 @@ int main(int argc, char** argv)
   LddNode *d1, *d2, *d3, *d4, *d5, *d6, *d7;
 
 
-  /* 1 is DDD, 2 is TVPI , 5 is UTVPI(Z)*/
+  /* 2 is TVPI , 5 is UTVPI(Z)*/
   int t_type = 2;
   if (argc > 1)
     {
@@ -39,6 +39,8 @@ int main(int argc, char** argv)
       
   printf ("Creating the world...\n");
   cudd = Cudd_Init (0, 0, CUDD_UNIQUE_SLOTS, 127, 0);
+
+  printf ("Creating the theory...\n");
   if (t_type == 2)
     t = tvpi_create_theory (3);
   else if (t_type == 5)

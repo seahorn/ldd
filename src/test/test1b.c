@@ -1,6 +1,6 @@
 #include "util.h"
 #include "cudd.h"
-#include "tdd.h"
+#include "ldd.h"
 #include "tvpi.h"
 
 #include <stdio.h>
