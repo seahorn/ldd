@@ -1,0 +1,16 @@
+This is the pre-alpha release of the Linear Decision Diagram (LDD)
+library. The library is released under a modified BSD license. See
+LICENSE for details.
+
+To compile, run "make" in the top level directory. This will compile the
+included CUDD library and the LDD library.
+
+To generate doxygen documentation, run "make doc" in the top level
+directory.
+
+The API provided by LDD are similar to CUDD. Some examples can be
+found in "src/test". Note that all side-effect free CUDD funcions
+(e.g., Cudd_DagSize) can be applied to LDDs directly.
+
+
+For additional information, contact Arie Gurfinkel (arie@cmu.edu)
