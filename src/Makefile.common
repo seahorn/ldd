@@ -9,8 +9,13 @@ ICFLAGS = -g -Wall -O6
 XCFLAGS = -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
 INCLUDE = -I$(CUDD)/include -I$(ROOT)/src/include
 CFLAGS = $(ICFLAGS) $(MFLAG) $(XCFLAGS) $(INCLUDE)
-LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp -L$(ROOT)/src/tdd -L$(ROOT)/src/tvpi
+LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp -L$(ROOT)/src/ldd -L$(ROOT)/src/tvpi
 LDLIBS = -lcudd  -ltvpi -lldd -lst -lutil -lmtr -lepd -ldddmp -lgmp -lm
 
+TESTLIBS = $(CUDD)/cudd/libcudd.a $(CUDD)/st/libst.a \
+	   $(CUDD)/util/libutil.a $(CUDD)/mtr/libmtr.a \
+	   $(CUDD)/epd/libepd.a $(CUDD)/dddmp/libdddmp.a \
+	   $(ROOT)/src/ldd/libldd.a  \
+	   $(ROOT)/src/tvpi/libtvpi.a
 
 AR = ar -rcs 

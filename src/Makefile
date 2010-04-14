@@ -1,5 +1,5 @@
 # all compile options are in Makefile.common
-DIRS	= tvpi tdd test bench-runner
+DIRS	= tvpi ldd test bench-runner
 
 #------------------------------------------------------------------------
 
