@@ -75,7 +75,7 @@ Ldd_ExistsAbstractSFM (LddManager * ldd,
    \param t   the (positive) term of the constraint being resolved
    \param negCons   constraint being resolved with of the form -t < k or NULL
    \param posCons   constraint being resolved with of the form t < k or NULL
-   \param x   variable being resolved on
+   \param var   variable being resolved on
 
    \sa Ldd_ExistsAbstractFM(), Ldd_ExistsAbstractSFM(), Ldd_Resolve()
  */
@@ -117,8 +117,8 @@ Ldd_Resolve (LddManager * ldd,
    \param ldd LDD manager
    \param f   the given LDD
    \param t   the (positive) term being eliminated
-   \param c   constraint being resolved with 
-   \param x   variable being resolved on
+   \param cons   constraint being resolved with 
+   \param var   variable being resolved on
 
    \pre  t is positive. t is the term of c. x is a variable in c.
 
@@ -431,7 +431,7 @@ lddResolveRecur (LddManager * ldd,
    \param t   the (positive) term being eliminated
    \param negCons   constraint being resolved with of the form -t <= k or NULL
    \param posCons   constraint being resolved with of the form t <= k or NULL
-   \param x   variable being resolved on
+   \param var   variable being resolved on
 
  */
 LddNode *

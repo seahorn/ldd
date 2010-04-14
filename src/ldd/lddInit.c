@@ -5,6 +5,7 @@
 /**
    \brief Creates a new LDD manager.
 
+   \param cudd underlying CUDD manager
    \param t theory for managing labels of nodes
    \return a pointer to the manager if successful; NULL otherwise
    

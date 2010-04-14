@@ -114,7 +114,8 @@ Ldd_GetFalse (LddManager *ldd)
  Running time is linear in the number of path, exponential in the size
  of the diagram.
  *
- * \param ldd  deprecated. Can be NULL>
+ * \param ldd  deprecated. Can be NULL.
+ * \param n  target diagram.
  *
  * \sa Cudd_CountPath(),  Cudd_CountPathToNonZero()
  */
