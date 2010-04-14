@@ -5,10 +5,15 @@ LICENSE for details. The license for CUDD is in cudd-2.4.2/LICENSE.
 To compile, run "make" in the top level directory. This will compile the
 included CUDD library and the LDD library.
 
-To use the library, you must:
+To use LDD:
 
-1) Add src/include to your compiler include path (-I).
-2) Link with all .a files in src/lib.
+1) Add src/include and cudd-2.4.2/include to your compiler include path.
+
+2) Include "ldd.h"
+
+3) Link with the CUDD libraries libcudd.a libst.a libutil.a libmtr.a
+libepd.a libdddmp.a (which are in appropriate sub-directories of
+cudd-2.4.2), and the LDD library src/ldd/libldd.a.
 
 To generate doxygen documentation, run "make doc" in the top level
 directory.
