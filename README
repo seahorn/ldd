@@ -23,4 +23,4 @@ found in "src/test". Note that all side-effect free CUDD functions
 (e.g., Cudd_DagSize) can be applied to LDDs directly.
 
 
-For additional information, contact Arie Gurfinkel (arie@cmu.edu).
+For additional information, contact lindd-feedback@lists.sourceforge.net.
