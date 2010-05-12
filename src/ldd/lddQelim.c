@@ -139,7 +139,7 @@ Ldd_MvExistAbstract (LddManager* ldd,
       Cudd_IterDerefBdd (CUDD, res);
       res = tmp;
       
-      printf ("QELIM_WB of var %d size: %d\n", qvars [v], Cudd_DagSize (res));
+      /* printf ("QELIM_WB of var %d size: %d\n", qvars [v], Cudd_DagSize (res)); */
     }
 
   FREE (varlist);
