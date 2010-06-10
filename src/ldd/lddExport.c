@@ -55,7 +55,7 @@ Ldd_DumpSmtLibV1 (LddManager *ldd,
   if (retval == EOF) goto failure;
   
   brkt = lddDumpSmtLibV1BodyRecur (fp, ldd, Cudd_Regular (f), vnames);
-  ddClearFlag (f);
+  ddClearFlag (Cudd_Regular (f));
 
   if (brkt < 0) goto failure;
 
