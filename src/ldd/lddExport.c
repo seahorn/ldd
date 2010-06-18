@@ -20,11 +20,36 @@ Ldd_DumpSmtLibV1 (LddManager *ldd,
 		  FILE *fp)
 {
   /* variables in the support of the diagram */
-  int* occurrences;
+  int* occurrences = NULL;
   int retval;
   int nvars = THEORY->num_of_vars (THEORY);
   int brkt, i;
+
+
+  /* print header */
+  retval = fprintf (fp, "(benchmark ");
+  if (retval == EOF) goto failure;
   
+  if (bname != NULL)
+    retval = fprintf (fp, "%s\n", bname);
+  else
+    retval = fprintf (fp, "ldd_%p\n", f);
+  if (retval == EOF) goto failure;
+
+  /* if f is a constant bail out quickly */
+  if (Cudd_IsConstant (f))
+    {
+      /* recall: there is one extra open bracket that must get closed */
+
+      if(f == DD_ONE(CUDD)) 
+	retval = fprintf (fp, ":formula\n (= 0 0)\n)");
+      else
+	retval = fprintf (fp, ":formula\n (= 0 1)\n)");
+
+      if (retval == EOF) goto failure;
+      return 1;
+    }
+
   occurrences = ALLOC (int,nvars);
   if (occurrences == NULL)
     {
@@ -35,16 +60,6 @@ Ldd_DumpSmtLibV1 (LddManager *ldd,
   memset (occurrences, 0, sizeof(int) * nvars);
   Ldd_VarOccurrences (ldd, f, occurrences);
 
-  retval = fprintf (fp, "(benchmark ");
-  if (retval == EOF) goto failure;
-  
-  if (bname != NULL)
-    retval = fprintf (fp, "%s\n", bname);
-  else
-    retval = fprintf (fp, "ldd_%p\n", f);
-  if (retval == EOF) goto failure;
-
-
   retval = THEORY->dump_smtlibv1_prefix (THEORY, fp, occurrences);
   if (retval == 0) goto failure;
 
@@ -53,19 +68,6 @@ Ldd_DumpSmtLibV1 (LddManager *ldd,
   
   retval = fprintf (fp, ":formula\n");
   if (retval == EOF) goto failure;
-  
-  //quick check for true and false
-  if(Cudd_IsConstant (f)) {
-    if(f == DD_ONE(CUDD)) {
-      retval = fprintf (fp, "(= 0 0))");
-      if (retval == EOF) goto failure;
-      return 1;
-    } else {
-      retval = fprintf (fp, "(= 0 1))");
-      if (retval == EOF) goto failure;
-      return 1;
-    }
-  }
 
   brkt = lddDumpSmtLibV1BodyRecur (fp, ldd, Cudd_Regular (f), vnames);
   ddClearFlag (Cudd_Regular (f));
