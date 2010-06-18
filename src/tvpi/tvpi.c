@@ -607,6 +607,9 @@ tvpi_dump_smtlibv1_prefix (tvpi_theory_t *theory,
 {
   int retval;
   size_t i;
+
+  //flag to check if there was at least one support variable
+  int supportFlag = 0;
   
   retval = fprintf (fp, ":extrafuns (\n");
   if (retval < 0) return 0;
@@ -616,7 +619,14 @@ tvpi_dump_smtlibv1_prefix (tvpi_theory_t *theory,
       {
 	retval = fprintf (fp, "(v%d %s)\n", i, theory->smt_var_type);
 	if (retval < 0) return 0;
+        supportFlag = 1;
       }
+
+  if(!supportFlag) {
+    retval = fprintf (fp, "(dummy Real)\n");
+    if (retval < 0) return 0;
+  }
+
   retval = fprintf (fp, ")\n");
 
   return retval < 0 ? 0 : 1;
