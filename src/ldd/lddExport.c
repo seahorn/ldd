@@ -54,6 +54,19 @@ Ldd_DumpSmtLibV1 (LddManager *ldd,
   retval = fprintf (fp, ":formula\n");
   if (retval == EOF) goto failure;
   
+  //quick check for true and false
+  if(Cudd_IsConstant (f)) {
+    if(f == DD_ONE(CUDD)) {
+      retval = fprintf (fp, "(= 0 0))");
+      if (retval == EOF) goto failure;
+      return 1;
+    } else {
+      retval = fprintf (fp, "(= 0 1))");
+      if (retval == EOF) goto failure;
+      return 1;
+    }
+  }
+
   brkt = lddDumpSmtLibV1BodyRecur (fp, ldd, Cudd_Regular (f), vnames);
   ddClearFlag (Cudd_Regular (f));
 
