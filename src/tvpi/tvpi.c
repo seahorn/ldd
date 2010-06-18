@@ -605,7 +605,7 @@ tvpi_dump_smtlibv1_prefix (tvpi_theory_t *theory,
 			   FILE *fp,
 			   int *occurrences)
 {
-  int retval;
+  int retval = 1;
   size_t i;
 
   /* set to true if any output was produced */
