@@ -537,7 +537,7 @@ lddBoxWidenRecur (LddManager *ldd,
 	  
 	  
 	  if (eCons != NULL && THEORY->is_stronger_cons (vCons, eCons))
-	    eu = Cudd_NotCond (cuddT (e), e != E);
+	    eu = Cudd_NotCond (cuddT (E), e != E);
 	  else
 	    eu = e;
 	  
@@ -554,7 +554,7 @@ lddBoxWidenRecur (LddManager *ldd,
 		  index = F->index;
 
 		  if (E->index == index)
-		    enu = Cudd_NotCond (cuddE (e), e != E);
+		    enu = Cudd_NotCond (cuddE (E), e != E);
 		  else
 		    enu = e;
 		  
