@@ -83,6 +83,31 @@ tvpi_create_d_cst (double d)
   return r;
 }
 
+tvpi_cst_t
+tvpi_floor_cst (tvpi_cst_t c)
+{
+  mpq_t *r;
+  
+  r = new_cst ();
+  if (r == NULL) return NULL;
+  mpq_init (*r);
+  mpz_fdiv_q (mpq_numref (*r), mpq_numref (*c), mpq_denref (*c));  
+  return r;
+}
+
+tvpi_cst_t
+tvpi_ceil_cst (tvpi_cst_t c)
+{
+  mpq_t *r;
+  
+  r = new_cst ();
+  if (r == NULL) return NULL;
+  mpq_init (*r);
+  mpz_cdiv_q (mpq_numref (*r), mpq_numref (*c), mpq_denref (*c));  
+  return r;
+}
+
+
 tvpi_cst_t 
 tvpi_negate_cst (tvpi_cst_t c)
 {
@@ -703,6 +728,42 @@ tvpi_create_cons (tvpi_term_t t, bool s, tvpi_cst_t k)
       t->fst_coeff = NULL;
     }
   return (tvpi_cons_t)t;
+}
+
+
+tvpi_cons_t 
+tvpi_floor_cons (tvpi_cons_t c)
+{
+  tvpi_cons_t r;
+  
+  r = tvpi_dup_term (c);
+  if (r == NULL) return NULL;
+  r->op = c->op;
+  r->cst = tvpi_floor_cst (c->cst);
+  if (r->cst == NULL) 
+    {
+      tvpi_destroy_term (r);
+      return NULL;
+    }
+  return r;
+
+}
+
+tvpi_cons_t
+tvpi_ceil_cons (tvpi_cons_t c)
+{
+  tvpi_cons_t r;
+  
+  r = tvpi_dup_term (c);
+  if (r == NULL) return NULL;
+  r->op = c->op;
+  r->cst = tvpi_ceil_cst (c->cst);
+  if (r->cst == NULL) 
+    {
+      tvpi_destroy_term (r);
+      return NULL;
+    }
+  return r;
 }
 
 
@@ -1974,6 +2035,8 @@ tvpi_create_theory (size_t vn)
   t->base.create_double_cst = (constant_t(*)(double)) tvpi_create_d_cst;
   t->base.dup_cst = (constant_t(*)(constant_t)) tvpi_dup_cst;
   t->base.negate_cst = (constant_t(*)(constant_t)) tvpi_negate_cst;
+  t->base.floor_cst = (constant_t(*)(constant_t)) tvpi_floor_cst;
+  t->base.ceil_cst = (constant_t(*)(constant_t)) tvpi_ceil_cst;
 
   t->base.destroy_cst = (void(*)(constant_t))tvpi_destroy_cst;
   t->base.add_cst = (constant_t(*)(constant_t,constant_t))tvpi_add_cst;
@@ -2011,6 +2074,8 @@ tvpi_create_theory (size_t vn)
   
   t->base.get_constant = (constant_t(*)(lincons_t))tvpi_get_cst;
   t->base.negate_cons = (lincons_t(*)(lincons_t))tvpi_negate_cons;
+  t->base.floor_cons = (lincons_t(*)(lincons_t))tvpi_floor_cons;
+  t->base.ceil_cons = (lincons_t(*)(lincons_t))tvpi_ceil_cons;
   t->base.is_negative_cons = (int(*)(lincons_t))tvpi_is_neg_cons;
   t->base.resolve_cons = 
     (lincons_t(*)(lincons_t,lincons_t,int))tvpi_resolve_cons;
