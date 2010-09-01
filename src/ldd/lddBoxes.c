@@ -843,8 +843,7 @@ lddBoxWiden2Recur (LddManager *ldd,
 		      Cudd_IterDerefBdd (CUDD, e);
 		    }
 		  else if (eu == e || 
-			   CUDD->perm [F->index] <= 
-			   CUDD->perm [Cudd_Regular (eu)->index]) 
+			   CUDD->perm [F->index] <= CUDD->perm [E->index]) 
 		    {
 		      lincons_t newVCons = NULL;
 		      lincons_t fCons = lddC (ldd, F->index);
