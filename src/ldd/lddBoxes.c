@@ -17,6 +17,21 @@ Ldd_BoxWiden (LddManager *ldd, LddNode *f, LddNode *g)
   return (res);
 }
 
+LddNode *
+Ldd_BoxWiden2 (LddManager *ldd, LddNode *f, LddNode *g)
+{
+  LddNode *res;
+  
+  do
+    {
+      CUDD->reordered = 0;
+      res = lddBoxWiden2Recur (ldd, f, g, NULL);
+    } while (CUDD->reordered == 1);
+  
+  return (res);
+}
+
+
 
 /** 
  * Extrapolation for intervals. 
@@ -604,6 +619,316 @@ lddBoxWidenRecur (LddManager *ldd,
   
   if (F->ref != 1 || G->ref != 1)
     cuddCacheInsert2(manager, (DD_CTFP)Ldd_BoxWiden, f, g, r);
+  
+  cuddDeref (r);
+  return r;
+}
+
+#define hashKey2(A,B)  (((ptruint)(A))+((ptruint)(B)))
+
+/**
+ * Recursive step of Ldd_BoxWiden2. Same arguments (except the latC)
+ * are as in lddBoxWidenRecur. lastC is the last constraint processed
+ * or NULL.
+ */
+LddNode *
+lddBoxWiden2Recur (LddManager *ldd,
+		   LddNode *f,
+		   LddNode *g,
+		   lincons_t lastC)
+{
+  DdManager * manager;
+  DdNode *F, *fv, *fnv, *G, *gv, *gnv;
+  DdNode *one, *zero, *r, *t, *e;
+  unsigned int topf, topg, index;
+
+  /* true if the current top term is the same as lastC */
+  int sameT = 0;
+  
+  lincons_t vCons;
+
+  /* new top level constraint if needed */
+  DdNode* newV = NULL;
+  
+
+  manager = CUDD;
+  statLine(manager);
+  one = DD_ONE(manager);
+  zero = Cudd_Not (one);
+
+  F = Cudd_Regular(f);
+  G = Cudd_Regular(g);
+
+
+  /* Terminal cases. */
+  if (F == one || G == one || F == G) return g;
+
+  
+  /* Get the levels */
+  /* Here we can skip the use of cuddI, because the operands are known
+  ** to be non-constant.
+  */
+  topf = manager->perm[F->index];
+  topg = manager->perm[G->index];
+
+  /* Compute cofactors. */
+  if (topf <= topg) {
+    index = F->index;
+    fv = cuddT(F);
+    fnv = cuddE(F);
+    if (Cudd_IsComplement(f)) {
+      fv = Cudd_Not(fv);
+      fnv = Cudd_Not(fnv);
+    }
+  } else {
+    index = G->index;
+    fv = fnv = f;
+  }
+  
+  if (topg <= topf) {
+    gv = cuddT(G);
+    gnv = cuddE(G);
+    if (Cudd_IsComplement(g)) {
+      gv = Cudd_Not(gv);
+      gnv = Cudd_Not(gnv);
+    }
+  } else {
+    gv = gnv = g;
+  }
+
+
+  /** 
+   * Get the constraint of the root node 
+   */
+  vCons = lddC (ldd, index);
+
+  /* true iff the term of the top constraint vCons is the same as the
+     term of lastC constraint */
+  sameT = (lastC != NULL &&
+	   THEORY->term_equals (THEORY->get_term (vCons),
+				THEORY->get_term (lastC)));
+
+  /* Check cache. */
+  if (F->ref != 1 || G->ref != 1) {
+    /** Conceptually, they key is (Ldd_BoxWiden2, sameT, f, g) */
+    r = cuddCacheLookup2(manager, (DD_CTFP)hashKey2(Ldd_BoxWiden2,sameT), f, g)
+    if (r != NULL) return(r);
+  }
+  else
+    r = NULL;
+
+
+  /** 
+   * Compute LDD cofactors w.r.t. the top term.  
+   * 
+   * We check whether f and g have the same constraint using the
+   * following facts: 
+   *   vCons is the constraint of the root diagram
+   *   gv == g iff g is not the root diagram
+   *   fv == f iff f is not the root diagram
+   */
+  if (gv == g)
+    {
+      lincons_t gCons = lddC (ldd, G->index);
+      
+      if (THEORY->is_stronger_cons (vCons, gCons))
+	{
+	  gv = cuddT (G);
+	  if (Cudd_IsComplement (g))
+	    gv = Cudd_Not (gv);
+	}
+    }
+  else if (fv == f)
+    {
+      lincons_t fCons = lddC (ldd, F->index);
+      
+      if (THEORY->is_stronger_cons (vCons, fCons))
+	{
+	  fv = cuddT (F);
+	  if (Cudd_IsComplement (f))
+	    fv = Cudd_Not (fv);
+	}
+    }
+  
+  
+  e = lddBoxWiden2Recur (ldd, fnv, gnv, vCons);
+  if (e == NULL) return NULL;
+  cuddRef (e);
+
+  if (index != F->index && fv == gv)
+    if (!sameT)
+      /* reference to e is migrated into r */
+      r = e;
+    else
+      {
+	DdNode *E = Cudd_Regular (e);
+	lincons_t newVCons = NULL;
+
+	/* Widen THEN part. THEN must have a 
+	   different term than current top term */
+	t = lddBoxWiden2Recur (ldd, fv, gv, NULL);
+	if (t == NULL)
+	  {
+	    Cudd_IterDerefBdd (manager, e);
+	    return NULL;
+	  }
+	cuddRef (t);
+	
+
+	/* floor top constraint */
+	newVCons = THEORY->floor_cons (vCons);
+	if (newVCons == NULL)
+	  {
+	    Cudd_IterDerefBdd (manager, t);
+	    Cudd_IterDerefBdd (manager, e);
+	    return NULL;
+	  }
+	newV = THEORY->to_ldd (ldd, newVCons);
+	if (newV != NULL) cuddRef (newV);
+	THEORY->destroy_lincons (newVCons);
+	/* newV is dereferenced after ITE is constructed before
+	   exiting the function */
+
+	if (newV == NULL)
+	  {
+	    Cudd_IterDerefBdd (manager, t);
+	    Cudd_IterDerefBdd (manager, e);
+	    return NULL;	    
+	  }
+	
+	/** newV is non-negative by construction */
+	assert (newV == Cudd_Regular (newV));
+	
+	/** update e, it must follow new top constraint in variable order */
+	if (E != one && 
+	    manager->perm [E->index] <= manager->perm [newV->index])
+	  e = Cudd_NotCond (cuddE (E), e != E);
+	
+	/** Set everything for the ITE at the end of the function */
+	index = newV->index;
+      }
+  else
+    {
+      DdNode *E = Cudd_Regular (e);
+      lincons_t eCons = NULL;
+
+      t = lddBoxWiden2Recur (ldd, fv, gv, NULL);
+      if (t == NULL)
+	{
+	  Cudd_IterDerefBdd (manager, e);
+	  return NULL;
+	}
+      cuddRef (t);
+  
+      if (E != one)
+	eCons = lddC (ldd, E->index);
+      
+      if (index != F->index)
+	{
+	  DdNode  *eu, *enu;
+	  
+	  
+	  if (eCons != NULL && THEORY->is_stronger_cons (vCons, eCons))
+	    eu = Cudd_NotCond (cuddT (E), e != E);
+	  else
+	    eu = e;
+	  
+	  if (eu == fv)
+	    {
+
+	      if (fv == f)
+		{
+		  r = t;
+		  Cudd_IterDerefBdd (CUDD, e);
+		}
+	      else if (eu == e || 
+		       CUDD->perm [F->index] <= 
+		       CUDD->perm [Cudd_Regular (eu)->index]) 
+		{
+		  lincons_t newVCons = NULL;
+		  lincons_t fCons = lddC (ldd, F->index);
+		  
+		  newVCons = THEORY->ceil_cons (vCons);
+		  if (newVCons == NULL)
+		    {
+		      Cudd_IterDerefBdd (manager, t);
+		      Cudd_IterDerefBdd (manager, e);
+		      return NULL;
+		    }
+
+		  if (THEORY->is_stronger_cons (fCons, newVCons))
+		    {
+		      index = F->index;
+		      THEORY->destroy_lincons (newVCons);
+		    }
+		  else
+		    {
+		      newV = THEORY->to_ldd (ldd, newVCons);
+		      if (newV != NULL) cuddRef (newV);
+		      THEORY->destroy_lincons (newVCons);
+		      if (newV == NULL)
+			{
+			  Cudd_IterDerefBdd (manager, t);
+			  Cudd_IterDerefBdd (manager, e);
+			  return NULL;
+			}
+		      index = newV->index;
+		      /* newV is dereferenced when an ITE is
+			 constructed at the end of the function */
+		    }
+		  
+		  if (E->index == index)
+		    enu = Cudd_NotCond (cuddE (E), e != E);
+		  else
+		    enu = e;
+		  
+		  cuddRef (enu);
+		  Cudd_IterDerefBdd (CUDD, e);
+
+		  e = enu;
+		}
+	    }
+	} /* if (index != F->index) */
+      else if (fnv == zero) /* if (index == F->index */
+	{
+	  if (eCons != NULL && THEORY->is_stronger_cons (vCons, eCons))
+	    {
+	      DdNode* ee;
+	      ee = expandToInfinity (ldd, e, vCons);
+	      if (ee != NULL) cuddRef (ee);
+	      Cudd_IterDerefBdd (CUDD, e);
+	      if (ee == NULL)
+		{
+		  Cudd_IterDerefBdd (CUDD, t);
+		  return NULL;
+		}
+	      e = ee;
+	    }
+	}
+      
+      if (r == NULL)
+	{
+	  if (t == e)
+	    r = t;
+	  else if (Cudd_IsComplement (t))
+	    {
+	      r = lddUniqueInter (ldd, index, Cudd_Not (t), Cudd_Not (e));
+	      r = Cudd_NotCond (r, r != NULL);
+	    }
+	  else
+	    r = lddUniqueInter (ldd, index, t, e);
+	  
+	  if (r != NULL) cuddRef (r);
+	  Cudd_IterDerefBdd (CUDD, t);
+	  Cudd_IterDerefBdd (CUDD, e);
+	  if (newV != NULL) Cudd_IterDerefBdd (CUDD, newV);
+	  if (r == NULL) return NULL;
+	}
+    }
+  
+  
+  if (F->ref != 1 || G->ref != 1)
+    cuddCacheInsert2(manager, (DD_CTFP)hashKey2(Ldd_BoxWiden2,sameT), f, g, r);
   
   cuddDeref (r);
   return r;

@@ -65,6 +65,12 @@ struct theory
 
   /** Return -1*c */
   constant_t (*negate_cst) (constant_t c);
+  
+  /** Returns floor of a constant */
+  constant_t (*floor_cst) (constant_t c);
+  /** Returns ceil of a constant */
+  constant_t (*ceil_cst) (constant_t c);
+  
 
   /* Sign of the constant. -1 if c < 0, 1 if c > 0, 0 if c = 0 */
   int (*sgn_cst)(constant_t c);
@@ -184,10 +190,20 @@ struct theory
   constant_t (*get_constant)(lincons_t l);
 
 
+  /**
+   * Floors the constant of the linear constraint
+   */
+  lincons_t (*floor_cons)(lincons_t l);
+  
+  /**
+   * Ceiling of the constant of the linear constraint
+   */
+  lincons_t (*ceil_cons)(lincons_t l);
+
   /** 
    * Complements a linear constraint 
    */
-  lincons_t (*negate_cons)(lincons_t l);  
+  lincons_t (*negate_cons)(lincons_t l);
 
   /**
    * Returns true if l is a negative constraint (i.e., the smallest
@@ -349,6 +365,8 @@ LddManager *Ldd_SetExistsAbstract (LddManager *,
 LddNode * Ldd_MvExistAbstract (LddManager*, LddNode *, int * , size_t );
 LddNode * Ldd_BoxExtrapolate (LddManager*, LddNode*, LddNode*);
 LddNode * Ldd_BoxWiden (LddManager*, LddNode*, LddNode*);
+LddNode * Ldd_BoxWiden2 (LddManager*, LddNode*, LddNode*);
+
 LddNode* Ldd_TermReplace (LddManager*, LddNode*, linterm_t, linterm_t, constant_t, constant_t, constant_t);
 LddNode* Ldd_TermMinmaxApprox (LddManager*, LddNode*);
 LddNode* Ldd_TermConstrain (LddManager*, LddNode*, 

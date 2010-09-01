@@ -455,3 +455,44 @@ Extend to quantification of multiple numeric varialbes
 
 Extend to quantification of ALL numeric variables. In this case, QElim
 becomes satisfiability check
+
+
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+
+/* existentially abstract all variables in Q from f */
+exist_abstract_v3 (tdd f, var_set Q)
+{
+  if (isConstant (f) && is_empty_set (Q) ) return f;
+
+  if (is_singleton (Q))
+    return exist_abstract (f, pick_element (Q));
+
+  v =   root_constraint_of (f);
+  fv =  then_branch (f)
+  fnv = else_branch (f)
+
+  /* RULE:  \E{Q} v->fv, fnv  ===  v -> \E{Q}fv, \E{Q}fnv */
+  if (set_intersect (Q, vars (v)) == emptyset)  
+    return tdd_ite (v, exist_abstract_v3 (fv, Q), exist_abstract_v3 (fnv, Q))
+
+  
+  /* Let A = Q \intersect vars(v), and B = Q \setminus A.  
+  
+     Fact: A is non-empty.  
+  
+     If B is non-empty, have to make a choice whether to quantify out
+     A first or B first.
+
+     The choice can be different for THEN and ELSE branches.
+
+     Here, we decide to quantify out B first
+   */
+
+   
+   let x = pick_element(A) and A = A \setminus {x}
+
+
+   return exist_abstract_v3 (A, exist_abstract(exist_abstract_v3 (f, B), x))
+}
