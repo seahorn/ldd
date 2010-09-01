@@ -711,7 +711,7 @@ lddBoxWiden2Recur (LddManager *ldd,
   /* Check cache. */
   if (F->ref != 1 || G->ref != 1) {
     /** Conceptually, they key is (Ldd_BoxWiden2, sameT, f, g) */
-    r = cuddCacheLookup2(manager, (DD_CTFP)hashKey2(Ldd_BoxWiden2,sameT), f, g)
+    r = cuddCacheLookup2(manager, (DD_CTFP)hashKey2(Ldd_BoxWiden2,sameT), f, g);
     if (r != NULL) return(r);
   }
   else
