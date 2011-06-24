@@ -13,7 +13,7 @@ def main ():
   predRe = re.compile (r"^:extrapreds \(\((P[0-9]+)\)\)")
   #varRe = re.compile (r"^[ ]+\((v[0-9])+ FOO\)")
   varRe = re.compile (r"^  \((v[0-9][^ ]*) FOO")
-  boolVarRe = re.compile (r"^  \((Bbb[0-9][^ ]*) FOO")
+  boolVarRe = re.compile (r"^  \((B[^ ][^ ]*) FOO")
 
   print '(set-option set-param ELIM_QUANTIFIERS true)'
   sys.stdout.flush ()
