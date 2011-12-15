@@ -780,6 +780,22 @@ tvpi_get_term (tvpi_cons_t c)
   return c;
 }
 
+void
+tvpi_cst_set_mpq (mpq_t res, tvpi_cst_t k) 
+{
+  mpq_set (res, *k); 
+}
+
+tvpi_cst_t tvpi_create_cst (mpq_t k)
+{
+  mpq_t *r = (mpq_t*) malloc (sizeof (mpq_t));
+  if (r == NULL) return NULL;
+  mpq_init (*r);
+  mpq_set (*r, k);
+  return r;
+}
+
+
 signed long int
 tvpi_cst_get_si_num (tvpi_cst_t c)
 {

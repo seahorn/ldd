@@ -313,7 +313,8 @@ struct theory
 #define Ldd_ExistAbstract Ldd_MvExistAbstract
 
 LddManager* Ldd_Init (DdManager *cudd, theory_t * t);
-void Ldd_Quit (LddManager* tdd);
+void Ldd_Quit (LddManager* ldd);
+theory_t* Ldd_GetTheory (LddManager *ldd);
 
 LddNode* Ldd_FromCons(LddManager* m, lincons_t l);
 

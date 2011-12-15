@@ -1,6 +1,18 @@
 #include "util.h"
 #include "lddInt.h"
 
+/** 
+    \brief Returns theory object used by the LDD Manager
+
+    \param ldd LDD manager
+    \return a pointer to theory object
+*/
+theory_t *
+Ldd_GetTheory (LddManager *ldd)
+{
+  return ldd->theory;
+}
+
 
 /**
    \brief Creates a new LDD manager.
