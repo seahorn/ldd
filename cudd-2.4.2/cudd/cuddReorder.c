@@ -129,6 +129,8 @@ static void bddFixTree (DdManager *table, MtrNode *treenode);
 static int ddUpdateMtrTree (DdManager *table, MtrNode *treenode, int *perm, int *invperm);
 static int ddCheckPermuation (DdManager *table, MtrNode *treenode, int *perm, int *invperm);
 
+static int isXIndexRedundant (DdManager *table, DdNode *t, DdNode *e, int xbot, int ybot);
+
 /**AutomaticEnd***************************************************************/
 
 
@@ -870,9 +872,9 @@ cuddSwapInPlaceGroup(
 			*previousP = f;
 			previousP = &(f->next);
 		    } else {
-			f->index = yindex;
-			f->next = g;
-			g = f;
+		      f->index = yindex;
+		      f->next = g;
+		      g = f;
 		    }
 		    f = next;
 		} /* while there are elements in the collision chain */
@@ -1084,8 +1086,8 @@ cuddSwapInPlaceGroup(
 		tmp = Cudd_Regular(newf0);
 		cuddSatInc(tmp->ref); 
 	    }
-	    /* AG: TDD reduction rule 5. See comments above */
-	    else if (xbot > 0 &&
+	    /* AG: LDD reduction rule 5. See comments above */
+	    /*else if (xbot > 0 &&
 		     Cudd_IsComplement (f00) == Cudd_IsComplement (f10) &&
 		     cuddI(table, Cudd_Regular(f00)->index) <= xbot &&
 		     cuddI(table, Cudd_Regular(f00)->index) > ybot &&
@@ -1094,7 +1096,19 @@ cuddSwapInPlaceGroup(
 		newf0 = f00;
 		tmp = Cudd_Regular (newf0);
 		cuddSatInc (tmp->ref);
+		}*/
+		/* XXX AG: check whether (xindex, f10, f00) 
+		   XXX is equivalent to f00, if so, use f00 instead
+		   XXX AG: This is the same check as above, but it goes
+		   XXX deeper into the diagram
+		*/
+	    else if (isXIndexRedundant (table, f10, f00, xbot, ybot))
+	      {
+		newf0 = f00;
+		tmp = Cudd_Regular (newf0);
+		cuddSatInc (tmp->ref);
 	      }
+	    
 	    else {
 		/* make sure f10 is regular */
 		newcomplement = Cudd_IsComplement(f10);
@@ -1141,6 +1155,8 @@ cuddSwapInPlaceGroup(
 	    cuddE(f) = newf0;
 
 	    assert (newf1 != newf0);
+	    assert (newf1->index == xindex || 
+		    Cudd_Regular(newf0)->index == xindex);  
 
 	    /* Insert the modified f in ylist.
 	    ** The modified f does not already exists in ylist.
@@ -1157,7 +1173,10 @@ cuddSwapInPlaceGroup(
 	    while (newf1 == cuddT(tmp) && newf0 < cuddE(tmp)) {
 		previousP = &(tmp->next);
 		tmp = *previousP;
-	    }	    
+	    }	  
+#ifdef DD_DEBUG 
+	    assert (! (newf1 == cuddT(tmp) && newf0 == cuddE(tmp)));
+#endif
 	    f->next = *previousP;
 	    *previousP = f;
 	    f = next;
@@ -2194,4 +2213,91 @@ ddCheckPermuation(
 	    return(0);
     }
     return(1);
+}
+
+static int
+isXIndexRedundant (DdManager *table, DdNode *t, DdNode *e, int xbot, int ybot)
+{
+  DdNode *T, *E;
+  int firstflag = 1;
+  
+
+  if (xbot <= 0) return 0;
+  if (Cudd_IsComplement (t) != Cudd_IsComplement (e)) return 0;
+  
+  T = Cudd_Regular (t);
+  E = Cudd_Regular (e);
+
+  /* if E is an x-term */
+  if (cuddI(table, E->index) <= xbot && cuddI(table, E->index) > ybot)
+    return cuddT(E) == T;
+
+  /* E is NOT a y-term  (and not an x-term by above ) */
+  if (cuddI (table, E->index) > ybot) return 0;
+  
+
+  /** traverse over all y-terms in T (if any) and match them to y-terms in E */
+  while (cuddI(table, T->index) <= ybot)
+    {
+      DdNode *TE;
+      
+      /* no matching y-term on E side */
+      if (cuddI(table, E->index) > cuddI (table, T->index)) return 0;
+
+      /* complement dots must agree */
+      if (firstflag && Cudd_IsComplement (e) != Cudd_IsComplement (t)) return 0;
+      
+      /* THEN branch must be the same (modulo x-term) */
+      TE = cuddT (E);
+      if (cuddI (table, TE->index) <= xbot) TE = cuddT (TE);
+      if (TE != cuddT (T)) return 0;
+
+      /* move to next one */
+      if (T->index == E->index)
+	{
+	  t = cuddE (T);
+	  T = Cudd_Regular (t);
+	  firstflag = 1;
+	}
+      else
+	firstflag = 0;
+      
+
+      e = cuddE (E);
+      E = Cudd_Regular (e);
+
+      /** in a group, no complement dots allowed */
+      if (!firstflag && e != E) return 0;
+      
+    }
+
+  /** complement dots must agree */
+  if (Cudd_IsComplement (e) != Cudd_IsComplement (t)) return 0;
+  
+  /* NOTE: T is not a y-term, E might be a y-term */
+
+  /* if E is a y-term, check its THEN branch and move it forward along
+     ELSE branch */
+  while (cuddI (table, E->index) <= ybot)
+    {
+      DdNode *TE;
+
+      /* ELSE of e cannot have complement dots */
+      if (Cudd_IsComplement (cuddE (E))) return 0;
+
+      TE = cuddT (E);
+      if (cuddI (table, TE->index) <= xbot) TE = cuddT (TE);
+      if (TE != T) return 0;
+
+      /* shift down the ELSE branch */
+      e = cuddE (E);
+      E = Cudd_Regular (e);
+    }
+
+  /** either E is not an x-term and is the same as T OR 
+      E must be an x-term AND 
+      THEN branch of x-term must be the same as current T */
+  return (E == T) || 
+    (cuddI (table, E->index) > ybot && 
+     cuddI (table, E->index) <= xbot && cuddT (E) == T);
 }

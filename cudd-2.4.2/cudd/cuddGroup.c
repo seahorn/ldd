@@ -180,6 +180,33 @@ static int ddIsVarHandled (DdManager *dd, int index);
 /* Definition of exported functions                                          */
 /*---------------------------------------------------------------------------*/
 
+static void
+ddPrintSubtable (DdManager *table, int i)
+{
+  DdNodePtr *nodelist;
+  int slots;
+  int j;
+  DdNode *f;
+  DdNode *sentinel = &(table->sentinel);
+  
+
+  fprintf (table->err, "subtable %d: \n", i);
+  nodelist = table->subtables[i].nodelist;
+  slots = table->subtables[i].slots;
+
+  for (j = 0; j < slots; j++)
+    {
+      f = nodelist [j];
+      while (f != sentinel)
+	{
+	  cuddPrintNode (f, table->err);
+	  f = f->next;
+	}
+    }
+  
+}
+
+
 
 /**Function********************************************************************
 
@@ -1546,8 +1573,10 @@ ddGroupMove(
 	if (size < bestSize)
 	  bestSize = size;
 #endif
-	/* XXX AG: Not sure what this variables are for.
+	/* XXX AG: swapx is the new bottom of the second group
+	   XXX AG: swapx is the new top of the first group
 	   XXX AG: Not sure if I am setting them correctly.
+	   XXX AG: see asserts on swapx/swapy below
 	*/ 
 	swapx = x; swapy = y;
 
@@ -1579,7 +1608,16 @@ ddGroupMove(
     }
     table->subtables[y].next = xtop; /* y is bottom of its group, join */
                                     /* it to top of its group */
+    
     x = cuddNextHigh(table,y);
+
+#ifdef DD_DEBUG
+    /** AG: now: y is the new bottom of the second group
+	x is the new top of the first group */		 
+    assert (swapx == y);
+    assert (swapy == x);
+#endif
+
     newxtop = x;
     for (i = 0; i < xsize - 1; i++) {
         table->subtables[x].next = cuddNextHigh(table,x);
@@ -1612,6 +1650,76 @@ ddGroupMoveOutOfMem:
     return(0);
 
 } /* end of ddGroupMove */
+
+static int
+ddGroupMove_AG_DEBUG(
+  DdManager * table,
+  int  x,
+  int  y,
+  Move ** moves)
+{
+  int res;
+  int initialSize;
+  Move* move;
+  int i;
+  
+  initialSize = table->keys - table->isolated;
+
+  /* if (initialSize == 527) */
+  /*   { */
+  /*     fprintf (table->err, "INITIAL state\n"); */
+  /*     for (i = 0; i <= 8; i++) ddPrintSubtable (table, i); */
+  /*   } */
+  
+  
+
+  /* do the move */
+  res = ddGroupMove (table, x, y, moves);
+  if (!res) return 0;
+  return res;
+
+  move = *moves;
+  /* check that moves list is consistent */
+  if (move->next != NULL) assert (move->next->size == initialSize);
+  
+  /* only do checks when size increased */
+  if (initialSize >= move->size) return res;
+  
+  fprintf (table->out, 
+	   "*+*+*+*+*+*+*+ Checking ddGroupMove isize %d, fsize %d\n", 
+	   initialSize, move->size);
+  fprintf (table->out, "*+*+*+*+*+*+*+ Checking ddGroupMove 2\n");
+  fprintf (table->out, "*+*+*+*+*+*+*+ Checking ddGroupMove 3\n");
+  fprintf (table->out, "*+*+*+*+*+*+*+ Checking ddGroupMove 4\n");
+  fprintf (table->out, "*+*+*+*+*+*+*+ Checking ddGroupMove 5\n");
+
+
+  /* fprintf (table->err, "State BEFORE move back\n"); */
+  /* for (i = 0; i <= 8; i++) ddPrintSubtable (table, i); */
+  
+  /* undo the move */
+  ddGroupMoveBackward (table, move->x, move->y);
+
+  /* fprintf (table->err, "State AFTER move back\n"); */
+  /* for (i = 0; i <= 8; i++) ddPrintSubtable (table, i); */
+
+
+  /* check that we are back at original state */
+  assert (table->keys - table->isolated == initialSize);
+  
+  /* clean the moves list and reapeat the move */
+  *moves = move->next; /* pop head */
+  res = ddGroupMove (table, x, y, moves); /* repeat move */
+
+  /* check expected size */
+  assert (table->keys - table->isolated == move->size);
+  
+  /* remove move */
+  cuddDeallocMove (table, move);
+  return res;
+  
+}
+
 
 /**Function********************************************************************
 
@@ -1765,10 +1873,16 @@ ddGroupSiftingBackward(
 	}
     }
 
+    
+
     /* In case of lazy sifting, end_move identifies the position at
     ** which we want to stop.  Otherwise, we stop as soon as we meet
     ** the minimum size. */
     for (move = moves; move != NULL; move = move->next) {
+#ifdef DD_DEBUG
+      /* check that the table has the right size at the beginning */
+      assert (move->size == table->keys - table->isolated);
+#endif
 	if (lazyFlag) {
 	    if (move == end_move) return(1);
 	} else {
@@ -2221,3 +2335,5 @@ ddIsVarHandled(
     return dd->subtables[dd->perm[index]].varHandled;
 
 } /* end of ddIsVarHandled */
+
+
