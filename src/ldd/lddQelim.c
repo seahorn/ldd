@@ -43,7 +43,7 @@ Ldd_UnivAbstract (LddManager * ldd,
   LddNode *res;
   
   res = ldd->existsAbstract (ldd, Cudd_Not (f), var);
-  return Cudd_Not (res);
+  return Cudd_NotCond (res, res != NULL);
 }
 
 
