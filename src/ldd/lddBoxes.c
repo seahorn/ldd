@@ -31,6 +31,20 @@ Ldd_BoxWiden2 (LddManager *ldd, LddNode *f, LddNode *g)
   return (res);
 }
 
+LddNode *
+Ldd_IntervalWiden (LddManager *ldd, LddNode *f, LddNode *g)
+{
+  LddNode *res;
+  
+  do
+    {
+      CUDD->reordered = 0;
+      res = lddIntervalWidenRecur (ldd, f, g);
+    } while (CUDD->reordered == 1);
+  
+  return res;
+}
+
 
 
 /** 
@@ -623,6 +637,87 @@ lddBoxWidenRecur (LddManager *ldd,
   cuddDeref (r);
   return r;
 }
+
+/** Interval widen f by g. Assume that f and g are cubes, and f is
+    term-contained in g */
+LddNode *
+lddIntervalWidenRecur (LddManager *ldd,
+		       LddNode *f,
+		       LddNode *g)
+{
+  DdNode *one, *zero, *res, *F, *G;
+
+  DdNode *fv, *fnv, *gv, *gnv;
+  DdNode *rest, *gVar;
+
+  lincons_t fCons, gCons;
+  
+  one = DD_ONE(CUDD);
+  zero = Cudd_Not (one);
+  
+  if (g == one) return g;  
+  /** widen with bot */
+  if (f == zero) return g;  
+
+  F = Cudd_Regular (f);
+  G = Cudd_Regular (g);
+
+  /** f and g are non-constants */
+  fCons = lddC (ldd, F->index);
+  gCons = lddC (ldd, G->index);
+
+  fv = Cudd_NotCond (cuddT (F), f != F);
+  fnv = Cudd_NotCond (cuddE (F), f != F);
+
+  if (! (THEORY->term_equals (THEORY->get_term (fCons), 
+			      THEORY->get_term (gCons))))
+    return lddIntervalWidenRecur (ldd, (fv != zero ? fv : fnv), g);
+  
+
+  gv = Cudd_NotCond (cuddT (G), g != G);
+  gnv = Cudd_NotCond (cuddE (G), g != G);
+  
+  /* if g is a lower bound then f must be lower bound */
+  if (gv == zero) 
+    {
+      assert (fv == zero);
+      /* recursive call */
+      rest = lddIntervalWidenRecur (ldd, fnv, gnv);
+    }
+  /* g is an upper bound, but f is a lower bound */
+  else if (fv == zero)
+    return lddIntervalWidenRecur (ldd, fnv, g);
+  else
+    {
+      /* both f and g are upper bounds */
+      assert (gnv == zero);
+      assert (fnv == zero);
+      rest = lddIntervalWidenRecur (ldd, fv, gv);
+    }
+
+  if (F->index != G->index) return rest;
+
+  if (rest == NULL) return NULL;
+  cuddRef (rest);
+
+  gVar = Cudd_bddIthVar (CUDD, G->index);
+  if (gVar == NULL)
+    {
+      Cudd_IterDerefBdd (CUDD, rest);
+      return NULL;
+    }
+  cuddRef (gVar);
+  
+  gVar = Cudd_NotCond (gVar, gv == zero);
+  res = lddAndRecur (ldd, gVar, rest);
+  cuddRef (res);
+  
+  Cudd_IterDerefBdd (CUDD, gVar);
+  Cudd_IterDerefBdd (CUDD, rest);
+  cuddDeref (res);
+  return res;
+}
+
 
 #define hashKey2(A,B)  (((ptruint)(A))+((ptruint)(B)))
 

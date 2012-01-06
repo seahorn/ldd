@@ -367,6 +367,7 @@ LddNode * Ldd_MvExistAbstract (LddManager*, LddNode *, int * , size_t );
 LddNode * Ldd_BoxExtrapolate (LddManager*, LddNode*, LddNode*);
 LddNode * Ldd_BoxWiden (LddManager*, LddNode*, LddNode*);
 LddNode * Ldd_BoxWiden2 (LddManager*, LddNode*, LddNode*);
+  LddNode * Ldd_IntervalWiden (LddManager*, LddNode *, LddNode*);
 
 LddNode* Ldd_TermReplace (LddManager*, LddNode*, linterm_t, linterm_t, constant_t, constant_t, constant_t);
 LddNode* Ldd_TermMinmaxApprox (LddManager*, LddNode*);
