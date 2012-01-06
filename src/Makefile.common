@@ -5,9 +5,10 @@ endif
 CUDD=$(ROOT)/cudd-2.4.2
 
 CC = gcc
-ICFLAGS = -g -Wall -O6 
+ICFLAGS = -g -Wall -O6
 #XCFLAGS = -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
-XCFLAGS	= -mtune=native -DHAVE_IEEE_754 -DBSD -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8
+#XCFLAGS	= -mtune=native -DHAVE_IEEE_754 -DBSD -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8
+XCFLAGS	=  -DHAVE_IEEE_754 -DBSD -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8
 INCLUDE = -I$(CUDD)/include -I$(ROOT)/src/include
 CFLAGS = $(ICFLAGS) $(MFLAG) $(XCFLAGS) $(INCLUDE)
 LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp -L$(ROOT)/src/ldd -L$(ROOT)/src/tvpi
