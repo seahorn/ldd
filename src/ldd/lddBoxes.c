@@ -79,7 +79,7 @@ Ldd_TermReplace (LddManager *ldd, LddNode *f, linterm_t t1,
 		  linterm_t t2, constant_t a, constant_t kmin, constant_t kmax)
 {
   LddNode *res;
-  DdHashTable * table;
+  DdLocalCache *cache;
 
   /* local copy of t2 */
   linterm_t lt2;
@@ -107,14 +107,14 @@ Ldd_TermReplace (LddManager *ldd, LddNode *f, linterm_t t1,
   do 
     {
       CUDD->reordered = 0;
-      table = cuddHashTableInit (CUDD, 1, 2);
-      if (table == NULL) return NULL;
+      cache = cuddLocalCacheInit (CUDD, 1, 2, CUDD->maxCacheHard);
+      if (cache == NULL) return NULL;
       
       res = lddTermReplaceRecur (ldd, f, t1, lt2, 
-				    la, kmin, kmax,table);
+				    la, kmin, kmax, cache);
       if (res != NULL)
 	cuddRef (res);
-      cuddHashTableQuit (table);
+      cuddLocalCacheQuit (cache);
     } while (CUDD->reordered == 1);
   
   if (res != NULL) cuddDeref (res);
@@ -1037,7 +1037,7 @@ lddTermReplaceRecur (LddManager * ldd, LddNode *f,
 			linterm_t t1, linterm_t t2, 
 			constant_t a,
 			constant_t kmin, constant_t kmax,
-			DdHashTable* table)
+			DdLocalCache* cache)
 {
   DdNode *F, *res, *fv, *fnv, *t, *e;
   DdNode *rootT, *rootE;
@@ -1112,6 +1112,7 @@ lddTermReplaceRecur (LddManager * ldd, LddNode *f,
 	  return res;
 	}
       
+      
       return f;  
     }
 
@@ -1119,7 +1120,7 @@ lddTermReplaceRecur (LddManager * ldd, LddNode *f,
   /* XXX if terms t1 and t2 do not appear in f, can stop here */
 
   /* check cache */
-  if (F->ref != 1 && ((res = cuddHashTableLookup1 (table, f)) != NULL))
+  if (F->ref != 1 && ((res = cuddLocalCacheLookup (cache, &f)) != NULL))
     return res;
 
   /* cofactors */
@@ -1298,7 +1299,7 @@ lddTermReplaceRecur (LddManager * ldd, LddNode *f,
       
   /* recursive step */
 
-  t = lddTermReplaceRecur (ldd, fv, t1, t2, a, kmin, kmax, table);
+  t = lddTermReplaceRecur (ldd, fv, t1, t2, a, kmin, kmax, cache);
   if (t == NULL)
     {
       Cudd_IterDerefBdd (CUDD, rootT);
@@ -1307,7 +1308,7 @@ lddTermReplaceRecur (LddManager * ldd, LddNode *f,
     }
   cuddRef (t);
   
-  e = lddTermReplaceRecur (ldd, fnv, t1, t2, a, kmin, kmax, table);
+  e = lddTermReplaceRecur (ldd, fnv, t1, t2, a, kmin, kmax, cache);
   if (e == NULL)
     {
       Cudd_IterDerefBdd (CUDD, rootT);
@@ -1370,15 +1371,7 @@ lddTermReplaceRecur (LddManager * ldd, LddNode *f,
   
   /* update cache */
   if (F->ref != 1)
-    {
-      ptrint fanout = (ptrint) F->ref;
-      cuddSatDec (fanout);
-      if (!cuddHashTableInsert1 (table, f, res, fanout))
-	{
-	  Cudd_IterDerefBdd (CUDD, res);
-	  return NULL;
-	}
-    }
+    cuddLocalCacheInsert (cache, &f, res);
 
   cuddDeref (res);
   return res;
