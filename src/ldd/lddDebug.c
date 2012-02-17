@@ -12,9 +12,9 @@ Ldd_ManagerDebugDump (LddManager* ldd)
   
   fprintf (stderr, "LddManager @%p\n", ldd);
   fprintf (stderr, "\tcudd @%p, theory @%p\n", ldd->cudd, ldd->theory);
-  fprintf (stderr, "\tvarsSize=%d\n", ldd->varsSize);
+  fprintf (stderr, "\tvarsSize=%lu\n", ldd->varsSize);
 
-  for (i = 0; i < ldd->varsSize; i++)
+  for (i = 0; i < CUDD->size; i++)
     {
       fprintf (stderr, "\t %d: %d: ", i, CUDD->perm[i]);
       if (ldd->ddVars [i] == NULL)
@@ -24,6 +24,18 @@ Ldd_ManagerDebugDump (LddManager* ldd)
 
       fprintf (stderr, "\n");
     }
+  fprintf (stderr, "\n\n");
+  
+  for (i = 0; i < CUDD->size; i++)
+    {
+      fprintf (stderr, "\t L%lu: I%lu: ", i, CUDD->invperm [i]);
+      if (ldd->ddVars [CUDD->invperm [i]] == NULL)
+	fprintf (stderr, "(nil)");
+      else
+	ldd->theory->print_lincons (stderr, ldd->ddVars [CUDD->invperm [i]]);
+      fprintf (stderr, "\n");
+    }
+  
 }
 
 /** 

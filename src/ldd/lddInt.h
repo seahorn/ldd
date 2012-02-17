@@ -84,6 +84,9 @@ LddNode* lddTermReplaceRecur (LddManager*, LddNode*,
 				  constant_t, 
 				  constant_t, constant_t, 
 				  DdLocalCache*);
+LddNode* lddTermCopyRecur (LddManager*, LddNode*, linterm_t, linterm_t, 
+			   DdLocalCache*);
+
 LddNode* lddTermMinmaxApproxRecur (LddManager*, LddNode*);
 LddNode* lddTermConstrainRecur (LddManager*, LddNode*, 
 				    linterm_t, linterm_t, constant_t,

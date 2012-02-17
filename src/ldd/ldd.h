@@ -370,6 +370,7 @@ LddNode * Ldd_BoxWiden2 (LddManager*, LddNode*, LddNode*);
   LddNode * Ldd_IntervalWiden (LddManager*, LddNode *, LddNode*);
 
 LddNode* Ldd_TermReplace (LddManager*, LddNode*, linterm_t, linterm_t, constant_t, constant_t, constant_t);
+  LddNode* Ldd_TermCopy (LddManager*, LddNode*, linterm_t, linterm_t);
 LddNode* Ldd_TermMinmaxApprox (LddManager*, LddNode*);
 LddNode* Ldd_TermConstrain (LddManager*, LddNode*, 
 				linterm_t, linterm_t, constant_t);

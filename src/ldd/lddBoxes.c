@@ -65,6 +65,30 @@ Ldd_BoxExtrapolate (LddManager *ldd, LddNode *f, LddNode *g)
   return (res);
 }
 
+LddNode *
+Ldd_TermCopy (LddManager *ldd, LddNode *f, 
+	      linterm_t t1, linterm_t t2)
+{
+  LddNode *res;
+  DdLocalCache *cache;
+  
+  do 
+    {
+      CUDD->reordered = 0;
+      cache = cuddLocalCacheInit (CUDD, 1, 2, CUDD->maxCacheHard);
+      if (cache == NULL) return NULL;
+      
+      res = lddTermCopyRecur (ldd, f, t1, t2,  cache);
+      if (res != NULL) cuddRef (res);
+
+      cuddLocalCacheQuit (cache);
+    } while (CUDD->reordered == 1);
+  
+  if (res != NULL) cuddDeref (res);
+  return (res);
+}
+
+
 /**
  * Apply t1 <- a*t2 + [kmin,kmax], i.e, replace all
  * constraints on term t1 with a linear combination on constraints
@@ -1031,6 +1055,164 @@ lddBoxWiden2Recur (LddManager *ldd,
   return r;
 }
 
+LddNode *
+lddTermCopyRecur (LddManager * ldd, LddNode *f, 
+		  linterm_t t1, linterm_t t2, DdLocalCache *cache)
+{
+  DdNode *F, *res, *fv, *fnv, *t, *e;
+  DdNode *rootT, *rootE;
+  
+  lincons_t fCons;
+  linterm_t fTerm;
+  
+  F = Cudd_Regular (f);
+
+  if (F == DD_ONE (CUDD)) return f;
+
+  /* check cache */
+  if (F->ref != 1 && ((res = cuddLocalCacheLookup (cache, &f)) != NULL))
+    return res;
+
+  /* cofactors */
+  fv = Cudd_NotCond (cuddT(F), F != f);
+  fnv = Cudd_NotCond (cuddE(F), F != f);
+
+  
+  fCons = lddC (ldd, F->index);
+  fTerm = THEORY->get_term (fCons);
+
+  /* roots of the result diagram */  
+  rootT = Cudd_bddIthVar (CUDD, F->index);
+  if (rootT == NULL) return NULL;
+  cuddRef (rootT);
+  rootE = Cudd_Not (rootT);
+  cuddRef (rootE);
+  
+  if (THEORY->term_equals (fTerm, t2))
+    {
+      DdNode *tmp, *d;
+      constant_t fCst;
+      lincons_t newCons;
+      
+      fCst = THEORY->get_constant (fCons);
+
+      d = NULL;
+      newCons = THEORY->create_cons (THEORY->dup_term (t1), 
+				     THEORY->is_strict (fCons), 
+				     THEORY->dup_cst (fCst));
+      d = Ldd_FromCons (ldd, newCons);
+      THEORY->destroy_lincons (newCons);
+      newCons = NULL;
+      
+      if (d == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootT);
+	  Cudd_IterDerefBdd (CUDD, rootE);
+	  return NULL;
+	}
+      cuddRef (d);
+
+      /* add d to the THEN branch */
+      tmp = lddAndRecur (ldd, rootT, d);
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, rootT);
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootE);
+	  Cudd_IterDerefBdd (CUDD, d);
+	  return NULL;
+	}
+      rootT = tmp;
+      tmp = NULL;
+      
+      /** add !d to the ELSE branch */
+
+      tmp = lddAndRecur (ldd, rootE, Cudd_Not (d));
+      if (tmp != NULL) cuddRef (tmp);
+      Cudd_IterDerefBdd (CUDD, rootE);
+      Cudd_IterDerefBdd (CUDD, d);
+      if (tmp == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootT);
+	  return NULL;
+	}
+      rootE = tmp;
+      tmp = NULL;
+
+      t = fv;
+    }
+  else
+    {
+      t = lddTermCopyRecur (ldd, fv, t1, t2, cache);
+      if (t == NULL)
+	{
+	  Cudd_IterDerefBdd (CUDD, rootT);
+	  Cudd_IterDerefBdd (CUDD, rootE);
+	  return NULL;
+	}
+    }
+  
+  cuddRef (t);
+
+  e = lddTermCopyRecur (ldd, fnv, t1, t2, cache);
+  if (e == NULL)
+    {
+      Cudd_IterDerefBdd (CUDD, rootT);
+      Cudd_IterDerefBdd (CUDD, rootE);
+      Cudd_IterDerefBdd (CUDD, t);
+      return NULL;
+    }
+  cuddRef (e);
+  
+  /* Add rootT to the THEN branch of the result */
+  {
+    DdNode *tmp;
+    tmp = lddAndRecur (ldd, rootT, t);
+    if (tmp != NULL) cuddRef (tmp);
+    Cudd_IterDerefBdd (CUDD, rootT);
+    Cudd_IterDerefBdd (CUDD, t);
+    if (tmp == NULL)
+      {
+	Cudd_IterDerefBdd (CUDD, rootE);
+	Cudd_IterDerefBdd (CUDD, e);
+	return NULL;
+      }
+    t = tmp; 
+  }
+  
+  /* Add rootE to the ELSE branch of the re1sult */
+  {
+    DdNode *tmp;
+    tmp = lddAndRecur (ldd, rootE, e);
+    if (tmp != NULL) cuddRef (tmp);
+    Cudd_IterDerefBdd (CUDD, rootE);
+    Cudd_IterDerefBdd (CUDD, e);
+    if (tmp == NULL)
+      {
+	Cudd_IterDerefBdd (CUDD, t);
+	return NULL;
+      }
+    e = tmp; 
+  }
+
+  /* res = OR (t, e) */
+  res = lddAndRecur (ldd, Cudd_Not (t), Cudd_Not (e));
+  if (res != NULL)
+    {
+      res = Cudd_Not (res);
+      cuddRef (res);
+    }
+  Cudd_IterDerefBdd (CUDD, t);
+  Cudd_IterDerefBdd (CUDD, e);
+  if (res == NULL) return NULL;
+  
+  /* update cache */
+  if (F->ref != 1)
+    cuddLocalCacheInsert (cache, &f, res);
+
+  cuddDeref (res);
+  return res;
+}
 
 LddNode * 
 lddTermReplaceRecur (LddManager * ldd, LddNode *f, 
