@@ -78,6 +78,8 @@ extern "C" {
     
     /* SMT-LIB type of variables */
     char* smt_var_type;
+
+    int is_box;
     
   } tvpi_theory_t;
   
@@ -90,6 +92,8 @@ extern "C" {
   int tvpi_sgn_cst (tvpi_cst_t);
   void tvpi_destroy_cst (tvpi_cst_t);
   void tvpi_print_cst (FILE*, tvpi_cst_t);
+
+  int tvpi_initialize_theory (tvpi_theory_t *);
   
   tvpi_term_t tvpi_create_linterm (int*, size_t);
   bool tvpi_term_equlas (tvpi_term_t, tvpi_term_t);

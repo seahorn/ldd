@@ -16,6 +16,9 @@ extern "C" {
   theory_t *tvpi_create_theory (size_t vn);
   theory_t *tvpi_create_utvpiz_theory (size_t vn);
   theory_t *tvpi_create_tvpiz_theory (size_t vn);
+  theory_t *tvpi_create_box_theory (size_t vn);
+  theory_t *tvpi_create_boxz_theory (size_t vn);
+  
   void tvpi_destroy_theory (theory_t*);
   
   tvpi_cst_t tvpi_create_cst(mpq_t k);

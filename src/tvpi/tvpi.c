@@ -4,6 +4,15 @@
 #include "tdd-octInt.h" /* enable for debugging */
 #endif
 
+#define MAP(t,x,y) (x < y ? (t->map[x][y]) :				\
+		    (x == y ? (t->map[x][0]) : (t->map[x][y+1])) )
+#define SMAP(t,x,y,u) \
+  if (x < y) { t->map[x][y] = u; }		\
+  else if (x == y) { t->map[x][0] = u; }	\
+  else { t->map [x][y+1] = u; } 
+
+#define BOX_SIZE(t) (t->is_box ? 1 : t->size)
+
 static tvpi_cst_t one = NULL;
 static tvpi_cst_t none = NULL;
 static tvpi_cst_t zero = NULL;
@@ -1758,10 +1767,10 @@ tvpi_ensure_capacity (tvpi_theory_t *t, int var)
       new_map [i] = (tvpi_list_node_t**) 
 	malloc (new_size * sizeof (tvpi_list_node_t*));
       assert (new_map [i] != NULL && "Unexpected out of memory");
-      for (j = 0; j < new_size; j++)
+      for (j = 0; j < t->is_box ? 1 : new_size; j++)
 	{
 	  /* copy all the entries from the old map */
-	  if (i < t->size && j < t->size)
+	  if (i < t->size && j < (t->is_box ? 1 : t->size))
 	    new_map [i][j] = t->map [i][j];
 	  else
 	    /* set new entries to NULL */
@@ -1810,7 +1819,7 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
   
   /* get the head of a link list that holds all constraints with the
      variables of c */
-  ln = t->map[var0][var1];
+  ln = MAP(t,var0,var1);
 
   /* first ever constraint with var0 and var1 */
   if (ln == NULL)
@@ -1825,7 +1834,7 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       Ldd_Ref (ln->dd);
       
       /* wire into the map */
-      t->map [var0][var1] = ln;
+      SMAP(t,var0,var1,ln);
       return ln->dd;
     }
   
@@ -1874,7 +1883,7 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       
 	  /* since o is NULL, n is the new head of the list */
 	  /* add n to the list */
-	  t->map [var0][var1] = n;
+	  SMAP(t,var0,var1,n);
 	}
       
       
@@ -1912,7 +1921,7 @@ tvpi_get_dd (LddManager *m, tvpi_theory_t* t, tvpi_cons_t c)
       if (n->prev != NULL) /* mid list */
 	n->prev->next = n;
       else /* head of the list */
-	t->map [var0][var1] = n;
+	SMAP(t,var0,var1,n);
       
       n->cons = tvpi_dup_cons (c);
       n->dd = Ldd_NewVarBefore (m, p->dd, (lincons_t)n->cons);
@@ -2005,33 +2014,28 @@ tvpi_to_ldd(LddManager *m, tvpi_cons_t c)
 }
 
 
-theory_t *
-tvpi_create_theory (size_t vn)
+
+int
+tvpi_initialize_theory (tvpi_theory_t *t)
 {
-  tvpi_theory_t * t;
+  
   int i, j;
   
-  t = (tvpi_theory_t*) malloc (sizeof (tvpi_theory_t));
-  if (t == NULL) return NULL;
-
-  t->size = vn;
-  t->smt_var_type = "Real";
-
   /* allocate and initialize the map */  
   t->map = (tvpi_list_node_t***) 
     malloc (sizeof (tvpi_list_node_t**) * t->size);
   if (t->map == NULL)
     {
       free (t);
-      return NULL;
+      return 0;
     }
 
   for (i = 0; i < t->size; i++)
     {
       t->map [i] = 
-	(tvpi_list_node_t**) malloc (t->size * sizeof (tvpi_list_node_t*));
+	(tvpi_list_node_t**) malloc (BOX_SIZE(t) * sizeof (tvpi_list_node_t*));
       /* XXX: handle malloc == NULL */
-      for (j = 0; j < t->size; j++)
+      for (j = 0; j < BOX_SIZE(t); j++)
 	t->map [i][j] = NULL;
     }
   
@@ -2132,8 +2136,29 @@ tvpi_create_theory (size_t vn)
   t->base.qelim_solve = NULL;
   t->base.qelim_destroy_context = NULL;
 
-  return (theory_t*)t;
+  return 1;
 }
+
+theory_t *
+tvpi_create_theory (size_t vn)
+{
+  tvpi_theory_t* t;
+  
+  t = (tvpi_theory_t*) malloc (sizeof (tvpi_theory_t));
+  if (t == NULL) return NULL;
+  
+  t->is_box = 0;
+  t->smt_var_type = "Real";
+  t->size = vn;
+  if (!tvpi_initialize_theory (t))
+    {
+      free (t);
+      return NULL;
+    }
+
+  return (theory_t*) t;
+}
+
 
 void 
 tvpi_destroy_theory (theory_t *theory)
@@ -2145,7 +2170,7 @@ tvpi_destroy_theory (theory_t *theory)
 
   for (i = 0; i < t->size; i++)
     {
-      for (j = 0; j < t->size; j++)
+      for (j = 0; j < BOX_SIZE(t); j++)
 	{
 	  tvpi_list_node_t *p;
 	  
@@ -2180,10 +2205,17 @@ tvpi_create_utvpiz_theory (size_t vn)
 {
   tvpi_theory_t* t;
   
-  t = (tvpi_theory_t*)tvpi_create_theory (vn);
+  t = (tvpi_theory_t*) malloc (sizeof (tvpi_theory_t));
   if (t == NULL) return NULL;
   
+  t->is_box = 0;
   t->smt_var_type = "Int";
+  t->size = vn;
+  if (!tvpi_initialize_theory (t))
+    {
+      free (t);
+      return NULL;
+    }
 
   /* update UTVPI(Z) specific functions.
    * The unique feature of UTVPI(Z) is that t < k is equivalent to t <= (k-1).
@@ -2210,10 +2242,18 @@ tvpi_create_tvpiz_theory (size_t vn)
 {
   tvpi_theory_t* t;
   
-  t = (tvpi_theory_t*)tvpi_create_theory (vn);
+  t = (tvpi_theory_t*) malloc (sizeof (tvpi_theory_t));
   if (t == NULL) return NULL;
   
+  t->is_box = 0;
   t->smt_var_type = "Int";
+  t->size = vn;
+  if (!tvpi_initialize_theory (t))
+    {
+      free (t);
+      return NULL;
+    }
+  
   
   /* update UTVPI(Z) specific functions.
    * The unique feature of UTVPI(Z) is that t < k is equivalent to t <= (k-1).
@@ -2222,6 +2262,55 @@ tvpi_create_tvpiz_theory (size_t vn)
   t->base.create_cons = (lincons_t(*)(linterm_t,int,constant_t))tvpi_z_create_cons;
   t->base.negate_cons = (lincons_t(*)(lincons_t))tvpi_z_negate_cons;  
   t->base.resolve_cons = (lincons_t(*)(lincons_t,lincons_t,int))tvpi_z_resolve_cons;
+
+  return (theory_t*)t;
+}
+
+theory_t*
+tvpi_create_box_theory (size_t vn)
+{
+  tvpi_theory_t* t;
+  
+  t = (tvpi_theory_t*) malloc (sizeof (tvpi_theory_t));
+  if (t == NULL) return NULL;
+
+  t->is_box = 1;
+  t->smt_var_type = "Real";
+  t->size = vn;
+  if (!tvpi_initialize_theory (t))
+    {
+      free (t);
+      return NULL;
+    }
+  return (theory_t*)t;
+}
+
+
+theory_t*
+tvpi_create_boxz_theory (size_t vn)
+{
+  tvpi_theory_t* t;
+  
+  t = (tvpi_theory_t*) malloc (sizeof (tvpi_theory_t));
+  if (t == NULL) return NULL;
+
+  t->smt_var_type = "Int";
+  t->is_box = 1;
+  t->size = vn;
+  if (!tvpi_initialize_theory (t))
+    {
+      free (t);
+      return NULL;
+    }
+
+  /* update UTVPI(Z) specific functions.
+   * The unique feature of UTVPI(Z) is that t < k is equivalent to t <= (k-1).
+   * These following functions ensure that no strict inequalities are created.
+   */
+  t->base.create_cons = 
+    (lincons_t(*)(linterm_t,int,constant_t))tvpi_uz_create_cons;
+  t->base.negate_cons = (lincons_t(*)(lincons_t))tvpi_uz_negate_cons;  
+  t->base.resolve_cons = (lincons_t(*)(lincons_t,lincons_t,int))tvpi_uz_resolve_cons;
 
   return (theory_t*)t;
 }
