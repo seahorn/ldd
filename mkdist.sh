@@ -2,7 +2,7 @@
 
 ## Creates a distribution tar
 
-VER=r4720
+VER=r6138
 
 DIST=/tmp/ldd-$VER
 rm -rf $DIST
