@@ -2,8 +2,8 @@ This is the pre-alpha release of the Linear Decision Diagram (LDD)
 library. The library is released under a modified BSD license. See
 LICENSE for details. The license for CUDD is in cudd-2.4.2/LICENSE.
 
-To compile, run "make" in the top level directory. This will compile the
-included CUDD library and the LDD library.
+To compile, run "./configure ; make" in the top level directory.  This
+will compile the included CUDD library and the LDD library.
 
 To use LDD:
 

@@ -2,7 +2,7 @@
 
 ## Creates a distribution tar
 
-VER=r6138
+VER=r6438
 
 DIST=/tmp/ldd-$VER
 rm -rf $DIST
@@ -14,7 +14,8 @@ svn export doc $DIST/doc
 svn export LICENSE $DIST/LICENSE
 svn export Makefile $DIST/Makefile
 svn export README $DIST/README
-
+svn export configure $DIST/configure
+svn export autoconf $DIST/autoconf
 (cd /tmp ; tar cvzf ldd-$VER.tar.gz ldd-$VER)
 rm -rf $DIST
 echo "Created distribution: ldd-$VER.tar.gz"
