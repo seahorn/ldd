@@ -7,7 +7,7 @@
 # be overridden from the command line.
 
 # C++ compiler
-CPP	= g++
+CPP	= @CXX@
 #CPP	= icpc
 #CPP	= ecpc
 #CPP	= CC
@@ -27,7 +27,7 @@ CPPFLAGS =
 # C compiler used for all targets except optimize_dec, which always uses cc.
 #CC	= cc
 #CC	= /usr/local/opt/SUNWspro/bin/cc
-CC	= gcc
+CC	= @CC@
 #CC	= icc
 #CC	= ecc
 #CC	= /usr/ucb/cc

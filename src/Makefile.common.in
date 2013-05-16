@@ -4,14 +4,14 @@ endif
 
 CUDD=$(ROOT)/cudd-2.4.2
 
-CC = gcc
+CC = @CC@
 ICFLAGS = -g -Wall -O6
 #XCFLAGS = -mtune=pentium4 -DHAVE_IEEE_754 -DBSD
 #XCFLAGS	= -mtune=native -DHAVE_IEEE_754 -DBSD -DSIZEOF_VOID_P=8 -DSIZEOF_LONG=8
 XCFLAGS	=  -DHAVE_IEEE_754 -DBSD -DSIZEOF_VOID_P=@SIZEOF_VOID_P@ -DSIZEOF_LONG=@SIZEOF_LONG@
 INCLUDE = -I$(CUDD)/include -I$(ROOT)/src/include
 CFLAGS = $(ICFLAGS) $(MFLAG) $(XCFLAGS) $(INCLUDE)
-LDFLAGS = -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp -L$(ROOT)/src/ldd -L$(ROOT)/src/tvpi
+LDFLAGS = @LDFLAGS@ -L$(CUDD)/cudd -L$(CUDD)/st -L$(CUDD)/util -L$(CUDD)/mtr -L$(CUDD)/epd -L$(CUDD)/dddmp -L$(ROOT)/src/ldd -L$(ROOT)/src/tvpi
 LDLIBS = -lcudd  -ltvpi -lldd -lst -lutil -lmtr -lepd -ldddmp -lgmp -lm
 
 TESTLIBS = $(CUDD)/cudd/libcudd.a $(CUDD)/st/libst.a \

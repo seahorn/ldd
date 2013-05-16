@@ -13,6 +13,10 @@ AC_CONFIG_SRCDIR(["src/Makefile.common.in"])
 dnl Configure a common Makefile
 AC_CONFIG_FILES([src/Makefile.common cudd-2.4.2/Makefile])
 
+AC_PROG_CPP
+AC_PROG_CC(gcc)
+AC_PROG_CXX(g++)
+
 dnl Configure project makefiles
 dnl List every Makefile that exists within your source tree
 dnl AC_CONFIG_MAKEFILE(Makefile)
