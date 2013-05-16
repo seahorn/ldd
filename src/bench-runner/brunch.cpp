@@ -7,6 +7,7 @@
 #include <sys/resource.h>
 #include <fcntl.h>
 #include <cstdio>
+#include <unistd.h>
 #include <string>
 #include <list>
 #include <vector>
