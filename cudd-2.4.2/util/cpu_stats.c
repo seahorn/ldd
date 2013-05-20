@@ -23,7 +23,7 @@ extern int end, etext, edata;
 void
 util_print_cpu_stats(FILE *fp)
 {
-#ifdef 0
+#ifdef NOT_DEFINED
     struct rusage rusage;
     struct rlimit rlp;
     long text, data, vm_limit, vm_soft_limit;
