@@ -27,3 +27,4 @@ src/test/test2
 src/test/test3
 src/test/test_box_widen
 src/test/test_term_replace
+/build/
