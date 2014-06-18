@@ -6,6 +6,8 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR )
     "In-source builds are not allowed. Please clean your source tree and try again.")  
 endif()
 
+list (APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
 include ("cmake/PackageOptions.cmake")
 
 include_directories(
@@ -13,4 +15,4 @@ include_directories(
   )
 
 add_subdirectory(cudd-2.4.2)
-#add_subdirectory(src)
+add_subdirectory(src)

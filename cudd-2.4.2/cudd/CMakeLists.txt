@@ -18,7 +18,7 @@ add_library (Cudd_Cudd ${PSRC})
 set_target_properties (Cudd_Cudd PROPERTIES OUTPUT_NAME "cudd")
 set_target_properties (Cudd_Cudd PROPERTIES COMPILE_DEFINITIONS_DEBUG 
   "${COMPILE_DEFINITIONS_DEBUG};DD_DEBUG;DD_CACHE_PROFILE;DD_VERBOSE;DD_UNIQUE_PROFILE")
-install (FILES cudd.h cuddInt.h DESTINATION include/cudd)
+install (FILES cudd.h cuddInt.h DESTINATION include/ldd)
 install (TARGETS Cudd_Cudd ARCHIVE DESTINATION lib)
 
 

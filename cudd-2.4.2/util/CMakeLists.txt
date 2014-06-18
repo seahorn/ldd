@@ -4,5 +4,5 @@ set (PSRC cpu_time.c cpu_stats.c getopt.c safe_mem.c strsav.c texpand.c
 add_library (Cudd_Util ${PSRC})
 set_target_properties (Cudd_Util PROPERTIES OUTPUT_NAME "util")
 
-install (FILES util.h DESTINATION include/cudd)
+install (FILES util.h DESTINATION include/ldd)
 install (TARGETS Cudd_Util ARCHIVE DESTINATION lib)
