@@ -1031,13 +1031,36 @@ lddBoxWiden2Recur (LddManager *ldd,
 	{
 	  if (t == e)
 	    r = t;
-	  else if (Cudd_IsComplement (t))
-	    {
-	      r = lddUniqueInter (ldd, index, Cudd_Not (t), Cudd_Not (e));
-	      r = Cudd_NotCond (r, r != NULL);
-	    }
-	  else
-	    r = lddUniqueInter (ldd, index, t, e);
+          else
+            {
+              /* if don't have node for top-level decision, create one */
+              if (newV == NULL)
+                {
+                  newV = Cudd_bddIthVar (CUDD, index);
+                  /* don't expect to fail, but being defensive.
+                     Grab a new reference since newV is dereferenced at the end
+                  */
+                  if (newV != NULL) Cudd_Ref (newV);
+                }
+              /* don't expect newV to be NULL, but if it is, 
+                 r remains NULL and everything is cleanly deallocted later on 
+              */
+              if (newV != NULL)
+                {
+                  assert (cuddI(newV) == index);
+                  /* a robust way to do 
+                     r = lddUniqueInter (ldd, index, t, e) 
+                  */
+                  r = lddIteRecur (ldd, newV, t, e);
+                }
+            }
+	  /* else if (Cudd_IsComplement (t)) */
+	  /*   { */
+	  /*     r = lddUniqueInter (ldd, index, Cudd_Not (t), Cudd_Not (e)); */
+	  /*     r = Cudd_NotCond (r, r != NULL); */
+	  /*   } */
+	  /* else */
+	  /*   r = lddUniqueInter (ldd, index, t, e); */
 	  
 	  if (r != NULL) cuddRef (r);
 	  Cudd_IterDerefBdd (CUDD, t);
