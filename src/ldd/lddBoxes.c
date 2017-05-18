@@ -1047,7 +1047,7 @@ lddBoxWiden2Recur (LddManager *ldd,
               */
               if (newV != NULL)
                 {
-                  assert (cuddI(newV) == index);
+                  assert (newV->index == index);
                   /* a robust way to do 
                      r = lddUniqueInter (ldd, index, t, e) 
                   */
